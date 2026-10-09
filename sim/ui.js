@@ -1145,11 +1145,13 @@ function aiErr(e){
 function verifyProgram(src){
   const m=M(); let r,ex,ev=[];
   try{ r=m.run(src); ex=m.expand(r); ev=m.analyse(r,ex)||[]; }catch(e){ return {ok:false,text:'INTERNAL ERROR: '+e.message,errs:[e.message],crashes:[],warns:[]}; }
-  const nb=i=>r.blocks[i]&&r.blocks[i].n!=null?r.blocks[i].n:'?';
-  const errs=r.errors.map(e=>`BLOCK ${nb(e.block)}: ${e.msg}`);
-  const crashes=ev.filter(e=>e.sev==='crash').map(e=>`BLOCK ${nb(e.block)}: ${e.msg}`);
-  const warns=ev.filter(e=>e.sev==='warn').map(e=>`BLOCK ${nb(e.block)}: ${e.msg}`);
+  /* each item quotes its block: the AI writes no block numbers, so the text is how it finds the line */
+  const nb=i=>{ const b=r.blocks[i]; return b&&b.n!=null?`BLOCK ${b.n} \`${String(b.raw||'').trim().slice(0,80)}\``:'BLOCK ?'; };
+  const errs=r.errors.map(e=>`${nb(e.block)}: ${e.msg}`);
+  const crashes=ev.filter(e=>e.sev==='crash').map(e=>`${nb(e.block)}: ${e.msg}`);
+  const warns=ev.filter(e=>e.sev==='warn').map(e=>`${nb(e.block)}: ${e.msg}`);
   if(!r.moves.length) errs.push('THE PROGRAM MAKES NO MOVES');
+  else if(!r.errors.length&&AI&&AI.cutCheck){ const c=AI.cutCheck(r,ev); if(c&&c.err) errs.push(c.err); if(c&&c.warn) warns.push(c.warn); }
   return {ok:!errs.length&&!crashes.length,errs,crashes,warns,moves:r.moves.length,
     text:[...errs,...crashes,...warns].join('\n'), name:(/BEGIN\s+PGM\s+(\w+)/i.exec(src)||[])[1]};
 }
@@ -1166,13 +1168,17 @@ function aiLiveClose(){ const el=$('ailive'); if(el) el.hidden=true; if(!S.lesso
 function aiLiveRender(p){
   const L=S.aiLive, el=$('ailive'); if(!L||!el) return;
   const kc=n=>n<1000?n+' chars':(n/1000).toFixed(1)+'k chars';
-  const line=p?(p.stage==='thinking'?`<span class="ai-spin"></span> Thinking… ${Math.round(p.secs)} s · ${kc(p.reasoningChars||0)} of reasoning`
+  const line=L.ask?`<b>Round ${L.ask.round} of ${L.ask.rounds}</b> still has ${L.ask.n} problem${L.ask.n===1?'':'s'} (see the log). Send ${L.ask.n===1?'it':'them'} back to the model for round ${L.ask.round+1}, or stop and fix by hand?`
+    :p?(p.stage==='thinking'?`<span class="ai-spin"></span> Thinking… ${Math.round(p.secs)} s · ${kc(p.reasoningChars||0)} of reasoning`
     :`<span class="ai-spin"></span> Writing the program… ${Math.round(p.secs)} s · ${kc(p.chars||0)} · ${S.res&&S.res.blocks?S.res.blocks.length:0} blocks so far`):(L.done?'':'<span class="ai-spin"></span> Sending…');
   el.innerHTML=`<div class="coach-hd"><span class="k" style="color:#ff7ac8">AI</span><span class="t">${esc(getModel())} · ${esc(L.mode==='modify'?'changing '+L.prevPgm:'new program')}</span></div>
     <div class="coach-bd"><div class="ailine">${line}</div>${p&&p.stage==='thinking'&&p.reasoningTail?`<div class="aithink">${esc(p.reasoningTail.slice(-220))}</div>`:''}
     <div class="ailog">${L.log.map(x=>`<div>${x}</div>`).join('')}</div></div>
-    <div class="coach-ft"><button class="cbtn" id="ai-req">Request (${L.reqs.length})</button>${L.done?'<button class="cbtn pri" id="ai-close">Close</button>':'<button class="cbtn" id="ai-cancel">Cancel</button>'}</div>`;
+    <div class="coach-ft"><button class="cbtn" id="ai-req">Request (${L.reqs.length})</button>${L.ask?`<button class="cbtn pri" id="ai-more">Continue <small>ENTER</small></button><button class="cbtn" id="ai-stop">Stop — fix by hand <small>ESC</small></button><label class="fld chk" style="margin-left:auto"><input type="checkbox" id="ai-auto-live"> Auto: don't ask again</label>`
+      :L.done?'<button class="cbtn pri" id="ai-close">Close</button>':'<button class="cbtn" id="ai-cancel">Cancel</button>'}</div>`;
   $('ai-req').onclick=aiShowRequest;
+  if(L.ask){ $('ai-more').onclick=()=>L.ask.res(true); $('ai-stop').onclick=()=>L.ask.res(false);
+    $('ai-auto-live').onchange=e=>{ if(e.target.checked){ local.set('tnc426.aiauto','1'); L.ask.res(true); } }; }
   if($('ai-cancel')) $('ai-cancel').onclick=()=>{ if(aiAbort) aiAbort.abort(); };
   if($('ai-close')) $('ai-close').onclick=aiLiveClose;
   const lg=el.querySelector('.ailog'); if(lg) lg.scrollTop=lg.scrollHeight;
@@ -1204,7 +1210,7 @@ async function aiGenerate(){
   if(!AI){ flog('<span class="bad">The AI module is not in this build.</span>'); return; }
   if(!key){ flog('<span class="bad">No key yet.</span> Open <b>AI setup</b> first — it takes five minutes.'); return; }
   if(prompt.length<8){ flog('<span class="bad">Describe the part in a sentence or two.</span>'); return; }
-  const mc=M().machine, sys=(AI.system?AI.system(mtools()):AI.FALLBACK_SYSTEM)+(mc?`\n\nTHIS MACHINE (${M().label}): spindle max S${mc.sMax}, feed max F${mc.fMax}, rotary axes B ${mc.limits.B.join('..')} deg and A ${mc.limits.A.join('..')} deg (swivel head; B+ tilts the tip to X+, A+ to Y+).
+  const mc=M().machine, sys=(AI.system?AI.system(mtools(),{sMax:mc&&mc.sMax,fMax:mc&&mc.fMax,holderA:holderOpt().stack(1)}):AI.FALLBACK_SYSTEM)+(mc?`\n\nTHIS MACHINE (${M().label}): spindle max S${mc.sMax}, feed max F${mc.fMax}, rotary axes B ${mc.limits.B.join('..')} deg and A ${mc.limits.A.join('..')} deg (swivel head; B+ tilts the tip to X+, A+ to Y+).
 For tilted machining use CYCL DEF 19.0 WORKING PLANE / CYCL DEF 19.1 A+.. B+.. C+0 (it also positions the head); reset with 19.1 A+0 B+0 C+0. Never use M128.`:'');
   const modify=S.aiMode==='modify', before=S.text, beforePgm=S.pgm;
   const full=modify?'Here is the current program:\n```klartext\n'+S.text+'\n```\nChange it as follows: '+prompt+'\nKeep everything else as it is. Return the COMPLETE changed program.':prompt;
@@ -1213,12 +1219,15 @@ For tilted machining use CYCL DEF 19.0 WORKING PLANE / CYCL DEF 19.1 A+.. B+.. C
   aiLog(`<span class="dim">${esc(getModel())} · thinking ${esc(aiThink())} · max ${aiMaxTok()} tokens · ${esc(M().label)}</span>`);
   let res=null;
   try{
-    res=await AI.generate({key,model:getModel(),prompt:full,system:sys,verify:verifyProgram,signal:aiAbort.signal,maxRepairs:1,
+    res=await AI.generate({key,model:getModel(),prompt:full,system:sys,verify:verifyProgram,signal:aiAbort.signal,rounds:AI_ROUNDS,confirm:aiAsk,
       reasoning:aiThink()==='default'?undefined:aiThink(), maxTokens:aiMaxTok(),
       onStep:s=>{
-        if(s.phase==='request'){ S.aiLive.reqs.push(s.body); aiLog(s.attempt?'<b>Round 2</b> — the simulator\'s errors went back to the model for one repair (see Request).':'<b>Round 1</b> — request sent (see Request).'); }
+        if(s.phase==='request'){ S.aiLive.reqs.push(s.body); aiLog(s.attempt?`<b>Round ${s.round} of ${s.rounds}</b> — the best program so far and the simulator's report went back to the model (see Request).`:`<b>Round 1 of ${s.rounds}</b> — request sent (see Request).`); }
+        if(s.phase==='continued') aiLog(s.network?`<span class="dim">Connection dropped (${esc(s.error||'')}) — trying once more.</span>`:s.retry?`<span class="dim">Only thinking fit in the answer limit — once more with ${s.maxTokens} tokens.</span>`:`<span class="dim">The answer hit the token limit — asking for the rest (${s.n}).</span>`);
+        if(s.phase==='failed') aiLog(`<span class="bad">Round ${s.attempt+1} failed: ${esc(s.error)} — keeping the best program so far.</span>`);
         if(s.phase==='progress'){ S.aiLive.lastP=s; aiLiveRender(s); aiLiveProgram(aiPartial(s.text)); }
         if(s.phase==='checked'){ const r=s.report;
+          if(!s.src&&!r.ok){ aiLog('<span class="bad">Round '+s.round+': no program in the answer.</span>'); return; }
           aiLog(r.ok?`<span class="ok">Checked: ${r.moves} moves, no errors, no crashes${r.warns.length?', '+r.warns.length+' warning(s)':''}.</span>`
                   :`<span class="bad">Checked: ${r.errs.length} error(s), ${r.crashes.length} crash(es):</span><pre style="margin:2px 0 0;white-space:pre-wrap">${esc(r.text)}</pre>`); } }});
   }catch(e){ aiLog('<span class="bad">'+esc(aiErr(e))+'</span>'); }
@@ -1227,6 +1236,7 @@ For tilted machining use CYCL DEF 19.0 WORKING PLANE / CYCL DEF 19.1 A+.. B+.. C
     let nm;
     if(modify){ nm=beforePgm; S.pgm=beforePgm; S.text=before; raw.value=before; if(S.mode!=='edit') setMode('edit'); edit(res.src,0,'AI CHANGED '+nm+' — CTRL+Z UNDOES IT'); }
     else nm=addPgm((res.report.name||'AI_PART'),res.src,{open:true});
+    if(!res.report.ok) aiLog(`<span class="dim">${res.stopped?'Stopped':'Out of rounds'} — loaded the best version (round ${res.round}); its problems are under Checks: fix them by hand, or run AI → Change on it.</span>`);
     download(nm,new Blob([listing(res.src)],{type:'text/plain'}),'AI-GEN');
     aiLog(`<span class="${res.report.ok?'ok':'bad'}">${res.report.ok?(modify?'Changed':'Saved'):'Done — still has problems, see Checks'} ${modify?'':'as '}${esc(nm)} · also saved to TNC-SIMULATOR/AI-GEN.</span> Cost about $${(res.cost||0).toFixed(4)} · ${Math.round((Date.now()-S.aiLive.t0)/1000)} s.`);
     if(res.report.ok){ setMode('test'); reset(); if(S.speed===0) setSpeed(16,true); start(); }         // and it runs
@@ -1236,7 +1246,20 @@ For tilted machining use CYCL DEF 19.0 WORKING PLANE / CYCL DEF 19.1 A+.. B+.. C
 }
 /* thinking effort and the answer cap: a budget guard for slow reasoning models */
 function aiThink(){ return local.get('tnc426.aithink')||'low'; }
-function aiMaxTok(){ return +(local.get('tnc426.aimaxtok')||12000); }
+function aiMaxTok(){ return +(local.get('tnc426.aimaxtok')||32000); }
+/* the repair loop: up to AI_ROUNDS answers; between them the user says continue or stop, unless auto is on */
+const AI_ROUNDS=5;
+function aiAuto(){ return local.get('tnc426.aiauto')==='1'; }
+function aiAsk(q){
+  if(aiAuto()) return true;
+  const L=S.aiLive; if(!L) return false;
+  return new Promise(done=>{
+    const n=q.report.errs.length+q.report.crashes.length;
+    L.ask={round:q.round,rounds:q.rounds,n,res:v=>{ if(L.ask){ L.ask=null; aiLiveRender(); done(v); } }};
+    if(aiAbort) aiAbort.signal.addEventListener('abort',()=>{ if(L.ask) L.ask.res(false); },{once:true});
+    aiLiveRender();
+  });
+}
 /* the answer cap is the user's call: any whole number. The model's own output limit (OpenRouter's catalogue) is shown
    as the recommended ceiling, never enforced: past it the provider may refuse the request or cut the answer short */
 function aiTokRec(){ const m=MP.cat&&MP.cat.models.find(x=>x.id===getModel()); return m?m.maxOut||m.context||null:null; }
@@ -1363,9 +1386,11 @@ function aiModelUI(){
   const mp=document.createElement('div'); mp.id='ai-mp'; mp.style.marginTop='16px';
   const box=document.createElement('div'); box.className='fgrid'; box.style.marginTop='12px';
   box.innerHTML=`<label class="fld"><span>THINKING (REASONING MODELS)</span><select id="ai-think"><option value="off">Off — fastest, cheapest</option><option value="low">Low (recommended)</option><option value="medium">Medium</option><option value="high">High — slow, can cost more</option></select></label>
-    <label class="fld"><span>MAX ANSWER TOKENS (BUDGET GUARD)</span><input id="ai-maxtok" inputmode="numeric" value="12000"><small id="ai-tokhint" style="opacity:.75"></small></label>`;
+    <label class="fld"><span>MAX ANSWER TOKENS (BUDGET GUARD)</span><input id="ai-maxtok" inputmode="numeric" value="32000"><small id="ai-tokhint" style="opacity:.75"></small></label>
+    <label class="fld chk wide"><input type="checkbox" id="ai-auto"> Auto-repair: send the simulator's errors back to the model, up to ${AI_ROUNDS} rounds, without asking</label>`;
   const ta=$('ai-prompt').closest('.fld'); ta.parentNode.insertBefore(box,ta.nextSibling); ta.parentNode.insertBefore(mp,box);
   $('ai-think').value=aiThink(); $('ai-think').onchange=()=>{ local.set('tnc426.aithink',$('ai-think').value); };
+  $('ai-auto').checked=aiAuto(); $('ai-auto').onchange=()=>{ local.set('tnc426.aiauto',$('ai-auto').checked?'1':'0'); };
   $('ai-maxtok').value=aiMaxTok(); $('ai-maxtok').addEventListener('keydown',e=>e.stopPropagation());
   $('ai-maxtok').onchange=()=>{ const v=Math.round(+String($('ai-maxtok').value).replace(/[\s,_']/g,'')); if(v>=1) local.set('tnc426.aimaxtok',v); else say('MAX TOKENS: A WHOLE NUMBER'); $('ai-maxtok').value=aiMaxTok(); aiTokHint(); };
   mpMount(mp); aiTokHint();
@@ -1775,6 +1800,7 @@ const VIEWS=['3D','TOP','FRONT','SIDE'];
 addEventListener('keydown',e=>{
   const k=e.key, mod=e.ctrlKey||e.metaKey;
   if(!$('boot').hidden){ e.preventDefault(); dismissBoot(); return; }
+  if(S.aiLive&&S.aiLive.ask&&!openModalEl){ if(k==='Enter'||k==='Escape'){ e.preventDefault(); S.aiLive.ask.res(k==='Enter'); } return; }
   if(S.aiLive&&!S.aiLive.done&&!openModalEl){ if(k==='Escape'&&aiAbort){ e.preventDefault(); aiAbort.abort(); } return; }
   if(openModalEl){ if(k==='Escape'){ e.preventDefault(); closeModal(); } return; }
   if(mod&&k.toLowerCase()==='s'){ e.preventDefault(); saveH(); return; }
