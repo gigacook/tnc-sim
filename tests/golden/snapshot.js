@@ -1,7 +1,7 @@
 /* What "the same behaviour" means: for every golden program, under two option sets (426 defaults; 430 with the built-in
    tools, holder A 100 and auto tools), the full TNC.run result (blocks, moves, errors, stock, stats, execution order)
    and, when it runs clean, the checks (expand + analyse: events, cut / feed length, grid, segment summary).
-   snapshot(engine, src) -> plain JSON-able object.   engine: { run(src, opts), expand(res), grid(stock, segs), analyse(res, ex, g), TOOLS, MACHINES } */
+   snapshot(engine, src) -> plain JSON-able object.   engine: { run(src, opts), expand(res), grid(stock, segs), analyse(res, ex, g), TOOLS, MACHINES, STOCK } */
 const OPTS = (E) => [
   ['426', {}],
   ['430', { tools: E.TOOLS, machine: E.MACHINES['430'], holder: { stack: () => 100 }, autoTools: true }],
@@ -40,6 +40,9 @@ function snapshot(E, src) {
   for (const [key, opts] of OPTS(E)) {
     const r = E.run(src, opts);
     const o = { blocks: r.blocks, moves: r.moves, errors: r.errors, stock: r.stock, stats: r.stats, exec: r.exec };
+    // the 430 set checks as ui.js compile() and the server do: an unusable BLK FORM becomes the default blank first
+    const st = r.stock;
+    if (key === '430' && (!st || !(st.x1 > st.x0) || !(st.y1 > st.y0) || !(st.z1 > st.z0))) r.stock = { x0: 0, y0: 0, z0: -20, x1: 100, y1: 80, z1: 0 };
     if (!r.errors.length) {
       const ex = E.expand(r), g = E.grid(r.stock, ex.segs), ev = E.analyse(r, ex, g);
       o.check = { segs: process.env.PARITY_FULL ? ex.segs : segSummary(ex.segs), total: ex.total, grid: g, events: ev.slice(), cut: ev.cut, carve: carve(E.STOCK, r.stock, ex, g) };
@@ -92,8 +95,4 @@ function diff(a, b, path) {
   return a === b ? null : path + ': ' + JSON.stringify(a) + ' vs ' + JSON.stringify(b);
 }
 
-const jsEngine = () => {
-  const T = require('../../sim/core.js'), SIM = require('../../sim/sim.js');
-  return { name: 'js', run: T.run, TOOLS: T.TOOLS, MACHINES: require('../../sim/machines.js'), expand: SIM.expand, grid: SIM.grid, analyse: SIM.analyse, STOCK: require('../../sim/stock.js') };
-};
-module.exports = { snapshot, canon, compact, diff, jsEngine, OPTS };
+module.exports = { snapshot, canon, compact, diff, OPTS };

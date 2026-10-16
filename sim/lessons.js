@@ -3,7 +3,7 @@
  * Teaching content: interactive lessons, "break it" lessons, the power-user
  * manual and the system prompt for the program-writing LLM.
  * Plain browser JS, no modules, no DOM. Exposes one global: TNC_LESSONS.
- * Every program in here is checked against core.js + sim.js.
+ * Every program in here is checked against the engine (interpreter + checks).
  * ========================================================================== */
 
 var TNC_LESSONS = (function () {

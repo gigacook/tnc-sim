@@ -476,6 +476,41 @@ NOT VERIFIED:
   - No physical iPhone / Android test, no screen reader on a device.
   - macOS / Windows desktop builds; the CI workflow has not run yet.
 
+
+v1.0  2026-10-16 / 17  ONE MAIN, AND THE INTERPRETER IN RUST
+---------------------------------------------------------------------
+WHAT SHIPPED:
+  - The three diverged copies joined into one main: the desktop / phone /
+    measured-AI branch, main's two commits, and the uncommitted AI repair
+    loop (5 answers, Continue / Stop between rounds or Auto, the best
+    program fed back with its quoted blocks and hints, 13 sculpting tools,
+    blanks up to 500 mm, max tokens any number).
+  - The interpreter, the safety checks and the material model are Rust
+    (server/crates/tnc-core): native in the server, WebAssembly in this
+    page. The user lifted the September rule "never port the interpreter
+    out of JS". QuickJS is gone from the server.
+  - A behaviour freeze: tests/parity.js holds the golden record of 5,511
+    programs (every program in the repo, hand-written coverage of every
+    cycle and probe, one-line mutations, 3,000 seeded random programs),
+    each under the 426 and 430 settings: blocks, moves, errors, timing,
+    events, cut length and the carved height field bit for bit.
+
+HIGHS:
+  - The port matched the JS engine on all 5,511 programs, live and in
+    full, before the JS files were removed. It needed JS's own number
+    formatting, fdlibm maths and V8's Math.hypot to get there.
+  - CI ran for the first time: the desktop app built on Linux, macOS and
+    Windows.
+
+LOWS:
+  - The phone swipe check (Status -> Graphics) fails in CI and sometimes
+    locally, on the pre-merge branch too: the touch stops reaching the app
+    after the first move. Not fixed in this release.
+
+NOT VERIFIED:
+  - The 2,806-program CAM corpus is not on the current machine, so the
+    Rust engine has not been run against it.
+
 BY THE NUMBERS (2026-09-30)
 -----------------------------
   Live version:              v0.8 plus the fullstack Rust server + React

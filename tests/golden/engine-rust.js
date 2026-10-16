@@ -1,4 +1,4 @@
-/* The Rust engine for the parity check: the WASM build of server/crates/tnc-core behind sim/engine.js, the same glue
+/* The engine for the parity check: the WASM build of server/crates/tnc-core behind sim/engine.js, the same glue
    the simulator ships (run, expand, grid, analyse all in the engine). TNC_WASM=<path> picks the module;
    default: sim/engine/tnc_core.wasm (what build.py inlines). */
 const path = require('path');

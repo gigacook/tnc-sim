@@ -19,9 +19,10 @@ use tauri::{Manager, RunEvent, WebviewUrl, WebviewWindowBuilder};
 use tnc_server::{AppState, Config};
 use tokio::sync::oneshot;
 
-/// The remote page's CSP. The simulator is one HTML file of inline scripts (hence 'unsafe-inline'),
+/// The remote page's CSP. The simulator is one HTML file of inline scripts (hence 'unsafe-inline') and runs its
+/// interpreter as WebAssembly (hence 'wasm-unsafe-eval': compiling a module, not eval of JS),
 /// its 3D export uses blob: URLs, and BYOK AI talks straight to OpenRouter (never another provider).
-const CSP: &str = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; \
+const CSP: &str = "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; \
 img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' blob:; connect-src 'self' https://openrouter.ai; \
 worker-src 'self' blob:; frame-src 'self'; frame-ancestors 'self'; object-src 'none'; base-uri 'none'; form-action 'self'";
 

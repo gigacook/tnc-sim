@@ -3,6 +3,8 @@
 
   python3 build.py          -> index.html        (public, pushed; never contains a key)
                             -> index.local.html  (only if private/.env has OPENROUTER_API_KEY; gitignored)
+  python3 build.py --wasm   first rebuilds the engine (server/crates/tnc-core -> sim/engine/tnc_core.wasm; needs
+                            cargo and `rustup target add wasm32-unknown-unknown`). Without it the committed module is used.
 
 A new module is one line in MODULES. Missing optional files are skipped, never fatal.
 """
@@ -34,12 +36,23 @@ LIBS = [
     ('idb-keyval.js',     'https://cdn.jsdelivr.net/npm/idb-keyval@6.2.2/dist/umd.js',   'idb-keyval 6.2.2 — Apache-2.0, Jake Archibald'),
 ]
 
+WASM = src / 'engine' / 'tnc_core.wasm'
+
+def build_wasm():
+    """server/crates/tnc-core -> sim/engine/tnc_core.wasm (profile wasm: size-optimised, abort on panic)."""
+    import subprocess, os, shutil
+    subprocess.run(['cargo', 'build', '-p', 'tnc-core', '--target', 'wasm32-unknown-unknown', '--profile', 'wasm'], check=True, cwd=d / 'server')
+    target = pathlib.Path(os.environ.get('CARGO_TARGET_DIR') or d / 'server' / 'target')
+    WASM.parent.mkdir(exist_ok=True)
+    shutil.copyfile(target / 'wasm32-unknown-unknown' / 'wasm' / 'tnc_core.wasm', WASM)
+
 # (file, label) — project modules, in load order. ui.js must stay last.
+# The engine (Rust -> WebAssembly) loads first; every module after it waits until the module is instantiated.
+ENGINE_MODULES = [
+    ('engine.js',    'TNC engine: interpreter, checks, material model (Rust, server/crates/tnc-core, as WebAssembly)'),
+]
 MODULES = [
-    ('core.js',      'TNC Klartext interpreter'),
     ('machines.js',  'Machine parameters (shared with the server engine)'),
-    ('stock.js',     'Material model: height field, tilted tool, vice'),
-    ('sim.js',       'Simulation checks'),
     ('programs.js',  'Programs on the control'),
     ('lessons.js',   'Lessons, BREAK IT, manual'),
     ('tools3d.js',   'Tool geometry'),
@@ -94,10 +107,36 @@ for name, var in TEXTS:
     if f.exists():
         scripts += tag('text: ' + name, f'window.{var} = {json.dumps(f.read_text(encoding="utf-8"))};')
 included = []
+if '--wasm' in sys.argv or not WASM.exists(): build_wasm()
+import gzip, base64
+for name, label in ENGINE_MODULES:
+    scripts += tag(label, (src / name).read_text(encoding='utf-8')); included.append(name)
+# gzip + base64; DecompressionStream (all current browsers) restores it, then the deferred modules run in order
+b64 = base64.b64encode(gzip.compress(WASM.read_bytes(), 9, mtime=0)).decode('ascii')
+scripts += tag('TNC engine module (WebAssembly, gzip, base64)', f'window.TNC_WASM_GZ = "{b64}";')
+deferred = ''
 for name, label in MODULES:
     f = src / name
     if f.exists():
-        scripts += tag(label, f.read_text(encoding='utf-8')); included.append(name)
+        mod = tag(label, f.read_text(encoding='utf-8'))
+        deferred += mod.replace('<script>', '<script type="text/x-tnc-deferred">', 1); included.append(name)
+scripts += deferred
+scripts += tag('start: instantiate the engine, then run the modules above in order', """(function () {
+  var b = atob(window.TNC_WASM_GZ), u = new Uint8Array(b.length);
+  for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i);
+  delete window.TNC_WASM_GZ;
+  new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer()
+.then(function (buf) { return TNC_ENGINE.load(buf); })
+.then(function () {
+  [].forEach.call(document.querySelectorAll('script[type="text/x-tnc-deferred"]'), function (s) {
+    var n = document.createElement('script'); n.textContent = s.textContent; s.replaceWith(n);
+  });
+}, function (e) {
+  var p = document.createElement('pre'); p.style.cssText = 'color:#ff5347;padding:16px;white-space:pre-wrap';
+  p.textContent = 'The simulator engine (WebAssembly) did not load: ' + (e && e.message || e) + '. A current Chrome, Edge, Firefox or Safari is needed.';
+  document.body.prepend(p);
+});
+})();""")
 
 def page(extra=''):
     return f"""<!DOCTYPE html>

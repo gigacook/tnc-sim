@@ -12,7 +12,7 @@
    TNC_PART.expand(spec, tools)            -> {spec, sheet, notes}  text -> engrave strokes; tool feasibility
    TNC_PART.strokes(text, o)               -> [[[x,y],..],..]       single-stroke capitals (engraving font)
    TNC_PART.target(spec, stock, g)         -> {hm, own}             target top surface per column
-   TNC_PART.carve(res, ex, g)              -> Float32Array          what the program removes (stock.js)
+   TNC_PART.carve(res, ex, g)              -> Float32Array          what the program removes (the engine's TNC_STOCK)
    TNC_PART.compare(spec, res, ex, o)      -> report {score, text, features, ...}
 
    Spec (mm, datum and BLK FORM as in the program; z = the floor the feature leaves, top face Z+0):
@@ -31,7 +31,7 @@
    ============================================================ */
 var TNC_PART = (function () {
   'use strict';
-  var STOCK = (typeof TNC_STOCK !== 'undefined' && TNC_STOCK) || (typeof require !== 'undefined' ? require('./stock.js') : null);
+  var STOCK = (typeof TNC_STOCK !== 'undefined' && TNC_STOCK) || (typeof require !== 'undefined' ? require('./engine.js').STOCK : null);
 
   /* ---------- single-stroke engraving capitals: 4 wide × 6 high units, straight strokes with 45° corners ----------
      Written for this simulator (no third-party font). Tool-centre paths: the groove is as wide as the cutter. */

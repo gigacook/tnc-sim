@@ -22,3 +22,11 @@ tracing = "0.1"
 [profile.release]
 lto = "thin"
 strip = true
+
+# the browser engine (tnc-core -> wasm32): small, abort on panic (the JS side reports a failed call)
+[profile.wasm]
+inherits = "release"
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"

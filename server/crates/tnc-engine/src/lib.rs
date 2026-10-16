@@ -1,40 +1,21 @@
-//! The simulator's own interpreter, `core.js`, run in embedded QuickJS.
+//! The simulator's interpreter and checks for the server: `tnc-core`, the same Rust the browser runs as
+//! WebAssembly, so a program the server checks gets the same errors, crashes and cycle time the operator sees.
 //!
-//! One interpreter everywhere: the browser, `node tests/`, and this server all run the same file,
-//! so a program the server checks gets the same errors and the same cycle time the operator sees.
-//! The JavaScript is compiled into the binary (`include_str!`), so a server build always matches
-//! the `core.js` / `machines.js` it was built from.
-//!
-//! QuickJS runtimes are single-threaded, so the engine is a small pool of worker threads, each with
-//! its own runtime. Every run has a wall-clock limit and a memory limit; a runtime that hit either
-//! is thrown away and rebuilt.
+//! A small pool of worker threads runs the checks off the async runtime. Every check has a wall-clock limit for
+//! the caller; the interpreter's own guards (2,000,000 executed blocks, 400,000 moves) bound the work itself.
 
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::{self, Receiver, SyncSender};
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
-use rquickjs::{Context, Function, Runtime};
 use serde::{Deserialize, Serialize};
+use tnc_core::exec::{ToolEntry, J};
+use tnc_core::val::Kind;
 use tnc_formats::Tool;
 
-const CORE_JS: &str = include_str!("../../../../sim/core.js");
-const MACHINES_JS: &str = include_str!("../../../../sim/machines.js");
-const STOCK_JS: &str = include_str!("../../../../sim/stock.js");
-const SIM_JS: &str = include_str!("../../../../sim/sim.js");
-const SHIM_JS: &str = include_str!("shim.js");
-
-/// Version of the interpreter source compiled in: a hash of `core.js`, `machines.js`, `stock.js`, `sim.js`.
+/// Version of the interpreter compiled in (a hash of tnc-core's source and sim/machines.js).
 /// Stored with every check so a stale report can be told apart from a fresh one.
-pub fn interpreter_version() -> String {
-    // FNV-1a, 64 bit: no dependency, stable across builds and platforms.
-    let mut h: u64 = 0xcbf29ce484222325;
-    for b in CORE_JS.bytes().chain(MACHINES_JS.bytes()).chain(STOCK_JS.bytes()).chain(SIM_JS.bytes()) {
-        h ^= b as u64;
-        h = h.wrapping_mul(0x100000001b3);
-    }
-    format!("{h:016x}")
-}
+pub fn interpreter_version() -> String { tnc_core::version() }
 
 #[derive(Debug, thiserror::Error)]
 pub enum EngineError {
@@ -51,7 +32,7 @@ pub enum EngineError {
 /// What the interpreter is told besides the text.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Options {
-    /// "426", "430", … — `machines.js` keys. Unknown or empty: the 3-axis defaults.
+    /// "426", "430", … — `sim/machines.js` keys. Unknown or empty: the 3-axis defaults.
     #[serde(default)]
     pub machine: String,
     /// The operator's tool table; merged over the built-in one as in `ui.js` `mtools`.
@@ -78,8 +59,8 @@ pub struct Diagnostic {
     pub raw: String,
 }
 
-/// A finding of the simulator's safety analysis (sim.js): a crash (rapid into material, holder or vice hit,
-/// spindle off while cutting…) or a warning (chip load…).
+/// A finding of the safety analysis: a crash (rapid into material, holder or vice hit, spindle off while
+/// cutting…) or a warning (chip load…).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Event {
     /// "crash" or "warn"
@@ -138,10 +119,63 @@ pub struct Report {
     pub interpreter: String,
 }
 
+fn num(v: f64) -> f64 { if v.is_finite() { v } else { 0.0 } }
+
+/// One check, as ui.js does it around TNC.run: the tool table merged over the built-ins (mtools), the machine
+/// parameters, the holder gauge length, the default blank for an unusable BLK FORM, then expand + analyse.
+pub fn check_now(text: &str, o: &Options) -> Report {
+    let mut by: Vec<ToolEntry> = tnc_core::tools();
+    for t in &o.tools {
+        let e = ToolEntry { t: t.t as f64, name: J::Val(t.name.clone()), l: t.l, r: t.r };
+        match by.iter_mut().find(|b| b.t == e.t) { Some(b) => *b = e, None => by.push(e) }
+    }
+    by.sort_by(|a, b| a.t.partial_cmp(&b.t).unwrap_or(std::cmp::Ordering::Equal));
+    let opts = tnc_core::exec::Opts {
+        tools: Some(by), mach: tnc_core::machine(&o.machine),
+        holder_a: Some(if o.holder.as_deref() == Some("SK40") { 70.0 } else { 100.0 }),   // tools3d.js HOLDERS[...].A
+        auto_tools: o.auto_tools,
+    };
+    let r = tnc_core::run(text, &opts);
+    let c = &r.compiled;
+    let mut st = tnc_core::stock_of(&c.stock);
+    if !(st.x1 > st.x0) || !(st.y1 > st.y0) || !(st.z1 > st.z0) { st = tnc_core::stock::St { x0: 0.0, y0: 0.0, z0: -20.0, x1: 100.0, y1: 80.0, z1: 0.0 }; }
+    let bn = |i: usize| r.blocks.get(i).and_then(|b| b.n).map(|n| n as i64);
+    let mut events = vec![];
+    if r.errors.is_empty() {
+        let (_, _, _, ev, _, _) = tnc_core::check(c, &st, opts.mach.s_max, true);
+        for e in ev.iter().filter(|e| e.sev == "crash" || e.sev == "warn") {
+            let i = e.block as usize;
+            events.push(Event { sev: e.sev.into(), line: (i + 1) as u32, block: bn(i), msg: e.msg.clone() });
+        }
+    }
+    let errors: Vec<Diagnostic> = r.errors.iter().map(|(i, m)| Diagnostic {
+        line: (*i + 1) as u32, block: bn(*i), msg: m.clone(), raw: r.blocks.get(*i).map(|b| b.raw.clone()).unwrap_or_default(),
+    }).collect();
+    let blocks = r.blocks.iter().filter(|b| b.kind != Kind::Blank).filter_map(|b| b.n).fold(0.0f64, |m, n| m.max(n + 1.0)) as u32;
+    let s = &c.stats;
+    let listing = o.listing.then(|| {
+        let lines: Vec<String> = r.blocks.iter().filter(|b| b.kind != Kind::Blank)
+            .map(|b| if b.indent { format!("  {}", b.raw) } else { format!("{} {}", b.n.map(tnc_core::js::num_str).unwrap_or_default(), b.raw) }).collect();
+        lines.join("\r\n") + "\r\n"
+    });
+    Report {
+        ok: errors.is_empty() && !events.iter().any(|e| e.sev == "crash"),
+        events, errors, blocks,
+        stats: Stats {
+            move_count: s.move_count as u64, path_feed: num(s.path_feed), path_rapid: num(s.path_rapid), cycle_time: num(s.cycle_time),
+            min_z: num(s.min_z), max_z: num(s.max_z), removed_volume: num(s.removed),
+            tools_used: s.tools_used.iter().map(|t| ToolUse { t: t.t as i64, name: t.name.val().filter(|n| !n.is_empty()), r: num(t.r), moves: t.moves as u64, time: num(t.time) }).collect(),
+        },
+        stock: Some(Stock { x0: num(st.x0), y0: num(st.y0), z0: num(st.z0), x1: num(st.x1), y1: num(st.y1), z1: num(st.z1) }),
+        listing,
+        interpreter: interpreter_version(),
+    }
+}
+
 struct Job {
     text: String,
     opts: Options,
-    reply: tokio::sync::oneshot::Sender<Result<Report, EngineError>>,
+    reply: mpsc::Sender<Result<Report, EngineError>>,
 }
 
 /// A pool of interpreter threads. Cheap to clone; the threads stop when the last clone is dropped.
@@ -149,12 +183,14 @@ struct Job {
 pub struct Engine {
     tx: SyncSender<Job>,
     builtin: Arc<Vec<Tool>>,
+    timeout: Duration,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct Config {
     pub workers: usize,
     pub timeout: Duration,
+    /// Kept for configuration compatibility; the native interpreter has no separate heap to cap.
     pub memory_limit: usize,
 }
 
@@ -165,149 +201,55 @@ impl Default for Config {
 }
 
 impl Engine {
-    /// Starts the workers. Loads the interpreter once up front so a broken build fails here, not on first use.
     pub fn start(cfg: Config) -> Result<Engine, EngineError> {
-        let builtin = Arc::new(Js::new(&cfg)?.builtin_tools()?);
+        let builtin = Arc::new(tnc_core::TOOLS.iter().map(|&(t, n, l, r)| Tool { t: t as u32, name: n.into(), l, r }).collect::<Vec<_>>());
         let (tx, rx) = mpsc::sync_channel::<Job>(256);
         let rx = Arc::new(Mutex::new(rx));
         for i in 0..cfg.workers.max(1) {
             let rx = Arc::clone(&rx);
             std::thread::Builder::new()
                 .name(format!("tnc-engine-{i}"))
-                .spawn(move || worker(rx, cfg))
+                .stack_size(16 << 20)                 // subprogram nesting recurses (30 levels at most)
+                .spawn(move || worker(rx))
                 .map_err(|e| EngineError::Load(e.to_string()))?;
         }
-        Ok(Engine { tx, builtin })
+        Ok(Engine { tx, builtin, timeout: cfg.timeout })
     }
 
-    /// The tool table built into core.js (`TNC.TOOLS`); the operator's table overrides it by number.
+    /// The tool table built into the interpreter (`TNC.TOOLS`); the operator's table overrides it by number.
     pub fn builtin_tools(&self) -> &[Tool] {
         &self.builtin
     }
 
     pub async fn check(&self, text: String, opts: Options) -> Result<Report, EngineError> {
-        let (reply, rx) = tokio::sync::oneshot::channel();
-        let tx = self.tx.clone();
-        // the channel is bounded: a full queue blocks, so send off the async runtime
-        let job = Job { text, opts, reply };
-        match tx.try_send(job) {
-            Ok(()) => {}
-            Err(mpsc::TrySendError::Full(job)) => {
-                tokio::task::spawn_blocking(move || tx.send(job)).await.map_err(|_| EngineError::Closed)?.map_err(|_| EngineError::Closed)?
-            }
-            Err(mpsc::TrySendError::Disconnected(_)) => return Err(EngineError::Closed),
-        }
-        rx.await.map_err(|_| EngineError::Closed)?
+        let e = self.clone();
+        tokio::task::spawn_blocking(move || e.check_blocking(text, opts)).await.map_err(|_| EngineError::Closed)?
     }
 
-    /// For command-line use, outside any async runtime.
+    /// For command-line use, outside any async runtime. A check that runs past the timeout is reported as one;
+    /// its worker finishes it in the background and then takes the next job.
     pub fn check_blocking(&self, text: String, opts: Options) -> Result<Report, EngineError> {
-        let (reply, rx) = tokio::sync::oneshot::channel();
+        let (reply, rx) = mpsc::channel();
         self.tx.send(Job { text, opts, reply }).map_err(|_| EngineError::Closed)?;
-        rx.blocking_recv().map_err(|_| EngineError::Closed)?
+        match rx.recv_timeout(self.timeout) {
+            Ok(r) => r,
+            Err(mpsc::RecvTimeoutError::Timeout) => Err(EngineError::Timeout(self.timeout)),
+            Err(mpsc::RecvTimeoutError::Disconnected) => Err(EngineError::Closed),
+        }
     }
 }
 
-fn worker(rx: Arc<Mutex<Receiver<Job>>>, cfg: Config) {
-    let mut js: Option<Js> = None;
+fn worker(rx: Arc<Mutex<Receiver<Job>>>) {
     loop {
         let job = match rx.lock() {
-            Ok(r) => match r.recv() {
-                Ok(j) => j,
-                Err(_) => return,
-            },
+            Ok(r) => match r.recv() { Ok(j) => j, Err(_) => return },
             Err(_) => return,
         };
-        if js.is_none() {
-            match Js::new(&cfg) {
-                Ok(j) => js = Some(j),
-                Err(e) => {
-                    let _ = job.reply.send(Err(e));
-                    continue;
-                }
-            }
-        }
-        let res = js.as_ref().unwrap().run(&job.text, &job.opts, cfg.timeout);
-        if matches!(res, Err(EngineError::Timeout(_)) | Err(EngineError::Script(_))) {
-            js = None; // start clean after an interrupt or an exception inside the interpreter
-        }
+        let (text, opts) = (job.text, job.opts);
+        let res = std::panic::catch_unwind(move || check_now(&text, &opts))
+            .map_err(|p| EngineError::Script(p.downcast_ref::<&str>().map(|s| s.to_string()).or_else(|| p.downcast_ref::<String>().cloned()).unwrap_or_else(|| "panic".into())));
         let _ = job.reply.send(res);
     }
-}
-
-struct Js {
-    _rt: Runtime,
-    ctx: Context,
-    deadline: Arc<AtomicU64>,
-    epoch: Instant,
-}
-
-impl Js {
-    fn new(cfg: &Config) -> Result<Js, EngineError> {
-        let load = |e: rquickjs::Error| EngineError::Load(e.to_string());
-        let rt = Runtime::new().map_err(load)?;
-        rt.set_memory_limit(cfg.memory_limit);
-        rt.set_max_stack_size(4 << 20);
-        let epoch = Instant::now();
-        let deadline = Arc::new(AtomicU64::new(u64::MAX));
-        {
-            let deadline = Arc::clone(&deadline);
-            rt.set_interrupt_handler(Some(Box::new(move || {
-                epoch.elapsed().as_millis() as u64 > deadline.load(Ordering::Relaxed)
-            })));
-        }
-        let ctx = Context::full(&rt).map_err(load)?;
-        ctx.with(|ctx| -> Result<(), EngineError> {
-            for (name, src) in [("core.js", CORE_JS), ("machines.js", MACHINES_JS), ("stock.js", STOCK_JS), ("sim.js", SIM_JS), ("shim.js", SHIM_JS)] {
-                ctx.eval::<(), _>(src).map_err(|e| EngineError::Load(format!("{name}: {}", caught(&ctx, e))))?;
-            }
-            Ok(())
-        })?;
-        Ok(Js { _rt: rt, ctx, deadline, epoch })
-    }
-
-    fn builtin_tools(&self) -> Result<Vec<Tool>, EngineError> {
-        let json = self.ctx.with(|ctx| -> Result<String, EngineError> {
-            let f: Function = ctx.globals().get("__tncBuiltinTools").map_err(|e| EngineError::Load(e.to_string()))?;
-            f.call::<_, String>(()).map_err(|e| EngineError::Load(caught(&ctx, e)))
-        })?;
-        serde_json::from_str(&json).map_err(|e| EngineError::Load(e.to_string()))
-    }
-
-    fn run(&self, text: &str, opts: &Options, timeout: Duration) -> Result<Report, EngineError> {
-        let opts_json = serde_json::to_string(opts).map_err(|e| EngineError::Script(e.to_string()))?;
-        let start = self.epoch.elapsed();
-        self.deadline.store((start + timeout).as_millis() as u64, Ordering::Relaxed);
-        let out = self.ctx.with(|ctx| -> Result<String, EngineError> {
-            let f: Function = ctx.globals().get("__tncCheck").map_err(|e| EngineError::Script(e.to_string()))?;
-            f.call::<_, String>((text, opts_json.as_str())).map_err(|e| {
-                let msg = caught(&ctx, e);
-                if self.epoch.elapsed() >= start + timeout || msg.contains("interrupted") {
-                    EngineError::Timeout(timeout)
-                } else {
-                    EngineError::Script(msg)
-                }
-            })
-        });
-        self.deadline.store(u64::MAX, Ordering::Relaxed);
-        let mut report: Report = serde_json::from_str(&out?).map_err(|e| EngineError::Script(e.to_string()))?;
-        report.interpreter = interpreter_version();
-        Ok(report)
-    }
-}
-
-/// The JavaScript exception behind an `Error::Exception`, as text.
-fn caught(ctx: &rquickjs::Ctx<'_>, e: rquickjs::Error) -> String {
-    if let rquickjs::Error::Exception = e {
-        let v = ctx.catch();
-        if let Some(ex) = v.as_exception() {
-            return format!("{}{}", ex.message().unwrap_or_default(), ex.stack().map(|s| format!("\n{s}")).unwrap_or_default());
-        }
-        if let Ok(s) = v.get::<rquickjs::Coerced<String>>() {
-            return s.0;
-        }
-    }
-    e.to_string()
 }
 
 #[cfg(test)]
@@ -315,7 +257,7 @@ mod tests {
     use super::*;
 
     fn engine() -> Engine {
-        Engine::start(Config { workers: 1, timeout: Duration::from_secs(5), ..Config::default() }).unwrap()
+        Engine::start(Config { workers: 1, timeout: Duration::from_secs(20), ..Config::default() }).unwrap()
     }
 
     const OK: &str = "BEGIN PGM T MM\nBLK FORM 0.1 Z X+0 Y+0 Z-20\nBLK FORM 0.2 X+100 Y+100 Z+0\nTOOL CALL 5 Z S3000\nL Z+50 R0 FMAX M3\nL X+10 Y+10 R0 FMAX\nL Z-2 R0 F200\nL X+90 F500\nL Z+50 R0 FMAX M2\nEND PGM T MM";
@@ -366,20 +308,25 @@ mod tests {
 
     #[test]
     fn endless_loop_is_stopped() {
-        // FN 9 jump back to itself: core.js stops it at MAX_STEPS or the engine's clock does
+        // FN 9 jump back to itself: the interpreter stops it at 2,000,000 executed blocks
         let src = "BEGIN PGM T MM\nLBL 1\nFN 9: IF +0 EQU +0 GOTO LBL 1\nEND PGM T MM";
-        let e = Engine::start(Config { workers: 1, timeout: Duration::from_millis(300), ..Config::default() }).unwrap();
-        match e.check_blocking(src.into(), Options::default()) {
-            Ok(r) => assert!(!r.ok),
-            Err(EngineError::Timeout(_)) => {}
-            Err(x) => panic!("{x}"),
-        }
+        let e = engine();
+        let r = e.check_blocking(src.into(), Options::default()).unwrap();
+        assert!(!r.ok);
+        assert!(r.errors.iter().any(|d| d.msg == "EXCESSIVE SUBPROGRAM NESTING"), "{:?}", r.errors);
         // and the worker is still usable afterwards
         assert!(e.check_blocking(OK.into(), Options::default()).unwrap().ok);
     }
 
     #[test]
-    fn crashes_come_from_sim_js() {
+    fn a_slow_check_times_out_for_the_caller() {
+        let src = "BEGIN PGM T MM\nLBL 1\nFN 9: IF +0 EQU +0 GOTO LBL 1\nEND PGM T MM";
+        let e = Engine::start(Config { workers: 1, timeout: Duration::from_millis(1), ..Config::default() }).unwrap();
+        assert!(matches!(e.check_blocking(src.into(), Options::default()), Err(EngineError::Timeout(_))));
+    }
+
+    #[test]
+    fn crashes_come_from_the_checks() {
         // FMAX straight down into the blank: a crash in the simulator, so not ok here either
         let src = "BEGIN PGM T MM\nBLK FORM 0.1 Z X+0 Y+0 Z-20\nBLK FORM 0.2 X+100 Y+100 Z+0\nTOOL CALL 5 Z S3000\nL X+50 Y+50 Z+50 R0 FMAX M3\nL Z-10 R0 FMAX\nL Z+50 R0 FMAX M2\nEND PGM T MM";
         let r = engine().check_blocking(src.into(), Options::default()).unwrap();
@@ -389,7 +336,7 @@ mod tests {
     }
 
     #[test]
-    fn builtin_tools_come_from_core_js() {
+    fn builtin_tools_come_from_the_interpreter() {
         let e = engine();
         assert!(e.builtin_tools().iter().any(|t| t.t == 5 && t.r == 6.0));
     }

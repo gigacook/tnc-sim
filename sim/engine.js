@@ -74,13 +74,15 @@ var TNC_ENGINE = (function () {
     if (!res || !res.__h) throw new Error('TNC_SIM needs a result from TNC.run');
     return res.__h;
   }
+  function rapidOf(res) { return +((res.stats && res.stats.rapidRate) || 18000); }
   function expand(res) {
-    var n = ex.tnc_expand(handle(res));
+    var n = ex.tnc_expand(handle(res), rapidOf(res));
     if (!n) throw new Error('TNC_SIM.expand: this TNC.run result is no longer kept (only the last few are)');
     return result(n);
   }
   function analyse(res, exd, g) {
-    var n = ex.tnc_analyse(handle(res), g.NX, g.NY, g.DX, g.DY, STOCK.VICE.on ? 1 : 0);
+    var st = res.stock, sMax = res.machine && res.machine.sMax;      // as sim.js read them: the caller may have swapped the blank
+    var n = ex.tnc_analyse(handle(res), st.x0, st.y0, st.z0, st.x1, st.y1, st.z1, rapidOf(res), +sMax || 0, g.NX, g.NY, g.DX, g.DY, STOCK.VICE.on ? 1 : 0);
     if (!n) throw new Error('TNC_SIM.analyse: this TNC.run result is no longer kept (only the last few are)');
     var r = result(n), ev = r.events;
     Object.defineProperty(ev, 'cut', { value: r.cut, enumerable: false });   // feed / cut path length: spots a program that mills air

@@ -1,6 +1,6 @@
 /* TNC_PART: the AI's interim 3-D model. A spec is rasterised, a program is machined on the same height field,
    and the comparison must reward the right program and catch the wrong one. Offline, no AI.  node tests/part.js */
-const T = require('../sim/core.js'), SIM = require('../sim/sim.js'), P = require('../sim/part.js');
+const { TNC: T, TNC_SIM: SIM } = require('../sim/engine.js'), P = require('../sim/part.js');
 let fails = 0;
 const ok = (c, m, d) => { console.log((c ? '  ok    ' : '  FAIL  ') + m + (c ? '' : '  (' + d + ')')); if (!c) fails++; };
 const measure = (spec, src) => { const r = T.run(src, {}); if (r.errors.length) throw new Error(r.errors.map((e) => e.msg).join('; '));

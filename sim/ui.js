@@ -1,6 +1,6 @@
 /* ============================================================
    TNC 426 / 430 SIMULATOR — UI
-   Loads after: THREE, OrbitControls, core.js, sim.js, programs.js,
+   Loads after: THREE, OrbitControls, engine.js (TNC, TNC_SIM, TNC_STOCK), programs.js,
    lessons.js, and when present: tools3d.js, callouts.js, flow.js,
    fx.js, m430/*, ai.js, JSZip.  Optional modules degrade gracefully.
    ============================================================ */
@@ -335,7 +335,7 @@ function calloutsFor(){
 }
 const fmt=v=>(Math.round(v*100)/100).toString();
 
-/* ---------- height field: the material model lives in stock.js (shared with the checks in sim.js) ---------- */
+/* ---------- height field: the material model is the engine's TNC_STOCK (the same code the checks use) ---------- */
 let GR=null;
 function buildHeightField(){
   const st=ST, w=st.x1-st.x0, h=st.y1-st.y0;

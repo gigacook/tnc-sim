@@ -11,16 +11,19 @@ Authority order:
 The iTNC 530 manual/station counts only where the 426/430 sources are silent, and it is then labelled as such in code comments.
 Where parity isn't verified, say so. Never present a guess as a fact. Placeholders are marked in code and listed in CONTINUE.md → OPEN.
 
-## Stack — LOCKED (user decision 2026-09-30)
+## Stack (user decisions 2026-09-30; the interpreter moved to Rust 2026-10-17)
 | Layer | What | Where |
 |---|---|---|
-| Interpreter + checks | plain JS: core.js, stock.js, sim.js, machines.js. **One implementation**, run in the browser AND in the server (QuickJS, `include_str!`) | `sim/` |
+| Interpreter + checks | Rust `tnc-core`: parse, compile, cycles, probing, radius compensation, expand + safety analysis, the height-field stock. **One implementation**: native in the server, WebAssembly in the browser (`sim/engine.js` loads it; `build.py` inlines `sim/engine/tnc_core.wasm`) | `server/crates/tnc-core/` |
+| Machine parameters | `sim/machines.js`: a strict-JSON block the UI reads and the engine compiles in | `sim/` |
 | Simulator UI + 3D | classic-script modules + three.js r186 (bundled by esbuild), one offline HTML via `python3 build.py` → `index.html` (GitHub Pages) | `sim/`, `build.py` |
-| Server | Rust: axum, sqlx/SQLite, argon2, reqwest (OpenRouter proxy) | `server/` |
+| Server | Rust: axum, sqlx/SQLite, argon2, reqwest (OpenRouter proxy); checks programs with `tnc-core` (`tnc-engine`) | `server/` |
 | Web app | React + Vite + CodeMirror; hosts the simulator in an iframe (`sim/bridge.js`). The React choice is still being reasoned about — see CONTINUE.md D-REACT | `web/` |
-| Desktop | Tauri 2 (mac, Linux, Windows) — not started | — |
+| Desktop | Tauri 2 (mac, Linux, Windows): Linux built; macOS / Windows via CI | `desktop/` |
 
-Not C#. Never port the interpreter out of JS: the server runs the same file.
+Not C#. The interpreter's behaviour is frozen by `tests/parity.js` (golden record of 5,511 programs): a change that alters
+it re-records the golden file in the same commit and says why. A Rust change ships with `python3 build.py --wasm`
+(rebuilds and commits `sim/engine/tnc_core.wasm`).
 
 ## Rules that don't change
 1. Authentic TNC behaviour. Not "close enough".
@@ -39,18 +42,22 @@ Not C#. Never port the interpreter out of JS: the server runs the same file.
   - Opus for anything the user will judge by eye or by parity.
   - Worktree isolation and non-overlapping file scopes.
 - Reason back and forth. Do not build further on an unconfirmed interpretation. Explain plainly: no riddles, no jargon walls.
-- Test priority features (Playwright suite `.tools/qa/qa.mjs`, `tests/manual.js`, `cargo test`). Don't test low-priority visuals beyond a look.
+- Test priority features (`tests/ui/run.mjs` Playwright, `tests/manual.js`, `tests/parity.js`, `tests/part.js`, `tests/ai/loop.js`, `cargo test`). Don't test low-priority visuals beyond a look.
 
 ## Layout
-- `sim/`: simulator sources
-- `server/`, `web/`: fullstack
+- `sim/`: simulator UI sources; `sim/engine.js` + `sim/engine/tnc_core.wasm`: the engine in the browser
+- `server/`: crates `tnc-core` (the interpreter), `tnc-engine` (server checks), `tnc-formats`, `tnc-server`
+- `web/`, `desktop/`
 - `tests/`:
   - `manual.js`: 426/430 manual examples
+  - `parity.js` + `golden/`: the behaviour freeze
+  - `part.js`, `ai/`: part spec, AI loop (mocked), live bench
+  - `ui/run.mjs`: browser suite
   - `corpus.js`: 2,806 real programs, `AUTOTOOLS=1`
 - `docs/`: FEATURES (DEV tab), HISTORY, PROGRAMMING-STATION
 - Gitignored:
   - `research/`, `search-heidenhain/`: manuals, GitHub clones
-  - `.tools/`: node_modules, QA suite
+  - `node_modules/` (`npm ci`)
   - `.libcache/`
   - `private/`
   - `local/`: scratch, logs

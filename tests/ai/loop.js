@@ -2,7 +2,7 @@
    planned and expanded, the first program is measured short, the measurement goes back, the refined program wins.
    Then the repair loop without a plan (repairLoop, part 2).
    node tests/ai/loop.js */
-const T = require('../../sim/core.js'), SIM = require('../../sim/sim.js'), PART = require('../../sim/part.js'), AI = require('../../sim/ai.js');
+const { TNC: T, TNC_SIM: SIM } = require('../../sim/engine.js'), PART = require('../../sim/part.js'), AI = require('../../sim/ai.js');
 let fails = 0;
 const ok = (c, m, d) => { console.log((c ? '  ok    ' : '  FAIL  ') + m + (c ? '' : '  (' + d + ')')); if (!c) fails++; };
 

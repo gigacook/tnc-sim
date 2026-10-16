@@ -105,7 +105,7 @@ var TNC_FLOW = (function () {
     return s;
   }
   // Forward-compat with a 5-axis (TNC 430-style) profile: rotary A/B/C words
-  // and M128/M129 TCPM, described in plain words if a future core.js starts
+  // and M128/M129 TCPM, described in plain words if a future interpreter starts
   // putting them into block.args.
   function rotaryTxt(a) {
     var parts = [];

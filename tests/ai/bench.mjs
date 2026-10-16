@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const require = createRequire(import.meta.url);
-const T = require(join(ROOT, 'sim/core.js')), SIM = require(join(ROOT, 'sim/sim.js')), PART = require(join(ROOT, 'sim/part.js'));
+const { TNC: T, TNC_SIM: SIM } = require(join(ROOT, 'sim/engine.js')), PART = require(join(ROOT, 'sim/part.js'));
 const NEW = require(join(ROOT, 'sim/ai.js'));
 const arg = (k, d) => { const i = process.argv.indexOf('--' + k); return i > 0 ? process.argv[i + 1] : d; };
 const KEY = process.env.OPENROUTER_API_KEY || process.env.API_KEY;

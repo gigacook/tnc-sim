@@ -204,15 +204,15 @@ exposing `window.THREE` / `window.QUARKS` (versions pinned in the root `package.
 renderer if that's missing.
 
 ```sh
-python3 build.py      # -> index.html (public), index.local.html (only if .env has a key, gitignored)
+python3 build.py          # -> index.html (public), index.local.html (only if .env has a key, gitignored)
+python3 build.py --wasm   # first rebuild the engine from server/crates/tnc-core (needs Rust and
+                          # `rustup target add wasm32-unknown-unknown`); without it the committed module is used
 ```
 
 | File | |
 |---|---|
-| `sim/core.js` | Klartext parser, interpreter and cycle library. No DOM, no dependencies. |
-| `sim/machines.js` | Machine parameters for the 426/430, shared with the server's interpreter. |
-| `sim/stock.js` | Material model: height field, tilted-tool cutting, vice. |
-| `sim/sim.js` | Shared timing and arc tessellation, plus the safety analysis. |
+| `sim/engine.js` | Loads the engine (`sim/engine/tnc_core.wasm`, built from `server/crates/tnc-core`): the Klartext interpreter, cycle library, safety analysis and material model. Same `TNC`, `TNC_SIM`, `TNC_STOCK` globals the UI always used. |
+| `sim/machines.js` | Machine parameters for the 426/430 (a JSON block the engine compiles in). |
 | `sim/programs.js` | The programs that ship on the control. |
 | `sim/lessons.js` | LEARN, BREAK IT, the power-user manual, and the AI system prompt. |
 | `sim/tools3d.js` | Real tool geometries in their holders. |
@@ -234,8 +234,9 @@ python3 build.py      # -> index.html (public), index.local.html (only if .env h
 
 ## Beyond the single file
 
-- `server/` — a Rust server (axum, SQLite) that runs `sim/core.js` in embedded QuickJS, so a
-  program the server checks gets the same result as the browser. Accounts, a versioned program
+- `server/` — a Rust server (axum, SQLite) that checks programs with the same Rust engine the
+  page runs as WebAssembly (`server/crates/tnc-core`), so a program the server checks gets the
+  same result as the browser. Accounts, a versioned program
   library, per-machine tool tables, share links, and an AI proxy to OpenRouter.
 - `web/` — a React app (Vite, TypeScript) that talks to the server: sign in, edit and check
   programs, browse and restore versions, share a program by link.

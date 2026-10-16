@@ -16,9 +16,16 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - uses: dtolnay/rust-toolchain@stable
+        with: { targets: wasm32-unknown-unknown }
       - uses: Swatinem/rust-cache@v2
         with: { workspaces: server }
       - run: npm ci
+      - name: Engine (Rust -> WebAssembly) from source matches the golden record
+        run: |
+          (cd server && cargo build -p tnc-core --target wasm32-unknown-unknown --profile wasm --locked)
+          TNC_WASM=server/target/wasm32-unknown-unknown/wasm/tnc_core.wasm node tests/parity.js
+      - name: The committed engine module matches the golden record
+        run: node tests/parity.js
       - name: Interpreter (426/430 manual examples)
         run: node tests/manual.js
       - name: Part spec measurement + AI loop (mocked OpenRouter, no key)

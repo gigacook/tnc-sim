@@ -8,7 +8,7 @@ Goal: use a HEIDENHAIN programming station as a behaviour oracle (ground truth) 
 - Stale docs: HANDOFF.md and TODO.md (2026-09-23) predate it; v0.5 build and RL/RR items are done. README "Known simplifications" is wrong (still says RL/RR is drawn on the centreline).
 - `node tests/manual.js`: ALL PASS. Expected values are derived from the manual's rules, not from a control, so the tests share the implementation's interpretation and cannot catch misreadings.
 - `node tests/corpus.js`: 2806 programs, 1021 clean, 1785 with errors, 0 crashes. Top buckets:
-  - ~1867 `TOOL n NOT DEFINED` (`core.js:1063`). Programs rely on TOOL.T, not `TOOL DEF`; the sim has no tool-table fallback.
+  - ~1867 `TOOL n NOT DEFINED` (the interpreter's TOOL CALL, then `sim/core.js`). Programs rely on TOOL.T, not `TOOL DEF`; the sim has no tool-table fallback.
   - 244 `CYCL DEF DATUM SETTING` and 140 `RIGID TAPPING`: not implemented.
   - ~214 `TCH PROBE 4xx` datum cycles: not found in the 426 manual, likely iTNC 530/TNC 640 dialect.
   - Q formulas (`Q1 = Q2 - Q3`) and `FQn` feeds fail, but both are in the 426 manual (`research/tnc426_430_280476_manual_en.txt:17404`, `:17411`). These are interpreter bugs.

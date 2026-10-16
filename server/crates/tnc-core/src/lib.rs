@@ -34,8 +34,14 @@ pub fn opts_from_json(s: &str) -> Opts {
     let tools = v.get("tools").and_then(|t| t.as_array()).map(|a| a.iter().map(|t| ToolEntry {
         t: f(t.get("t")), name: match t.get("name") { Some(Value::String(s)) => J::Val(s.clone()), Some(Value::Null) => J::Null, _ => J::Absent }, l: f(t.get("l")), r: f(t.get("r")),
     }).collect());
+    let mach = mach_from(v.get("machine"));
+    Opts { tools, mach, holder_a: v.get("holder_a").and_then(|x| x.as_f64()), auto_tools: v.get("auto_tools").and_then(|x| x.as_bool()).unwrap_or(false) }
+}
+
+/// machine parameters from a machines.js entry (null / missing = the 3-axis defaults)
+pub fn mach_from(m: Option<&Value>) -> Mach {
     let mut mach = Mach { arc_tol: f64::NAN, pocket_k: f64::NAN, f_max: f64::NAN, accel: f64::NAN, s_max: f64::NAN, ..Default::default() };
-    if let Some(m) = v.get("machine").filter(|m| m.is_object()) {
+    if let Some(m) = m.filter(|m| m.is_object()) {
         mach.arc_tol = f(m.get("arcTol")); mach.pocket_k = f(m.get("pocketK")); mach.f_max = f(m.get("fMax")); mach.accel = f(m.get("accel")); mach.s_max = f(m.get("sMax"));
         if let Some(r) = m.get("rapid").filter(|r| r.is_object()) { mach.rapid = Some(["x", "y", "z", "a", "b", "c"].map(|k| f(r.get(k)))); }
         if let Some(l) = m.get("limits").and_then(|l| l.as_object()) {
@@ -45,7 +51,34 @@ pub fn opts_from_json(s: &str) -> Opts {
         mach.c19pos_false = m.get("c19pos") == Some(&Value::Bool(false));
         if let Some(p) = m.get("probe").filter(|p| p.is_object()) { mach.probe = Some([f(p.get("f")), f(p.get("rapid")), f(p.get("clr"))]); }
     }
-    Opts { tools, mach, holder_a: v.get("holder_a").and_then(|x| x.as_f64()), auto_tools: v.get("auto_tools").and_then(|x| x.as_bool()).unwrap_or(false) }
+    mach
+}
+
+/// sim/machines.js, the one list of machines the browser and the server share (its JSON block)
+const MACHINES_JS: &str = include_str!("../../../../sim/machines.js");
+pub fn machine(id: &str) -> Mach {
+    let block = MACHINES_JS.split("/* JSON-BEGIN */").nth(1).and_then(|r| r.split("/* JSON-END */").next()).unwrap_or("{}");
+    let all: Value = serde_json::from_str(block).expect("sim/machines.js: the JSON block does not parse");
+    mach_from(all.get(id))
+}
+
+/// A hash of the interpreter source compiled in (this crate + machines.js): stored with every server check,
+/// so a stale report can be told apart from a fresh one. FNV-1a 64, stable across builds and platforms.
+pub fn version() -> String {
+    const SRC: [&str; 8] = [include_str!("lib.rs"), include_str!("exec.rs"), include_str!("parse.rs"), include_str!("sim.rs"),
+        include_str!("stock.rs"), include_str!("js.rs"), include_str!("val.rs"), MACHINES_JS];
+    let mut h: u64 = 0xcbf29ce484222325;
+    for s in SRC { for b in s.bytes().filter(|b| *b != b'\r') { h ^= b as u64; h = h.wrapping_mul(0x100000001b3); } }
+    format!("{h:016x}")
+}
+
+/// TNC.run as structs: the blocks (with the errors compile() marked), all errors (parse, then compile), the compiled run
+pub struct Run { pub blocks: Vec<val::Block>, pub errors: Vec<(usize, String)>, pub compiled: Compiled }
+pub fn run(text: &str, opts: &Opts) -> Run {
+    let mut p = parse::parse(text);
+    let c = exec::compile(&mut p.blocks, opts);
+    let errors = p.errors.iter().chain(c.errors.iter()).cloned().collect();
+    Run { blocks: p.blocks, errors, compiled: c }
 }
 
 fn jnum(o: &mut Obj, k: &str, v: &J<f64>) { match v { J::Absent => {}, J::Null => { o.opt_num(k, None); } J::Val(x) => { o.num(k, *x); } } }
@@ -106,9 +139,9 @@ pub fn run_full(text: &str, opts: &Opts, h: Option<u32>) -> (String, Compiled) {
 }
 
 /// The checks on a compiled run: expand, the height-field grid, analyse (what ui.js verifyProgram and the server do)
-pub fn check(c: &Compiled, s_max: f64, vice_on: bool) -> (Vec<sim::Seg>, f64, stock::Grid, Vec<sim::Event>, f64, f64) {
+pub fn check(c: &Compiled, st: &stock::St, s_max: f64, vice_on: bool) -> (Vec<sim::Seg>, f64, stock::Grid, Vec<sim::Event>, f64, f64) {
     let (segs, total) = sim::expand(&c.moves, exec::RAPID_RATE);
-    let st = stock_of(&c.stock);
+    let st = *st;
     let g = sim::grid_for(&st, &segs);
     let (ev, feed, cut) = sim::analyse(&st, &segs, &g, s_max, &stock::Vice { on: vice_on });
     (segs, total, g, ev, feed, cut)
@@ -146,33 +179,35 @@ pub unsafe extern "C" fn tnc_run(tp: *const u8, tl: usize, op: *const u8, ol: us
     let runs = &mut *std::ptr::addr_of_mut!(RUNS);
     let h = runs.last().map(|r| r.0 + 1).unwrap_or(1);
     let (s, c) = run_full(text, &opts, Some(h));
-    runs.push((h, c, opts.mach.s_max));
+    runs.push((h, c));
     if runs.len() > KEEP { runs.remove(0); }
     put_out(s)
 }
 /* the last few runs, by handle: TNC_SIM.expand / analyse work on them (no move list travels back in) */
 const KEEP: usize = 6;
-static mut RUNS: Vec<(u32, Compiled, f64)> = Vec::new();
-unsafe fn retained(h: u32) -> Option<&'static (u32, Compiled, f64)> { (*std::ptr::addr_of!(RUNS)).iter().find(|r| r.0 == h) }
+static mut RUNS: Vec<(u32, Compiled)> = Vec::new();
+unsafe fn retained(h: u32) -> Option<&'static (u32, Compiled)> { (*std::ptr::addr_of!(RUNS)).iter().find(|r| r.0 == h) }
 unsafe fn put_out(s: String) -> usize { let out = &mut *std::ptr::addr_of_mut!(OUT); *out = s.into_bytes(); out.len() }
 /// # Safety
 /// TNC_SIM.expand for a retained run: {segs, total}; 0 = the handle is gone.
 #[no_mangle]
-pub unsafe extern "C" fn tnc_expand(h: u32) -> usize {
+pub unsafe extern "C" fn tnc_expand(h: u32, rapid_rate: f64) -> usize {
     let Some(r) = retained(h) else { return 0 };
-    let (segs, total) = sim::expand(&r.1.moves, exec::RAPID_RATE);
+    let (segs, total) = sim::expand(&r.1.moves, rapid_rate);
     let mut s = String::with_capacity(segs.len() * 300 + 32);
     sim::segs_json(&mut s, &segs, total);
     put_out(s)
 }
 /// # Safety
-/// TNC_SIM.analyse for a retained run on grid (nx, ny, dx, dy): {events, cut}; 0 = the handle is gone.
+/// TNC_SIM.analyse for a retained run's moves, with the stock / rapid rate / S max the caller's result object holds now
+/// (ui.js swaps an unusable BLK FORM for its default blank before the checks): {events, cut}; 0 = the handle is gone.
 #[no_mangle]
-pub unsafe extern "C" fn tnc_analyse(h: u32, nx: f64, ny: f64, dx: f64, dy: f64, vice_on: u32) -> usize {
+#[allow(clippy::too_many_arguments)]
+pub unsafe extern "C" fn tnc_analyse(h: u32, x0: f64, y0: f64, z0: f64, x1: f64, y1: f64, z1: f64, rapid_rate: f64, s_max: f64, nx: f64, ny: f64, dx: f64, dy: f64, vice_on: u32) -> usize {
     let Some(r) = retained(h) else { return 0 };
-    let (segs, _) = sim::expand(&r.1.moves, exec::RAPID_RATE);
-    let st = stock_of(&r.1.stock);
-    let (ev, feed, cut) = sim::analyse(&st, &segs, &stock::Grid { nx, ny, dx, dy }, r.2, &stock::Vice { on: vice_on != 0 });
+    let (segs, _) = sim::expand(&r.1.moves, rapid_rate);
+    let st = stock::St { x0, y0, z0, x1, y1, z1 };
+    let (ev, feed, cut) = sim::analyse(&st, &segs, &stock::Grid { nx, ny, dx, dy }, s_max, &stock::Vice { on: vice_on != 0 });
     let mut s = String::new();
     sim::events_json(&mut s, &ev, feed, cut);
     put_out(s)
