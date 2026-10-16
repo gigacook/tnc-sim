@@ -47,6 +47,7 @@ var TNC_AI = (function () {
     var pr = m.pricing || {}, out = (m.architecture || {}).output_modalities, n = String(m.name || m.id), c = n.indexOf(': ');
     return { id: m.id, name: c > 0 && c < 30 ? n.slice(c + 2) : n, provider: String(m.id).split('/')[0],
       context: +m.context_length || (m.top_provider && +m.top_provider.context_length) || null,
+      maxOut: (m.top_provider && +m.top_provider.max_completion_tokens) || null,               // the model's own answer limit, if OpenRouter knows it
       pin: perM(pr.prompt), pout: perM(pr.completion), created: +m.created || 0,
       text: !out || (out.indexOf('text') >= 0 && out.indexOf('image') < 0), variant: /:/.test(m.id) };
   }
@@ -142,7 +143,8 @@ var TNC_AI = (function () {
     return b;
   }
   /* chat, and when the answer stops at max_tokens, ask for the rest (at most twice) and join the pieces.
-     When only reasoning fit in the budget, try once more with twice the budget. */
+     When only reasoning fit in the budget, try once more with twice the budget. A dropped connection or a
+     provider 5xx is retried once; never a 4xx or a cancel. */
   var TOKEN_CAP = 64000;
   function chatFull(o, onCont) {
     var parts = [], cost = 0, conts = 0;
@@ -211,7 +213,7 @@ var TNC_AI = (function () {
     }).then(function (res) {
       if (!res.ok) return readJson(res).then(function (b) { throw httpError(res, b); });
       if (!res.body || !res.body.getReader) { // no streaming reader available: fall back to one shot
-        return res.text().then(function (t) { var buf = ''; var lines = t.split('\n'); for (var i = 0; i < lines.length; i++) sseLine(lines[i], onEvent); });
+        return res.text().then(function (t) { var lines = t.split('\n'); for (var i = 0; i < lines.length; i++) sseLine(lines[i], onEvent); });
       }
       var reader = res.body.getReader(), decoder = new TextDecoder(), buf = '';
       function pump() {
@@ -241,40 +243,68 @@ var TNC_AI = (function () {
     });
   }
 
-  /* the program: the fenced block that contains BEGIN PGM, else BEGIN PGM .. END PGM in the raw text */
+  /* ---------- the program out of the answer ----------
+     Models wrap it in ```klartext, ```nc, ```text or no fence; a cut-off answer leaves the fence open; a repair answer
+     may quote the old program before the new one. The LAST fenced block with BEGIN PGM wins, an unclosed fence counts,
+     else the last BEGIN PGM .. END PGM (or to the end) in the raw text. Then normalizeSrc(). */
   function extract(text) {
-    text = String(text || '');
-    var fences = text.match(/```[a-z]*\s*\n([\s\S]*?)```/gi) || [];
+    text = String(text || '').replace(/\r/g, '');
+    var fences = text.match(/```[^\n`]*\n[\s\S]*?(?:```|$)/g) || [], pick = null;
     for (var i = 0; i < fences.length; i++) {
-      var body = fences[i].replace(/^```[a-z]*\s*\n/i, '').replace(/```$/, '');
-      if (/BEGIN\s+PGM/i.test(body)) return clean(body);
+      var body = fences[i].replace(/^```[^\n]*\n/, '').replace(/```$/, '');
+      if (/BEGIN\s+PGM/i.test(body)) pick = body;
     }
-    var m = /BEGIN\s+PGM[\s\S]*?END\s+PGM[^\n]*/i.exec(text);
-    return m ? clean(m[0]) : null;
+    if (!pick) { var all = text.match(/BEGIN\s+PGM[\s\S]*?(?:END\s+PGM[^\n]*|$)/gi); pick = all && all[all.length - 1]; }
+    return pick ? normalizeSrc(pick) : null;
   }
-  function clean(s) { return s.replace(/\r/g, '').split('\n').map(function (l) { return l.replace(/^\s*\d+\s+(?=[A-Z;*])/i, '').replace(/\s+$/, ''); }).join('\n').trim(); }
+  /* the small slips that are not worth a repair round: block numbers, typographic minus signs, lower case,
+     blank lines, text after END PGM, a missing or mismatched END PGM. Comments (after ;) keep their case. */
+  function normalizeSrc(s) {
+    var lines = String(s).replace(/\r/g, '').replace(/[−–—]/g, '-').replace(/[   ]/g, ' ').split('\n'), out = [], name = null;
+    for (var i = 0; i < lines.length; i++) {
+      var l = lines[i].replace(/^\s*N?\d+\s+(?=[A-Za-z;*])/, '').replace(/\s+$/, '');
+      if (!l.trim() || /^\s*```/.test(l)) continue;
+      var c = l.indexOf(';'), code = c < 0 ? l : l.slice(0, c), rest = c < 0 ? '' : l.slice(c);
+      l = code.toUpperCase() + rest;
+      var b = /^\s*BEGIN\s+PGM\s+(\S+)/.exec(l);
+      if (b && name == null) { name = b[1]; out.push(l.trim()); continue; }
+      if (/^\s*END\s+PGM\b/.test(l)) { if (name != null) { out.push('END PGM ' + name + ' MM'); name = false; break; } continue; }
+      out.push(l);                                            // indentation kept: cycle Q lines are indented
+    }
+    if (name) out.push('END PGM ' + name + ' MM');          // the answer was cut off before END PGM
+    return out.join('\n');
+  }
 
-  function toolLine(tools) {
-    return (tools || []).map(function (t) { return 'T' + t.t + ' ' + t.name + ' R' + (+t.r); }).join(' | ');
+  /* ---------- does the program cut anything? (a program that mills air passes every safety check) ----------
+     res: TNC.run result, ev: TNC_SIM.analyse events (ev.cut = {feed, cut} path lengths in mm). */
+  function cutCheck(res, ev) {
+    var c = ev && ev.cut, st = res && res.stock; if (!c || !(c.feed > 0) || !st) return null;
+    var box = 'X' + st.x0 + '..' + st.x1 + ' Y' + st.y0 + '..' + st.y1 + ' Z' + st.z0 + '..' + st.z1;
+    if (c.cut < 1) return { err: 'THE PROGRAM REMOVES NO MATERIAL: every cutting move is in the air. Milling only takes material away: the cuts must be inside the blank (' + box + '), below its top Z' + st.z1 + '.' };
+    var f = c.cut / c.feed;
+    if (f < 0.15) return { warn: 'ONLY ' + Math.round(f * 100) + '% OF THE CUTTING PATH REMOVES MATERIAL — most feed moves cut air. Check that the shape is inside the blank (' + box + ') and below its top.' };
+    return null;
   }
 
   /* The tool table as constraints, not names: what each cutter can and cannot do, how deep it reaches before
      its holder touches the part, the smallest inside corner and groove it makes, and a safe S / F.
-     o: {holderA (mm, spindle face to collet nose; default 100 = ISO 50), sMax, fMax} */
+     o: {holderA (mm, spindle face to collet nose; default 100 = ISO 50), sMax, fMax: the machine's limits} */
   var PART = (typeof TNC_PART !== 'undefined' && TNC_PART) || (typeof require !== 'undefined' ? (function () { try { return require('./part.js'); } catch (e) { return null; } })() : null);
   function kindOf(t) { return PART ? PART.toolKind(t) : 'tool'; }
   function toolSheet(tools, o) {
     o = o || {};
-    var A = o.holderA || 100, sMax = o.sMax || 6000, rows = [];
-    (tools || []).forEach(function (t) {
+    var A = o.holderA || 100, sMax = o.sMax || 6000, fMax = o.fMax || 20000, rows = [];
+    (tools || []).slice().sort(function (a, b) { return a.t - b.t; }).forEach(function (t) {
       var D = +(2 * t.r).toFixed(3), k = kindOf(t), L = +t.l || 0;
       var reach = L > 0 ? Math.max(L - A, 0.25 * L) - 1 : null;
       var z = /face/.test(k) ? 5 : /end mill/.test(k) ? 3 : 2;
       var vc = /face/.test(k) ? 300 : /end mill/.test(k) ? 200 : /drill/.test(k) ? 80 : 60;
       var S = Math.min(sMax, Math.round(vc * 1000 / (Math.PI * D) / 100) * 100);
-      var F = Math.floor(0.8 * (0.012 * D + 0.005) * S * z / 10) * 10;
+      var F = Math.max(10, Math.min(fMax, Math.floor(0.8 * (0.012 * D + 0.005) * S * z / 10) * 10));
       var line = 'T' + t.t + ' ' + t.name + ' — ' + k + ' Ø' + D + (L > 0 ? ', reaches ' + reach.toFixed(1) + ' mm below the top before the holder touches' : '');
-      if (/end mill/.test(k)) line += '. Flat bottom (ball: round). Groove/slot width = ' + D + '; smallest inside corner R' + (+t.r) +
+      if (k === 'ball end mill') line += '. Round tip (centre ' + (+t.r) + ' above the tip): 3-D surfaces, fillets, textures. Groove width = ' + D +
+        '. Plunge straight max 1 mm per step at F150, deeper by ramping; step-over ≤ ' + (0.2 * D).toFixed(1) + ' for a smooth surface. S' + S + ' F' + F + '.';
+      else if (/end mill/.test(k)) line += '. Flat bottom. Groove/slot width = ' + D + '; smallest inside corner R' + (+t.r) +
         '. Plunge straight max 1 mm per step at F150, deeper by ramping. Depth per pass ≤ ' + (D / 2) + ' slotting, ≤ ' + D + ' side cutting; step-over ≤ ' + (0.6 * D).toFixed(1) + '. S' + S + ' F' + F + '.';
       else if (/face/.test(k)) line += '. Facing only: depth per pass ≤ 2, step-over ≤ ' + (0.7 * D).toFixed(0) + ', start and end the pass outside the blank. S' + S + ' F' + F + '.';
       else if (k === 'drill') line += '. Axial only (CYCL DEF 200 / 203 / 205), hole Ø = ' + D + ' exactly; the 118° point goes ' + (0.3 * D).toFixed(1) + ' deeper than the programmed depth. S' + S + ' Q206=' + Math.round(S * D * 0.012) + '.';
@@ -309,19 +339,30 @@ var TNC_AI = (function () {
   function system(tools, opts) {
     opts = opts || {};
     return [
-'You write HEIDENHAIN TNC 426 / TNC 430 conversational (Klartext) programs, NC software 280 476, for a browser simulator.',
-'Its interpreter accepts the syntax below; anything else is rejected with an error. Units are mm.',
+'You write HEIDENHAIN TNC 426 / TNC 430 conversational (Klartext) programs, NC software 280 476, for a simulator that machines',
+'them on a virtual blank and checks every block. Its interpreter accepts ONLY the syntax below; anything else is rejected. Units: mm.',
 '',
 'OUTPUT FORMAT',
 '- Reply with ONLY the program inside a single ```klartext fenced block. Nothing before or after the fence.',
-'- No block numbers. One block per line.',
+'- Always the COMPLETE program: never "...", never "rest unchanged", never two programs.',
+'- No block numbers. One block per line. Upper case. A comment starts with ; and runs to the end of the line.',
 '- Line 1: BEGIN PGM <NAME> MM. Last line: END PGM <NAME> MM (same name). NAME: A-Z, 0-9, _ only, max 16 characters.',
-'- Lines 2-3: the BLK FORM. Then ; comment lines describing the part: blank size, features, tools with S and F.',
+'- Lines 2-3: the BLK FORM. Then ; comment lines: blank size, the plan (features, order, tools with S and F).',
+'',
+'HOW MILLING WORKS — READ THIS FIRST',
+'- Milling only REMOVES material. The finished part is what is LEFT of the blank. Nothing is ever added.',
+'- So the blank must contain the whole finished part, and every cutting move is inside the blank, at or below its top face Z+0.',
+'  A move above Z+0 or outside the blank outline cuts air. Never "draw" the shape in the air: that is 3-D printing, not milling.',
+'- A raised shape (boss, figure, sculpture) = cut away everything AROUND it, level by level from the top down.',
+'  A recessed shape (pocket, engraving, cavity) = cut away everything INSIDE it.',
+'- Every 3-D shape is a stack of 2-D cross-sections: at each Z level, mill away the material outside the section (raised) or inside it (recessed).',
 '',
 'BLANK',
 'BLK FORM 0.1 Z X+0 Y+0 Z-20   (MIN corner; Z after 0.1 = tool axis)',
 'BLK FORM 0.2 X+100 Y+80 Z+0   (MAX corner)',
-'Datum at front-left corner, top face Z+0, blank bottom negative. The tool starts at X0 Y0 Z0.',
+'Datum at the front-left corner, top face Z+0, blank bottom negative. The tool starts at X0 Y0 Z0.',
+'Any size up to 500 mm in every direction: a 500 mm cube is BLK FORM 0.1 Z X+0 Y+0 Z-500 / BLK FORM 0.2 X+500 Y+500 Z+0.',
+'The vice grips the blank\'s Y- and Y+ faces from below the bottom up to 6 mm above it: leave a base at least 10 mm thick (never cut lower than blank bottom + 10, except drilled holes).',
 '',
 'PATH BLOCKS',
 'TOOL CALL 5 Z S3000            tool, axis Z, speed. Does NOT start the spindle.',
@@ -331,7 +372,7 @@ var TNC_AI = (function () {
 'CT X+40 Y+5                    arc tangent to the previous element.',
 'RND R5                         rounding arc between the element before and after it (between two path blocks).',
 'CHF 5                          chamfer of side length 5 between two straight lines.',
-'LP PR+30 PA+45                 polar line about CC (PR radius, PA angle deg; IPR IPA incremental).',
+'LP PR+30 PA+45                 polar line about CC (PR radius, PA angle deg; IPR IPA incremental). PR+Q2 works too.',
 'CP IPA+360 IZ-2 DR+            polar arc about CC by an angle; with IZ it is a helix. CTP PR.. PA.. tangent polar arc.',
 '',
 'RADIUS COMPENSATION (use it for contours; the simulator offsets exactly like the TNC)',
@@ -339,20 +380,21 @@ var TNC_AI = (function () {
 'Climb milling an outside contour: RL going clockwise around the part. Inside a pocket: RL going counter-clockwise.',
 'Outside corners get an arc automatically; inside corners must be larger than the tool radius or TOOL RADIUS TOO LARGE.',
 'Never switch RL straight to RR: an R0 block must come between. Cancel with an R0 line or a DEP block.',
-'Approach and depart tangentially (preferred):',
+'For roughing loops and 3-D surfaces program the tool CENTRE with R0 and add the tool radius yourself (simplest, never fails).',
+'Approach and depart tangentially (preferred for finished contours):',
 '  L X-20 Y-20 R0 FMAX / L Z-5 R0 F200    start point PS outside the contour, at depth',
 '  APPR LCT X+0 Y+0 R5 RL F500             first contour point, arc radius 5, compensation',
 '  L ... contour ...',
 '  DEP LCT X-20 Y-20 R5 F1000               depart to PN with an arc, compensation cancelled',
 '  Also: APPR LT X Y LEN10 RL, APPR LN X Y LEN10 RL, APPR CT X Y CCA90 R5 RL, DEP LT LEN10, DEP LN LEN10, DEP CT CCA90 R5.',
 '',
-'PROGRAM FLOW',
+'PROGRAM FLOW AND Q PARAMETERS (use loops: a short program with loops beats thousands of lines)',
 'LBL 1 / LBL 0 / CALL LBL 1 / CALL LBL 1 REP 3/3 (section repeat: REP r runs it r+1 times in total).',
 'Subprogram: CALL LBL n (no REP) runs LBL n ... LBL 0; place subprograms after M30.',
-'FN 0: Q1 = -2      FN 1: Q2 = +Q2 + +Q1      (FN 2 minus, FN 3 times, FN 4 divide). Q in coordinates/feeds: L Z+Q2 FQ3.',
-'Depth passes: FN 0: Q1 = -2, FN 0: Q2 = +0, loop: FN 1: Q2 = +Q2 + +Q1 then L Z+Q2 (absolute).',
-'M30 alone on a line ends the program. ; starts a comment.',
-'Formulas: Q10 = (Q1 + Q2) / 2, SIN COS SQRT SQ ABS PI. Jumps: FN 12: IF +Q1 LT +Q2 GOTO LBL 1. Never use: FK, INCH, block numbers.',
+'FN 0: Q1 = -2      FN 1: Q2 = +Q2 + +Q1      (FN 2 minus, FN 3 times, FN 4 divide). Q in coordinates and feeds: L X+Q10 Z+Q22 FQ3.',
+'Formulas: Q20 = SQ (Q10 - 50) + SQ (Q11 - 50)   Q22 = SQRT (Q21 - Q20) - Q2   Q5 = SIN (Q4) * 20   (SIN COS TAN SQRT SQ ABS PI; angles in deg).',
+'Jumps: FN 9: IF +Q1 EQU +Q2 GOTO LBL 3, FN 10 NE, FN 11 GT, FN 12 LT. A jump back to a LBL above makes a loop.',
+'M30 alone on a line ends the program. Never use: FK, INCH, block numbers.',
 '',
 'M-FUNCTIONS',
 'M3/M4 spindle on, M8 coolant, M13/M14 spindle+coolant: at block START. M5, M9, M2/M30: at block END.',
@@ -375,52 +417,155 @@ var TNC_AI = (function () {
 'CYCL DEF 203 UNIVERSAL DRILLING: as 200 plus Q212 Q213 Q205 Q211 Q208 (0 = plunging feed) Q256.',
 'Pocket, dotted form, called at the pocket centre at Z = surface + set-up:',
 'CYCL DEF 4.0 POCKET MILLING / 4.1 SET UP 2 / 4.2 DEPTH -10 / 4.3 PECKG 3 F100 / 4.4 X60 / 4.5 Y40 / 4.6 F600 DR+ RADIUS 0',
+'NOT AVAILABLE (rejected): FK, SL contour cycles 14 20-25, cycles 251 and up, PLANE, M128, M91/M92, TOOL DEF, INCH.',
 '',
-'TOOL TABLE — these tools and nothing else. Read the limits: a feature no tool can make must be changed, not faked.',
+'TOOL TABLE — these tools and nothing else. Reach = how deep below the blank top the tool may cut before its holder hits the part.',
 toolSheet(tools, opts),
-'Cones (spot, chamfer) cut a 45 degree flank. Probes never cut.',
+'Use the big cutters to remove the bulk, the small ones for detail: thin grooves, letters, textures and fine features ("painting" with',
+'ENDMILL_1/2 or BALL_2/4 at 0.2 to 1 mm deep). A shape deeper than a tool\'s reach needs a longer tool (the _LONG / _XLONG ones).',
 '',
-'NOT AVAILABLE in this control / simulator (rejected or wrong): FK free contour programming, cycles 3 5 12 13 14 20-25 (SL contour cycles) 26 27 28,',
-'cycles 251+ (iTNC 530 only), PLANE, M128, M91/M92 moves, TOOL DEF inside the program for a tool not in the table, INCH programs.',
+'HOW TO BUILD A 3-D PART OR SCULPTURE',
+'1. Choose the blank so the part fits inside with 5 to 10 mm to spare; top face Z+0. Plan in comments: which shapes, at which X Y Z.',
+'2. ROUGH with the biggest cutter that fits: Z levels (waterline), step-down <= the cutter radius, step-over <= 0.6 x D.',
+'   At each level clear everything outside the cross-section (raised shapes) or inside it (cavities); the tool centre stays one',
+'   tool radius (plus 0.5 stock) away from the finished surface. Rings around a round shape, offset rectangles around a square one.',
+'3. FINISH with a ball mill: a raster (rows along X, step-over 0.5 to 2 mm in Y) with Z from a formula, or fine waterline levels',
+'   (step-down 0.5 to 1 mm) following the cross-section. Ball tip Z on a surface of height h: offset the ball CENTRE by r along the normal.',
+'4. DETAIL with the small tools: grooves, eyes, lines, letters, patterns, chamfers.',
+'5. Spheres, domes, cones, cylinders, fins, cubes and their combinations make most things; write one ; comment per feature.',
+'When the request is artistic, interpret it boldly but keep it machinable: smooth forms, nothing thinner than the cutter, no undercuts',
+'(the tool only comes from above: every point of the part must be visible from +Z).',
 '',
-'SAFETY RULES THE SIMULATOR ENFORCES (a violation is reported as a crash)',
+'TEMPLATE A — waterline roughing around a raised round shape (checked: no errors). Rings of tool-centre radius Q2 at level Q1:',
+'TOOL CALL 15 Z S3000',
+'L Z+50 R0 FMAX M3',
+'CC X+60 Y+60                 ; centre of a D40 boss, 40 high',
+'FN 0: Q1 = +0                ; level',
+'LBL 1',
+'FN 2: Q1 = +Q1 - +4          ; step-down 4',
+'FN 0: Q2 = +28               ; first ring: boss radius 20 + tool radius 8',
+'LBL 2',
+'LP PR+Q2 PA+0 R0 FMAX',
+'L Z+2 R0 FMAX',
+'L Z+Q1 R0 F200',
+'CP IPA+360 DR- R0 F1200',
+'L Z+2 R0 FMAX',
+'FN 1: Q2 = +Q2 + +9          ; step-over 9 (0.6 x D16)',
+'FN 12: IF +Q2 LT +95 GOTO LBL 2    ; until the rings clear the blank corners',
+'FN 12: IF +Q1 GT -40 GOTO LBL 1',
+'L Z+50 R0 FMAX M5',
+'A cone or a dome = the same loop with the boss radius depending on the level (e.g. Q3 = SQRT (SQ 40 - SQ Q1) for a sphere R40).',
+'',
+'TEMPLATE B — ball-mill raster finishing of a dome R40 centred X50 Y50, apex Z+0 (checked: no errors):',
+'TOOL CALL 22 Z S3000          ; BALL_6, r = 3',
+'L Z+50 R0 FMAX M3',
+'FN 0: Q1 = +40                ; dome radius R',
+'FN 0: Q2 = +3                 ; ball radius r',
+'Q21 = SQ (Q1 + Q2)',
+'FN 0: Q11 = +0                ; row Y',
+'LBL 1',
+'FN 0: Q10 = +0                ; X along the row',
+'L X+Q10 Y+Q11 R0 FMAX',
+'L Z+2 R0 FMAX',
+'LBL 2',
+'Q20 = SQ (Q10 - 50) + SQ (Q11 - 50)',
+'FN 0: Q22 = -40               ; floor outside the dome',
+'FN 12: IF +Q20 GT +Q21 GOTO LBL 3',
+'Q22 = SQRT (Q21 - Q20) - Q2 - Q1   ; ball centre on a sphere R+r, tip = centre - r',
+'FN 12: IF +Q22 GT -40 GOTO LBL 3',
+'FN 0: Q22 = -40',
+'LBL 3',
+'L X+Q10 Z+Q22 R0 F600',
+'FN 1: Q10 = +Q10 + +1',
+'FN 12: IF +Q10 LT +100.5 GOTO LBL 2',
+'L Z+2 R0 FMAX',
+'FN 1: Q11 = +Q11 + +2',
+'FN 12: IF +Q11 LT +100.5 GOTO LBL 1',
+'L Z+50 R0 FMAX M5',
+'Any surface Z = f(X, Y) works the same way: compute Q22 from Q10 and Q11, keep it >= the floor.',
+'',
+'SAFETY RULES THE SIMULATOR ENFORCES (a violation is reported as a crash or an error)',
 '1. No FMAX into uncut stock: FMAX over the part only at Z+2 or higher; feed into the cut; FMAX back to Z+2 before any XY rapid.',
 '2. No cutting move without M3/M4 since the last TOOL CALL.',
-'3. Going below the blank is allowed (through holes, taps); the holder must never reach the part: stick-out = tool length L minus the holder A dimension.',
-'4. Chip load for end mills (3 flutes) and face mills (5): F / (S x flutes) <= 0.012 x D + 0.005.',
-'   Each tool line in the table gives a safe S and F for it.',
-'Plunge at F100-F200. Keep every cut within the blank.',
+'3. The holder must never reach the part: never cut deeper below the blank top than the tool\'s reach.',
+'4. Chip load: keep F at or under the F given for each tool at its S (higher S allows proportionally higher F).',
+'5. Stay off the vice (see BLANK). Going below the blank bottom is allowed only for drilled through holes.',
+'6. The program must remove material (a program that only cuts air is rejected).',
+'Plunge straight down only at the plunge F; deeper than the tool radius per plunge only into already cleared space or with a ramp / helix.',
 '',
 'ERRORS',
-'If you get an error report from the simulator (each with a block number; BEGIN PGM is block 0; a CYCL DEF with its Q lines is one block),',
-'find the cause and return the COMPLETE corrected program, same format, nothing outside the fence.'
+'If you get an error report from the simulator (each item quotes the block; BEGIN PGM is block 0; a CYCL DEF with its Q lines is one block),',
+'fix the cause of EVERY item, keep everything that already works, and return the COMPLETE corrected program, same format, nothing outside the fence.'
     ].join('\n') + (opts.plan ? '\n\nACCURACY\nYou work in two steps: first a part spec (the finished geometry), then the program. The simulator machines the program on a height field, measures the result against the spec in mm, and sends you the misses and gouges by position. Program the spec exactly: clear the WHOLE pocket area (step-over ≤ 0.6 × cutter Ø, finish the walls with radius compensation), reach every floor, keep the walls where the spec puts them.\n\n' + SPEC_FORMAT : '');
   }
   var FALLBACK_SYSTEM = system([]);
 
-  /* generate({key, model, prompt, system, tools, verify, measure, plan, rounds, goal, onStep, signal, reasoning, maxTokens, timeoutMs})
+  var HINTS = [
+    [/RAPID TRAVERSE INTO MATERIAL/, 'FMAX only at Z+2 or higher over the part (or beside it); go down and cut with a feed F.'],
+    [/SPINDLE STOPPED/, 'Every TOOL CALL stops the spindle: put M3 on the first move after it.'],
+    [/HOLDER/, 'Deeper than this tool reaches: use a longer tool from the table (see reach) or cut less deep.'],
+    [/VICE/, 'The vice holds the Y- and Y+ faces up to 6 mm above the blank bottom: stay higher, leave a base.'],
+    [/RADIUS TOO LARGE|TOOL RADIUS/, 'An inside corner or arc is smaller than the tool radius: use a smaller tool, a bigger radius, or R0 with your own offset.'],
+    [/REMOVES NO MATERIAL|CUTS AIR|REMOVES MATERIAL/, 'Milling removes material: the cuts belong inside the blank, below Z+0. Rebuild the shape by cutting away what is around it.'],
+    [/CHIP LOAD/, 'Lower F to the suggested value (or raise S).'],
+    [/LIMIT SWITCH/, 'A rotary axis is out of its range (see THIS MACHINE).'],
+    [/LABEL|LBL/, 'Every CALL LBL / GOTO LBL needs its LBL; subprograms go after M30 and end with LBL 0.'],
+    [/FORMAT|INCORRECT|UNKNOWN|NOT ALLOWED|SYNTAX|INVALID|ENTRY/, 'Not valid for this control: rewrite this line with the syntax from the system prompt only.'],
+    [/NO PROGRAM/, 'Reply with the complete program in one ```klartext fence.']
+  ];
+  function hint(msg) { for (var i = 0; i < HINTS.length; i++) if (HINTS[i][0].test(msg)) return HINTS[i][1]; return null; }
+  function listing(title, items, max) {
+    if (!items || !items.length) return '';
+    var seen = {}, out = [], n = 0;
+    items.forEach(function (m) { if (n >= max) return; out.push((++n) + '. ' + m); var h = hint(m); if (h && !seen[h]) { seen[h] = 1; out.push('   -> ' + h); } });
+    return title + ' (' + items.length + ')\n' + out.join('\n') + (items.length > max ? '\n   ... and ' + (items.length - max) + ' more of the same kinds' : '') + '\n\n';
+  }
+  function summary(rep) { return rep.ok ? 'passed' : (rep.errs.length + ' error(s), ' + rep.crashes.length + ' crash(es)' + (rep.errs[0] || rep.crashes[0] ? ': ' + String(rep.errs[0] || rep.crashes[0]).slice(0, 90) : '')); }
+  function feedback(base, last, hist, round, rounds) {
+    var rep = base.report;
+    return 'ROUND ' + (round + 1) + ' of ' + rounds + '. The simulator machined your program and found:\n\n' +
+      listing('ERRORS — the program is rejected until these are gone', rep.errs, 15) +
+      listing('CRASHES', rep.crashes, 15) +
+      listing('WARNINGS — fix if easy', rep.warns, 6) +
+      (last && last !== base ? 'Your newest version (round ' + (last.round + 1) + ') was worse (' + summary(last.report) + '); the program above is your best one so far (round ' + (base.round + 1) + '): continue from it.\n\n' : '') +
+      (hist.length > 1 ? 'Earlier rounds: ' + hist.map(function (h) { return 'round ' + (h.round + 1) + ' ' + h.sum; }).join(' | ') + '. Do not bring back problems you fixed.\n\n' : '') +
+      (base.measure ? base.measure.text + '\n\nChange the program so the cut matches the spec: cut what is NOT CUT, stop cutting where it SHOULD NOT. ' +
+        'If the spec itself does not describe what was asked, send a corrected ```partspec before the program.\n\n' : '') +
+      'Fix the cause of every item, keep what already works, and return the COMPLETE corrected program in one ```klartext fence.';
+  }
+  /* ---------- the loop: plan, write, check, measure, refine ----------
+     generate({key, model, prompt, system, tools, verify, measure, plan, rounds, goal, confirm, onStep, signal, reasoning, maxTokens, timeoutMs})
      verify(src) -> {ok, errs, crashes, warns, text}: the simulator's checks.
-     plan + measure(spec, src) -> TNC_PART.compare report: the model first writes a part spec, the program is measured against it,
-     and up to `rounds` refinement rounds send errors / misses / gouges back. The best program wins (checked clean first, then match %).
-     onStep phases: 'request' {attempt, stage}, 'progress', 'continued' {n}, 'planned' {spec, sheet, notes}, 'checked' {report, src},
-     'measured' {measure, src}. */
+     plan + measure(spec, src) -> TNC_PART.compare report: the model first writes a part spec and every program is measured against it.
+     rounds = refinements after the first program (rounds + 1 answers in all). Each refinement sends ONE program back, the best so far
+     (checked clean first, then match %, then fewest problems), with its report, hints and a one-line history of the earlier rounds:
+     the context stays small and a worse attempt cannot derail it.
+     confirm({round, rounds, report}) -> Promise<bool>: asked after each round that is not good enough; false stops with the best
+     program so far. No confirm = keep going (auto).
+     onStep phases: 'request' {attempt, round, rounds, stage}, 'progress', 'continued' {n}, 'planned' {spec, sheet, notes},
+     'checked' {attempt, round, rounds, report, src}, 'measured' {measure, src}, 'failed' {error}.
+     Resolves {src, report, measure, spec, cost, attempts, round (of the returned program), stopped}. */
+  function rank(c) { var r = c.report;
+    return (r.ok ? 1000 : 0) + (c.measure && c.measure.score != null ? c.measure.score : 0) - r.errs.length * 10 - r.crashes.length * 4 - (r.warns ? r.warns.length : 0) * 0.1; }
+
   function generate(o) {
     var model = o.model || DEFAULT_MODEL, onStep = o.onStep || function () {};
-    var plan = !!(o.plan && o.measure && PART), rounds = o.rounds != null ? o.rounds : o.maxRepairs != null ? o.maxRepairs : 1;
-    var goal = o.goal || 95, cost = 0, attempt = 0, best = null, spec = null;
+    var plan = !!(o.plan && o.measure && PART), rounds = o.rounds != null ? o.rounds : o.maxRepairs != null ? o.maxRepairs : 1, total = rounds + 1;
+    var goal = o.goal || 95, cost = 0, attempt = 0, best = null, spec = null, hist = [];
     var sys = { role: 'system', content: o.system || system(o.tools, { plan: plan }) };
     var ask = { role: 'user', content: 'Write the program for this part:\n\n' + o.prompt };
     function call(messages, stage) {
       var req = { key: o.key, model: model, messages: messages, signal: o.signal, timeoutMs: o.timeoutMs, reasoning: o.reasoning, maxTokens: o.maxTokens, retryDelayMs: o.retryDelayMs };
-      onStep({ phase: 'request', attempt: attempt, stage: stage, body: JSON.parse(JSON.stringify(requestBody(req))) });
+      onStep({ phase: 'request', attempt: attempt, round: attempt + 1, rounds: total, stage: stage, body: JSON.parse(JSON.stringify(requestBody(req))) });
       return chatFull(Object.assign(req, {
-        onProgress: function (p) { onStep({ phase: 'progress', attempt: attempt, stage: p.stage, secs: p.secs, chars: p.chars, reasoningChars: p.reasoningChars, text: p.text, reasoningTail: p.reasoningTail }); }
+        onProgress: function (p) { onStep({ phase: 'progress', attempt: attempt, round: attempt + 1, rounds: total, stage: p.stage, secs: p.secs, chars: p.chars, reasoningChars: p.reasoningChars, text: p.text, reasoningTail: p.reasoningTail }); }
       }), function (c) { onStep({ phase: 'continued', attempt: attempt, n: c.n, retry: !!c.retry, maxTokens: c.maxTokens, network: !!c.network, error: c.error }); })
         .then(function (r) { cost += r.cost; return r; });
     }
-    function rank(c) { return (c.report.ok ? 1000 : 0) + (c.measure && c.measure.score != null ? c.measure.score : 0) - c.report.errs.length - c.report.crashes.length; }
-    function done() { if (!best) { var e = new Error('THE MODEL DID NOT RETURN A PROGRAM'); e.status = 0; throw e; }
-      return { src: best.src, report: best.report, measure: best.measure, spec: spec, cost: cost, attempts: attempt + 1 }; }
+    function done(stopped) {
+      if (!best) { var e = new Error('THE MODEL DID NOT RETURN A PROGRAM'); e.status = 0; throw e; }
+      return { src: best.src, report: best.report, measure: best.measure, spec: spec, cost: cost, attempts: attempt + 1, round: best.round + 1, stopped: !!stopped };
+    }
 
     /* step 1: the part spec (one retry when it does not parse) */
     function planStep(retry) {
@@ -437,53 +582,53 @@ toolSheet(tools, opts),
         return { answer: r.text, ex: ex };
       });
     }
-    /* step 2..n: write, check, measure, refine */
-    function writeMsgs(p, last, feedback) {
+    /* step 2..n: write, check, measure, refine. base = the program sent back (the best so far), or {raw} when there is none yet */
+    function writeMsgs(p, base, fb) {
       var m = [sys, ask];
       if (p) m.push({ role: 'assistant', content: '```partspec\n' + JSON.stringify(stripPaths(spec)) + '\n```' },
         { role: 'user', content: 'STEP 2 of 2: write the program for exactly this spec. Exact geometry:\n' + p.ex.sheet +
           (p.ex.notes.length ? '\n\nFEASIBILITY — fix these (send a corrected ```partspec first if the spec changes):\n- ' + p.ex.notes.join('\n- ') : '') +
           '\n\nReply with the program in one ```klartext fence' + (p.ex.notes.length ? ' (a corrected ```partspec before it if needed)' : '') + '.' });
-      if (last) m.push({ role: 'assistant', content: (last.specText ? last.specText + '\n' : '') + '```klartext\n' + last.src + '\n```' }, { role: 'user', content: feedback });
+      if (base) m.push({ role: 'assistant', content: base.src != null ? (base.specText ? base.specText + '\n' : '') + '```klartext\n' + base.src + '\n```' : String(base.raw || '').slice(0, 4000) },
+        { role: 'user', content: fb });
       return m;
     }
-    function write(p, last, feedback) {
-      return call(writeMsgs(p, last, feedback), last ? 'refine' : 'write').then(function (r) {
-        var src = extract(r.text), specText = null;
+    function write(p, base, fb) {
+      return call(writeMsgs(p, base, fb), base ? 'refine' : 'write').then(function (r) {
+        var src = extract(r.text), specText = null, report, meas = null, cand = null;
         if (plan && /```partspec/i.test(r.text)) {             // the model corrected its spec
           var pr = PART.parse(r.text);
           if (!pr.error) { var ex = PART.expand(pr.spec, o.tools); spec = ex.spec; p = { ex: ex }; specText = '```partspec\n' + JSON.stringify(stripPaths(spec)) + '\n```';
             onStep({ phase: 'planned', attempt: attempt, spec: spec, sheet: ex.sheet, notes: ex.notes, revised: true }); }
         }
-        if (!src) {
-          var rep0 = { ok: false, errs: ['NO PROGRAM IN THE ANSWER'], crashes: [], warns: [], text: 'NO PROGRAM IN THE ANSWER' };
-          onStep({ phase: 'checked', attempt: attempt, report: rep0 });
-          if (attempt >= rounds) return done();
-          attempt++;
-          return write(p, last || { src: '', specText: null }, 'Your answer contained no program. Reply with the complete program in one ```klartext fence.');
+        if (!src) report = { ok: false, errs: ['NO PROGRAM IN THE ANSWER'], crashes: [], warns: [], text: 'NO PROGRAM IN THE ANSWER' };
+        else {
+          try { report = o.verify ? o.verify(src) : { ok: true, errs: [], crashes: [], warns: [], text: '' }; }
+          catch (e) { report = { ok: false, errs: ['INTERNAL ERROR: ' + (e && e.message || e)], crashes: [], warns: [], text: 'INTERNAL ERROR' }; }
         }
-        var report = o.verify ? o.verify(src) : { ok: true, errs: [], crashes: [], warns: [], text: '' };
-        onStep({ phase: 'checked', attempt: attempt, report: report, src: src });
-        var meas = null;
-        if (plan && spec && report.errs.length === 0) {
+        onStep({ phase: 'checked', attempt: attempt, round: attempt + 1, rounds: total, report: report, src: src });
+        if (src && plan && spec && report.errs.length === 0) {
           try { meas = o.measure(spec, src); } catch (e) { meas = null; }
           if (meas) onStep({ phase: 'measured', attempt: attempt, measure: meas, src: src });
         }
-        var cand = { src: src, report: report, measure: meas, specText: specText };
-        if (!best || rank(cand) > rank(best)) best = cand;
+        if (src) {
+          cand = { src: src, report: report, measure: meas, specText: specText, round: attempt };
+          if (!best || rank(cand) >= rank(best)) best = cand;               // ties: the newer one
+        }
+        hist.push({ round: attempt, sum: summary(report) + (meas && meas.score != null ? ', ' + meas.score.toFixed(1) + ' % match' : '') });
         var good = report.ok && (!meas || meas.score == null || meas.score >= goal);
-        if (good || attempt >= rounds) return done();
-        attempt++;
-        var fb = (report.ok ? '' : 'The simulator reported:\n' + report.text + '\n\n') +
-          (meas ? meas.text + '\n\nChange the program so the cut matches the spec: cut what is NOT CUT, stop cutting where it SHOULD NOT. ' +
-            'If the spec itself does not describe what was asked, send a corrected ```partspec before the program.\n\n' : '') +
-          (report.warns && report.warns.length && report.ok ? 'Warnings:\n' + report.warns.join('\n') + '\n\n' : '') +
-          'Return the complete corrected program.';
-        /* a refinement that fails (timeout, network, provider error) keeps the best program so far; a cancel does not */
-        return write(p, cand, fb).catch(function (e) {
-          if (e && e.name === 'AbortError') throw e;
-          onStep({ phase: 'failed', attempt: attempt, error: String(e && e.message || e) });
-          return done();
+        if (good || attempt >= rounds) return done(false);
+        return Promise.resolve(o.confirm ? o.confirm({ round: attempt + 1, rounds: total, report: (best || { report: report }).report }) : true).then(function (go) {
+          if (!go) return done(true);
+          attempt++;
+          var next = best ? write(p, best, feedback(best, cand, hist, attempt, total))
+            : write(p, { raw: r.text }, 'ROUND ' + (attempt + 1) + ' of ' + total + '. Your answer contained no program. Reply with the complete program in one ```klartext fence, nothing else.');
+          /* a refinement that fails (timeout, network, provider error) keeps the best program so far; a cancel does not */
+          return next.catch(function (e) {
+            if ((e && e.name === 'AbortError') || !best) throw e;
+            onStep({ phase: 'failed', attempt: attempt, error: String(e && e.message || e) });
+            return done(false);
+          });
         });
       });
     }
@@ -494,7 +639,7 @@ toolSheet(tools, opts),
 
   return { DEFAULT_MODEL: DEFAULT_MODEL, RECOMMENDED: RECOMMENDED, FRONTIER_PROVIDERS: FRONTIER_PROVIDERS, FALLBACK_SYSTEM: FALLBACK_SYSTEM,
     listModels: listModels, providerName: providerName, _normalize: normalize, _frontier: frontier,
-    generate: generate, toolSheet: toolSheet, chatFull: chatFull, testKey: testKey, extract: extract, system: system,
+    generate: generate, testKey: testKey, extract: extract, normalizeSrc: normalizeSrc, system: system, toolSheet: toolSheet, cutCheck: cutCheck, chatFull: chatFull,
     _sseLine: sseLine, _sseFeed: sseFeed /* internal: exposed only so tests can drive the SSE parser without a network call */ };
 })();
 if (typeof module !== 'undefined') module.exports = TNC_AI;

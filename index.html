@@ -6585,7 +6585,22 @@ var TNC = (function () {
     { t: 8,  name: 'CHAMFER_45',    l: 58.900,  r: 5.000  },
     { t: 9,  name: 'ENDMILL_3',     l: 58.000,  r: 1.500  },
     { t: 11, name: 'PROBE_TS640',   l: 155.00,  r: 3.000  },
-    { t: 42, name: 'REAMER_H7',     l: 101.30,  r: 5.000  }
+    { t: 42, name: 'REAMER_H7',     l: 101.30,  r: 5.000  },
+    /* sculpting set: small cutters for detail, ball mills for 3-D surfaces, long-reach cutters for deep blanks.
+       L is the gauge length; reach below the holder nose = L - holder A (ISO 50: 100 mm). Not from the operator's table. */
+    { t: 10, name: 'ENDMILL_2',     l: 120.00,  r: 1.000  },
+    { t: 12, name: 'ENDMILL_1',     l: 110.00,  r: 0.500  },
+    { t: 13, name: 'ENDMILL_4',     l: 125.00,  r: 2.000  },
+    { t: 14, name: 'ENDMILL_8',     l: 140.00,  r: 4.000  },
+    { t: 15, name: 'ENDMILL_16',    l: 180.00,  r: 8.000  },
+    { t: 16, name: 'ENDMILL_25_LONG', l: 400.00, r: 12.50 },
+    { t: 17, name: 'ENDMILL_32_XLONG', l: 620.00, r: 16.00 },
+    { t: 20, name: 'BALL_2',        l: 120.00,  r: 1.000  },
+    { t: 21, name: 'BALL_4',        l: 130.00,  r: 2.000  },
+    { t: 22, name: 'BALL_6',        l: 150.00,  r: 3.000  },
+    { t: 23, name: 'BALL_10',       l: 200.00,  r: 5.000  },
+    { t: 24, name: 'BALL_16_LONG',  l: 400.00,  r: 8.000  },
+    { t: 25, name: 'BALL_20_XLONG', l: 620.00,  r: 10.00  }
   ];
 
   var IMPLEMENTED_CYCLES = { 1: 1, 2: 1, 4: 1, 17: 1, 18: 1, 200: 1, 201: 1, 202: 1, 203: 1, 204: 1, 205: 1, 206: 1, 207: 1, 208: 1, 209: 1, 210: 1, 211: 1, 212: 1, 213: 1, 214: 1, 215: 1, 230: 1, 231: 1, 262: 1, 263: 1, 264: 1, 265: 1, 267: 1 };
@@ -9306,7 +9321,7 @@ var TNC_SIM = (function () {
   TOOLS.forEach(function (t) {
     if (/CHAMFER|SPOT/.test(t.name)) CONE[t.t] = true;
     if (/FACEMILL/.test(t.name)) FLUTES[t.t] = 5;
-    else if (/ENDMILL/.test(t.name)) FLUTES[t.t] = 3;
+    else if (/ENDMILL|BALL/.test(t.name)) FLUTES[t.t] = 3;
   });
   function isCone(t) { return !!CONE[t]; }
   var STOCK = (typeof TNC_STOCK !== 'undefined' && TNC_STOCK) ||
@@ -9380,7 +9395,7 @@ var TNC_SIM = (function () {
   };
 
   function analyse(res, ex, g) {
-    var st = res.stock, ev = [], seen = {};
+    var st = res.stock, ev = [], seen = {}, feedLen = 0, cutLen = 0;
     var hm = STOCK.field(st, g), jaws = STOCK.vice(st);
     function add(code, sev, s, idx, t, p, extra) {
       var key = code === 'CHIP_LOAD' ? code + ':' + s.tool + ':' + s.f
@@ -9420,7 +9435,8 @@ var TNC_SIM = (function () {
           if (STOCK.holderHits(hm, st, g, s, p, ax)) add('HOLDER', 'crash', s, idx, t, p, holderX(s));
           if (p.z < st.z0 - 0.01 && inside(p, s.toolR)) add('THROUGH_CUT', 'info', s, idx, t, p);   // a note, never a crash: through cuts are normal
         }
-        var cut = STOCK.stamp(hm, st, g, s, p, ax);
+        var cut = STOCK.stamp(hm, st, g, s, p, ax), w = (s.len || 0) / (n + 1);
+        feedLen += w; if (cut) cutLen += w;
         if (cut) {
           if (s.spindle === 0) add('SPINDLE_OFF', 'crash', s, idx, t, p);
           var z = FLUTES[s.tool];
@@ -9437,6 +9453,8 @@ var TNC_SIM = (function () {
     var sMax = res.machine && res.machine.sMax;                // MP 3515: the control limits S to the gear range maximum
     if (sMax) for (var k = 0; k < ex.segs.length; k++) { var sg = ex.segs[k];
       if (Math.abs(sg.spindle || 0) > sMax + 1e-9) add('SPINDLE_MAX', 'warn', sg, k, sg.t0, sg.a, ' — S' + Math.abs(sg.spindle) + ' > ' + sMax + ' RPM (MP 3515), THE CONTROL LIMITS IT'); }
+    /* feed path length that removed material vs all feed path (mm): lets a caller spot a program that mills air */
+    Object.defineProperty(ev, 'cut', { value: { feed: feedLen, cut: cutLen }, enumerable: false });
     return ev;
   }
 
@@ -11680,6 +11698,10 @@ var TNC_TOOLS3D = (function () {
     11: { cutter: buildProbe,                             holder: holderProbeBody },
     42: { cutter: buildReamer,                            holder: holderSK40Collet }
   };
+  /* the sculpting set in core.js (T10, T12-17 end mills, T20-25 ball mills): drawn as end mills */
+  [10, 12, 13, 14, 15, 16, 17, 20, 21, 22, 23, 24, 25].forEach(function (t) {
+    TABLE[t] = { cutter: function (tl, g) { return buildEndmill(tl, g, tl.r > 4 ? 4 : 2); }, holder: holderSK40Collet };
+  });
 
   function build(THREE_, tool) {
     if (typeof THREE_ !== 'undefined') { /* THREE global already used directly below */ }
@@ -14917,6 +14939,7 @@ var TNC_AI = (function () {
     var pr = m.pricing || {}, out = (m.architecture || {}).output_modalities, n = String(m.name || m.id), c = n.indexOf(': ');
     return { id: m.id, name: c > 0 && c < 30 ? n.slice(c + 2) : n, provider: String(m.id).split('/')[0],
       context: +m.context_length || (m.top_provider && +m.top_provider.context_length) || null,
+      maxOut: (m.top_provider && +m.top_provider.max_completion_tokens) || null,               // the model's own answer limit, if OpenRouter knows it
       pin: perM(pr.prompt), pout: perM(pr.completion), created: +m.created || 0,
       text: !out || (out.indexOf('text') >= 0 && out.indexOf('image') < 0), variant: /:/.test(m.id) };
   }
@@ -15012,7 +15035,8 @@ var TNC_AI = (function () {
     return b;
   }
   /* chat, and when the answer stops at max_tokens, ask for the rest (at most twice) and join the pieces.
-     When only reasoning fit in the budget, try once more with twice the budget. */
+     When only reasoning fit in the budget, try once more with twice the budget. A dropped connection or a
+     provider 5xx is retried once; never a 4xx or a cancel. */
   var TOKEN_CAP = 64000;
   function chatFull(o, onCont) {
     var parts = [], cost = 0, conts = 0;
@@ -15081,7 +15105,7 @@ var TNC_AI = (function () {
     }).then(function (res) {
       if (!res.ok) return readJson(res).then(function (b) { throw httpError(res, b); });
       if (!res.body || !res.body.getReader) { // no streaming reader available: fall back to one shot
-        return res.text().then(function (t) { var buf = ''; var lines = t.split('\n'); for (var i = 0; i < lines.length; i++) sseLine(lines[i], onEvent); });
+        return res.text().then(function (t) { var lines = t.split('\n'); for (var i = 0; i < lines.length; i++) sseLine(lines[i], onEvent); });
       }
       var reader = res.body.getReader(), decoder = new TextDecoder(), buf = '';
       function pump() {
@@ -15111,40 +15135,68 @@ var TNC_AI = (function () {
     });
   }
 
-  /* the program: the fenced block that contains BEGIN PGM, else BEGIN PGM .. END PGM in the raw text */
+  /* ---------- the program out of the answer ----------
+     Models wrap it in ```klartext, ```nc, ```text or no fence; a cut-off answer leaves the fence open; a repair answer
+     may quote the old program before the new one. The LAST fenced block with BEGIN PGM wins, an unclosed fence counts,
+     else the last BEGIN PGM .. END PGM (or to the end) in the raw text. Then normalizeSrc(). */
   function extract(text) {
-    text = String(text || '');
-    var fences = text.match(/```[a-z]*\s*\n([\s\S]*?)```/gi) || [];
+    text = String(text || '').replace(/\r/g, '');
+    var fences = text.match(/```[^\n`]*\n[\s\S]*?(?:```|$)/g) || [], pick = null;
     for (var i = 0; i < fences.length; i++) {
-      var body = fences[i].replace(/^```[a-z]*\s*\n/i, '').replace(/```$/, '');
-      if (/BEGIN\s+PGM/i.test(body)) return clean(body);
+      var body = fences[i].replace(/^```[^\n]*\n/, '').replace(/```$/, '');
+      if (/BEGIN\s+PGM/i.test(body)) pick = body;
     }
-    var m = /BEGIN\s+PGM[\s\S]*?END\s+PGM[^\n]*/i.exec(text);
-    return m ? clean(m[0]) : null;
+    if (!pick) { var all = text.match(/BEGIN\s+PGM[\s\S]*?(?:END\s+PGM[^\n]*|$)/gi); pick = all && all[all.length - 1]; }
+    return pick ? normalizeSrc(pick) : null;
   }
-  function clean(s) { return s.replace(/\r/g, '').split('\n').map(function (l) { return l.replace(/^\s*\d+\s+(?=[A-Z;*])/i, '').replace(/\s+$/, ''); }).join('\n').trim(); }
+  /* the small slips that are not worth a repair round: block numbers, typographic minus signs, lower case,
+     blank lines, text after END PGM, a missing or mismatched END PGM. Comments (after ;) keep their case. */
+  function normalizeSrc(s) {
+    var lines = String(s).replace(/\r/g, '').replace(/[−–—]/g, '-').replace(/[   ]/g, ' ').split('\n'), out = [], name = null;
+    for (var i = 0; i < lines.length; i++) {
+      var l = lines[i].replace(/^\s*N?\d+\s+(?=[A-Za-z;*])/, '').replace(/\s+$/, '');
+      if (!l.trim() || /^\s*```/.test(l)) continue;
+      var c = l.indexOf(';'), code = c < 0 ? l : l.slice(0, c), rest = c < 0 ? '' : l.slice(c);
+      l = code.toUpperCase() + rest;
+      var b = /^\s*BEGIN\s+PGM\s+(\S+)/.exec(l);
+      if (b && name == null) { name = b[1]; out.push(l.trim()); continue; }
+      if (/^\s*END\s+PGM\b/.test(l)) { if (name != null) { out.push('END PGM ' + name + ' MM'); name = false; break; } continue; }
+      out.push(l);                                            // indentation kept: cycle Q lines are indented
+    }
+    if (name) out.push('END PGM ' + name + ' MM');          // the answer was cut off before END PGM
+    return out.join('\n');
+  }
 
-  function toolLine(tools) {
-    return (tools || []).map(function (t) { return 'T' + t.t + ' ' + t.name + ' R' + (+t.r); }).join(' | ');
+  /* ---------- does the program cut anything? (a program that mills air passes every safety check) ----------
+     res: TNC.run result, ev: TNC_SIM.analyse events (ev.cut = {feed, cut} path lengths in mm). */
+  function cutCheck(res, ev) {
+    var c = ev && ev.cut, st = res && res.stock; if (!c || !(c.feed > 0) || !st) return null;
+    var box = 'X' + st.x0 + '..' + st.x1 + ' Y' + st.y0 + '..' + st.y1 + ' Z' + st.z0 + '..' + st.z1;
+    if (c.cut < 1) return { err: 'THE PROGRAM REMOVES NO MATERIAL: every cutting move is in the air. Milling only takes material away: the cuts must be inside the blank (' + box + '), below its top Z' + st.z1 + '.' };
+    var f = c.cut / c.feed;
+    if (f < 0.15) return { warn: 'ONLY ' + Math.round(f * 100) + '% OF THE CUTTING PATH REMOVES MATERIAL — most feed moves cut air. Check that the shape is inside the blank (' + box + ') and below its top.' };
+    return null;
   }
 
   /* The tool table as constraints, not names: what each cutter can and cannot do, how deep it reaches before
      its holder touches the part, the smallest inside corner and groove it makes, and a safe S / F.
-     o: {holderA (mm, spindle face to collet nose; default 100 = ISO 50), sMax, fMax} */
+     o: {holderA (mm, spindle face to collet nose; default 100 = ISO 50), sMax, fMax: the machine's limits} */
   var PART = (typeof TNC_PART !== 'undefined' && TNC_PART) || (typeof require !== 'undefined' ? (function () { try { return require('./part.js'); } catch (e) { return null; } })() : null);
   function kindOf(t) { return PART ? PART.toolKind(t) : 'tool'; }
   function toolSheet(tools, o) {
     o = o || {};
-    var A = o.holderA || 100, sMax = o.sMax || 6000, rows = [];
-    (tools || []).forEach(function (t) {
+    var A = o.holderA || 100, sMax = o.sMax || 6000, fMax = o.fMax || 20000, rows = [];
+    (tools || []).slice().sort(function (a, b) { return a.t - b.t; }).forEach(function (t) {
       var D = +(2 * t.r).toFixed(3), k = kindOf(t), L = +t.l || 0;
       var reach = L > 0 ? Math.max(L - A, 0.25 * L) - 1 : null;
       var z = /face/.test(k) ? 5 : /end mill/.test(k) ? 3 : 2;
       var vc = /face/.test(k) ? 300 : /end mill/.test(k) ? 200 : /drill/.test(k) ? 80 : 60;
       var S = Math.min(sMax, Math.round(vc * 1000 / (Math.PI * D) / 100) * 100);
-      var F = Math.floor(0.8 * (0.012 * D + 0.005) * S * z / 10) * 10;
+      var F = Math.max(10, Math.min(fMax, Math.floor(0.8 * (0.012 * D + 0.005) * S * z / 10) * 10));
       var line = 'T' + t.t + ' ' + t.name + ' — ' + k + ' Ø' + D + (L > 0 ? ', reaches ' + reach.toFixed(1) + ' mm below the top before the holder touches' : '');
-      if (/end mill/.test(k)) line += '. Flat bottom (ball: round). Groove/slot width = ' + D + '; smallest inside corner R' + (+t.r) +
+      if (k === 'ball end mill') line += '. Round tip (centre ' + (+t.r) + ' above the tip): 3-D surfaces, fillets, textures. Groove width = ' + D +
+        '. Plunge straight max 1 mm per step at F150, deeper by ramping; step-over ≤ ' + (0.2 * D).toFixed(1) + ' for a smooth surface. S' + S + ' F' + F + '.';
+      else if (/end mill/.test(k)) line += '. Flat bottom. Groove/slot width = ' + D + '; smallest inside corner R' + (+t.r) +
         '. Plunge straight max 1 mm per step at F150, deeper by ramping. Depth per pass ≤ ' + (D / 2) + ' slotting, ≤ ' + D + ' side cutting; step-over ≤ ' + (0.6 * D).toFixed(1) + '. S' + S + ' F' + F + '.';
       else if (/face/.test(k)) line += '. Facing only: depth per pass ≤ 2, step-over ≤ ' + (0.7 * D).toFixed(0) + ', start and end the pass outside the blank. S' + S + ' F' + F + '.';
       else if (k === 'drill') line += '. Axial only (CYCL DEF 200 / 203 / 205), hole Ø = ' + D + ' exactly; the 118° point goes ' + (0.3 * D).toFixed(1) + ' deeper than the programmed depth. S' + S + ' Q206=' + Math.round(S * D * 0.012) + '.';
@@ -15179,19 +15231,30 @@ var TNC_AI = (function () {
   function system(tools, opts) {
     opts = opts || {};
     return [
-'You write HEIDENHAIN TNC 426 / TNC 430 conversational (Klartext) programs, NC software 280 476, for a browser simulator.',
-'Its interpreter accepts the syntax below; anything else is rejected with an error. Units are mm.',
+'You write HEIDENHAIN TNC 426 / TNC 430 conversational (Klartext) programs, NC software 280 476, for a simulator that machines',
+'them on a virtual blank and checks every block. Its interpreter accepts ONLY the syntax below; anything else is rejected. Units: mm.',
 '',
 'OUTPUT FORMAT',
 '- Reply with ONLY the program inside a single ```klartext fenced block. Nothing before or after the fence.',
-'- No block numbers. One block per line.',
+'- Always the COMPLETE program: never "...", never "rest unchanged", never two programs.',
+'- No block numbers. One block per line. Upper case. A comment starts with ; and runs to the end of the line.',
 '- Line 1: BEGIN PGM <NAME> MM. Last line: END PGM <NAME> MM (same name). NAME: A-Z, 0-9, _ only, max 16 characters.',
-'- Lines 2-3: the BLK FORM. Then ; comment lines describing the part: blank size, features, tools with S and F.',
+'- Lines 2-3: the BLK FORM. Then ; comment lines: blank size, the plan (features, order, tools with S and F).',
+'',
+'HOW MILLING WORKS — READ THIS FIRST',
+'- Milling only REMOVES material. The finished part is what is LEFT of the blank. Nothing is ever added.',
+'- So the blank must contain the whole finished part, and every cutting move is inside the blank, at or below its top face Z+0.',
+'  A move above Z+0 or outside the blank outline cuts air. Never "draw" the shape in the air: that is 3-D printing, not milling.',
+'- A raised shape (boss, figure, sculpture) = cut away everything AROUND it, level by level from the top down.',
+'  A recessed shape (pocket, engraving, cavity) = cut away everything INSIDE it.',
+'- Every 3-D shape is a stack of 2-D cross-sections: at each Z level, mill away the material outside the section (raised) or inside it (recessed).',
 '',
 'BLANK',
 'BLK FORM 0.1 Z X+0 Y+0 Z-20   (MIN corner; Z after 0.1 = tool axis)',
 'BLK FORM 0.2 X+100 Y+80 Z+0   (MAX corner)',
-'Datum at front-left corner, top face Z+0, blank bottom negative. The tool starts at X0 Y0 Z0.',
+'Datum at the front-left corner, top face Z+0, blank bottom negative. The tool starts at X0 Y0 Z0.',
+'Any size up to 500 mm in every direction: a 500 mm cube is BLK FORM 0.1 Z X+0 Y+0 Z-500 / BLK FORM 0.2 X+500 Y+500 Z+0.',
+'The vice grips the blank\'s Y- and Y+ faces from below the bottom up to 6 mm above it: leave a base at least 10 mm thick (never cut lower than blank bottom + 10, except drilled holes).',
 '',
 'PATH BLOCKS',
 'TOOL CALL 5 Z S3000            tool, axis Z, speed. Does NOT start the spindle.',
@@ -15201,7 +15264,7 @@ var TNC_AI = (function () {
 'CT X+40 Y+5                    arc tangent to the previous element.',
 'RND R5                         rounding arc between the element before and after it (between two path blocks).',
 'CHF 5                          chamfer of side length 5 between two straight lines.',
-'LP PR+30 PA+45                 polar line about CC (PR radius, PA angle deg; IPR IPA incremental).',
+'LP PR+30 PA+45                 polar line about CC (PR radius, PA angle deg; IPR IPA incremental). PR+Q2 works too.',
 'CP IPA+360 IZ-2 DR+            polar arc about CC by an angle; with IZ it is a helix. CTP PR.. PA.. tangent polar arc.',
 '',
 'RADIUS COMPENSATION (use it for contours; the simulator offsets exactly like the TNC)',
@@ -15209,20 +15272,21 @@ var TNC_AI = (function () {
 'Climb milling an outside contour: RL going clockwise around the part. Inside a pocket: RL going counter-clockwise.',
 'Outside corners get an arc automatically; inside corners must be larger than the tool radius or TOOL RADIUS TOO LARGE.',
 'Never switch RL straight to RR: an R0 block must come between. Cancel with an R0 line or a DEP block.',
-'Approach and depart tangentially (preferred):',
+'For roughing loops and 3-D surfaces program the tool CENTRE with R0 and add the tool radius yourself (simplest, never fails).',
+'Approach and depart tangentially (preferred for finished contours):',
 '  L X-20 Y-20 R0 FMAX / L Z-5 R0 F200    start point PS outside the contour, at depth',
 '  APPR LCT X+0 Y+0 R5 RL F500             first contour point, arc radius 5, compensation',
 '  L ... contour ...',
 '  DEP LCT X-20 Y-20 R5 F1000               depart to PN with an arc, compensation cancelled',
 '  Also: APPR LT X Y LEN10 RL, APPR LN X Y LEN10 RL, APPR CT X Y CCA90 R5 RL, DEP LT LEN10, DEP LN LEN10, DEP CT CCA90 R5.',
 '',
-'PROGRAM FLOW',
+'PROGRAM FLOW AND Q PARAMETERS (use loops: a short program with loops beats thousands of lines)',
 'LBL 1 / LBL 0 / CALL LBL 1 / CALL LBL 1 REP 3/3 (section repeat: REP r runs it r+1 times in total).',
 'Subprogram: CALL LBL n (no REP) runs LBL n ... LBL 0; place subprograms after M30.',
-'FN 0: Q1 = -2      FN 1: Q2 = +Q2 + +Q1      (FN 2 minus, FN 3 times, FN 4 divide). Q in coordinates/feeds: L Z+Q2 FQ3.',
-'Depth passes: FN 0: Q1 = -2, FN 0: Q2 = +0, loop: FN 1: Q2 = +Q2 + +Q1 then L Z+Q2 (absolute).',
-'M30 alone on a line ends the program. ; starts a comment.',
-'Formulas: Q10 = (Q1 + Q2) / 2, SIN COS SQRT SQ ABS PI. Jumps: FN 12: IF +Q1 LT +Q2 GOTO LBL 1. Never use: FK, INCH, block numbers.',
+'FN 0: Q1 = -2      FN 1: Q2 = +Q2 + +Q1      (FN 2 minus, FN 3 times, FN 4 divide). Q in coordinates and feeds: L X+Q10 Z+Q22 FQ3.',
+'Formulas: Q20 = SQ (Q10 - 50) + SQ (Q11 - 50)   Q22 = SQRT (Q21 - Q20) - Q2   Q5 = SIN (Q4) * 20   (SIN COS TAN SQRT SQ ABS PI; angles in deg).',
+'Jumps: FN 9: IF +Q1 EQU +Q2 GOTO LBL 3, FN 10 NE, FN 11 GT, FN 12 LT. A jump back to a LBL above makes a loop.',
+'M30 alone on a line ends the program. Never use: FK, INCH, block numbers.',
 '',
 'M-FUNCTIONS',
 'M3/M4 spindle on, M8 coolant, M13/M14 spindle+coolant: at block START. M5, M9, M2/M30: at block END.',
@@ -15245,52 +15309,155 @@ var TNC_AI = (function () {
 'CYCL DEF 203 UNIVERSAL DRILLING: as 200 plus Q212 Q213 Q205 Q211 Q208 (0 = plunging feed) Q256.',
 'Pocket, dotted form, called at the pocket centre at Z = surface + set-up:',
 'CYCL DEF 4.0 POCKET MILLING / 4.1 SET UP 2 / 4.2 DEPTH -10 / 4.3 PECKG 3 F100 / 4.4 X60 / 4.5 Y40 / 4.6 F600 DR+ RADIUS 0',
+'NOT AVAILABLE (rejected): FK, SL contour cycles 14 20-25, cycles 251 and up, PLANE, M128, M91/M92, TOOL DEF, INCH.',
 '',
-'TOOL TABLE — these tools and nothing else. Read the limits: a feature no tool can make must be changed, not faked.',
+'TOOL TABLE — these tools and nothing else. Reach = how deep below the blank top the tool may cut before its holder hits the part.',
 toolSheet(tools, opts),
-'Cones (spot, chamfer) cut a 45 degree flank. Probes never cut.',
+'Use the big cutters to remove the bulk, the small ones for detail: thin grooves, letters, textures and fine features ("painting" with',
+'ENDMILL_1/2 or BALL_2/4 at 0.2 to 1 mm deep). A shape deeper than a tool\'s reach needs a longer tool (the _LONG / _XLONG ones).',
 '',
-'NOT AVAILABLE in this control / simulator (rejected or wrong): FK free contour programming, cycles 3 5 12 13 14 20-25 (SL contour cycles) 26 27 28,',
-'cycles 251+ (iTNC 530 only), PLANE, M128, M91/M92 moves, TOOL DEF inside the program for a tool not in the table, INCH programs.',
+'HOW TO BUILD A 3-D PART OR SCULPTURE',
+'1. Choose the blank so the part fits inside with 5 to 10 mm to spare; top face Z+0. Plan in comments: which shapes, at which X Y Z.',
+'2. ROUGH with the biggest cutter that fits: Z levels (waterline), step-down <= the cutter radius, step-over <= 0.6 x D.',
+'   At each level clear everything outside the cross-section (raised shapes) or inside it (cavities); the tool centre stays one',
+'   tool radius (plus 0.5 stock) away from the finished surface. Rings around a round shape, offset rectangles around a square one.',
+'3. FINISH with a ball mill: a raster (rows along X, step-over 0.5 to 2 mm in Y) with Z from a formula, or fine waterline levels',
+'   (step-down 0.5 to 1 mm) following the cross-section. Ball tip Z on a surface of height h: offset the ball CENTRE by r along the normal.',
+'4. DETAIL with the small tools: grooves, eyes, lines, letters, patterns, chamfers.',
+'5. Spheres, domes, cones, cylinders, fins, cubes and their combinations make most things; write one ; comment per feature.',
+'When the request is artistic, interpret it boldly but keep it machinable: smooth forms, nothing thinner than the cutter, no undercuts',
+'(the tool only comes from above: every point of the part must be visible from +Z).',
 '',
-'SAFETY RULES THE SIMULATOR ENFORCES (a violation is reported as a crash)',
+'TEMPLATE A — waterline roughing around a raised round shape (checked: no errors). Rings of tool-centre radius Q2 at level Q1:',
+'TOOL CALL 15 Z S3000',
+'L Z+50 R0 FMAX M3',
+'CC X+60 Y+60                 ; centre of a D40 boss, 40 high',
+'FN 0: Q1 = +0                ; level',
+'LBL 1',
+'FN 2: Q1 = +Q1 - +4          ; step-down 4',
+'FN 0: Q2 = +28               ; first ring: boss radius 20 + tool radius 8',
+'LBL 2',
+'LP PR+Q2 PA+0 R0 FMAX',
+'L Z+2 R0 FMAX',
+'L Z+Q1 R0 F200',
+'CP IPA+360 DR- R0 F1200',
+'L Z+2 R0 FMAX',
+'FN 1: Q2 = +Q2 + +9          ; step-over 9 (0.6 x D16)',
+'FN 12: IF +Q2 LT +95 GOTO LBL 2    ; until the rings clear the blank corners',
+'FN 12: IF +Q1 GT -40 GOTO LBL 1',
+'L Z+50 R0 FMAX M5',
+'A cone or a dome = the same loop with the boss radius depending on the level (e.g. Q3 = SQRT (SQ 40 - SQ Q1) for a sphere R40).',
+'',
+'TEMPLATE B — ball-mill raster finishing of a dome R40 centred X50 Y50, apex Z+0 (checked: no errors):',
+'TOOL CALL 22 Z S3000          ; BALL_6, r = 3',
+'L Z+50 R0 FMAX M3',
+'FN 0: Q1 = +40                ; dome radius R',
+'FN 0: Q2 = +3                 ; ball radius r',
+'Q21 = SQ (Q1 + Q2)',
+'FN 0: Q11 = +0                ; row Y',
+'LBL 1',
+'FN 0: Q10 = +0                ; X along the row',
+'L X+Q10 Y+Q11 R0 FMAX',
+'L Z+2 R0 FMAX',
+'LBL 2',
+'Q20 = SQ (Q10 - 50) + SQ (Q11 - 50)',
+'FN 0: Q22 = -40               ; floor outside the dome',
+'FN 12: IF +Q20 GT +Q21 GOTO LBL 3',
+'Q22 = SQRT (Q21 - Q20) - Q2 - Q1   ; ball centre on a sphere R+r, tip = centre - r',
+'FN 12: IF +Q22 GT -40 GOTO LBL 3',
+'FN 0: Q22 = -40',
+'LBL 3',
+'L X+Q10 Z+Q22 R0 F600',
+'FN 1: Q10 = +Q10 + +1',
+'FN 12: IF +Q10 LT +100.5 GOTO LBL 2',
+'L Z+2 R0 FMAX',
+'FN 1: Q11 = +Q11 + +2',
+'FN 12: IF +Q11 LT +100.5 GOTO LBL 1',
+'L Z+50 R0 FMAX M5',
+'Any surface Z = f(X, Y) works the same way: compute Q22 from Q10 and Q11, keep it >= the floor.',
+'',
+'SAFETY RULES THE SIMULATOR ENFORCES (a violation is reported as a crash or an error)',
 '1. No FMAX into uncut stock: FMAX over the part only at Z+2 or higher; feed into the cut; FMAX back to Z+2 before any XY rapid.',
 '2. No cutting move without M3/M4 since the last TOOL CALL.',
-'3. Going below the blank is allowed (through holes, taps); the holder must never reach the part: stick-out = tool length L minus the holder A dimension.',
-'4. Chip load for end mills (3 flutes) and face mills (5): F / (S x flutes) <= 0.012 x D + 0.005.',
-'   Each tool line in the table gives a safe S and F for it.',
-'Plunge at F100-F200. Keep every cut within the blank.',
+'3. The holder must never reach the part: never cut deeper below the blank top than the tool\'s reach.',
+'4. Chip load: keep F at or under the F given for each tool at its S (higher S allows proportionally higher F).',
+'5. Stay off the vice (see BLANK). Going below the blank bottom is allowed only for drilled through holes.',
+'6. The program must remove material (a program that only cuts air is rejected).',
+'Plunge straight down only at the plunge F; deeper than the tool radius per plunge only into already cleared space or with a ramp / helix.',
 '',
 'ERRORS',
-'If you get an error report from the simulator (each with a block number; BEGIN PGM is block 0; a CYCL DEF with its Q lines is one block),',
-'find the cause and return the COMPLETE corrected program, same format, nothing outside the fence.'
+'If you get an error report from the simulator (each item quotes the block; BEGIN PGM is block 0; a CYCL DEF with its Q lines is one block),',
+'fix the cause of EVERY item, keep everything that already works, and return the COMPLETE corrected program, same format, nothing outside the fence.'
     ].join('\n') + (opts.plan ? '\n\nACCURACY\nYou work in two steps: first a part spec (the finished geometry), then the program. The simulator machines the program on a height field, measures the result against the spec in mm, and sends you the misses and gouges by position. Program the spec exactly: clear the WHOLE pocket area (step-over ≤ 0.6 × cutter Ø, finish the walls with radius compensation), reach every floor, keep the walls where the spec puts them.\n\n' + SPEC_FORMAT : '');
   }
   var FALLBACK_SYSTEM = system([]);
 
-  /* generate({key, model, prompt, system, tools, verify, measure, plan, rounds, goal, onStep, signal, reasoning, maxTokens, timeoutMs})
+  var HINTS = [
+    [/RAPID TRAVERSE INTO MATERIAL/, 'FMAX only at Z+2 or higher over the part (or beside it); go down and cut with a feed F.'],
+    [/SPINDLE STOPPED/, 'Every TOOL CALL stops the spindle: put M3 on the first move after it.'],
+    [/HOLDER/, 'Deeper than this tool reaches: use a longer tool from the table (see reach) or cut less deep.'],
+    [/VICE/, 'The vice holds the Y- and Y+ faces up to 6 mm above the blank bottom: stay higher, leave a base.'],
+    [/RADIUS TOO LARGE|TOOL RADIUS/, 'An inside corner or arc is smaller than the tool radius: use a smaller tool, a bigger radius, or R0 with your own offset.'],
+    [/REMOVES NO MATERIAL|CUTS AIR|REMOVES MATERIAL/, 'Milling removes material: the cuts belong inside the blank, below Z+0. Rebuild the shape by cutting away what is around it.'],
+    [/CHIP LOAD/, 'Lower F to the suggested value (or raise S).'],
+    [/LIMIT SWITCH/, 'A rotary axis is out of its range (see THIS MACHINE).'],
+    [/LABEL|LBL/, 'Every CALL LBL / GOTO LBL needs its LBL; subprograms go after M30 and end with LBL 0.'],
+    [/FORMAT|INCORRECT|UNKNOWN|NOT ALLOWED|SYNTAX|INVALID|ENTRY/, 'Not valid for this control: rewrite this line with the syntax from the system prompt only.'],
+    [/NO PROGRAM/, 'Reply with the complete program in one ```klartext fence.']
+  ];
+  function hint(msg) { for (var i = 0; i < HINTS.length; i++) if (HINTS[i][0].test(msg)) return HINTS[i][1]; return null; }
+  function listing(title, items, max) {
+    if (!items || !items.length) return '';
+    var seen = {}, out = [], n = 0;
+    items.forEach(function (m) { if (n >= max) return; out.push((++n) + '. ' + m); var h = hint(m); if (h && !seen[h]) { seen[h] = 1; out.push('   -> ' + h); } });
+    return title + ' (' + items.length + ')\n' + out.join('\n') + (items.length > max ? '\n   ... and ' + (items.length - max) + ' more of the same kinds' : '') + '\n\n';
+  }
+  function summary(rep) { return rep.ok ? 'passed' : (rep.errs.length + ' error(s), ' + rep.crashes.length + ' crash(es)' + (rep.errs[0] || rep.crashes[0] ? ': ' + String(rep.errs[0] || rep.crashes[0]).slice(0, 90) : '')); }
+  function feedback(base, last, hist, round, rounds) {
+    var rep = base.report;
+    return 'ROUND ' + (round + 1) + ' of ' + rounds + '. The simulator machined your program and found:\n\n' +
+      listing('ERRORS — the program is rejected until these are gone', rep.errs, 15) +
+      listing('CRASHES', rep.crashes, 15) +
+      listing('WARNINGS — fix if easy', rep.warns, 6) +
+      (last && last !== base ? 'Your newest version (round ' + (last.round + 1) + ') was worse (' + summary(last.report) + '); the program above is your best one so far (round ' + (base.round + 1) + '): continue from it.\n\n' : '') +
+      (hist.length > 1 ? 'Earlier rounds: ' + hist.map(function (h) { return 'round ' + (h.round + 1) + ' ' + h.sum; }).join(' | ') + '. Do not bring back problems you fixed.\n\n' : '') +
+      (base.measure ? base.measure.text + '\n\nChange the program so the cut matches the spec: cut what is NOT CUT, stop cutting where it SHOULD NOT. ' +
+        'If the spec itself does not describe what was asked, send a corrected ```partspec before the program.\n\n' : '') +
+      'Fix the cause of every item, keep what already works, and return the COMPLETE corrected program in one ```klartext fence.';
+  }
+  /* ---------- the loop: plan, write, check, measure, refine ----------
+     generate({key, model, prompt, system, tools, verify, measure, plan, rounds, goal, confirm, onStep, signal, reasoning, maxTokens, timeoutMs})
      verify(src) -> {ok, errs, crashes, warns, text}: the simulator's checks.
-     plan + measure(spec, src) -> TNC_PART.compare report: the model first writes a part spec, the program is measured against it,
-     and up to `rounds` refinement rounds send errors / misses / gouges back. The best program wins (checked clean first, then match %).
-     onStep phases: 'request' {attempt, stage}, 'progress', 'continued' {n}, 'planned' {spec, sheet, notes}, 'checked' {report, src},
-     'measured' {measure, src}. */
+     plan + measure(spec, src) -> TNC_PART.compare report: the model first writes a part spec and every program is measured against it.
+     rounds = refinements after the first program (rounds + 1 answers in all). Each refinement sends ONE program back, the best so far
+     (checked clean first, then match %, then fewest problems), with its report, hints and a one-line history of the earlier rounds:
+     the context stays small and a worse attempt cannot derail it.
+     confirm({round, rounds, report}) -> Promise<bool>: asked after each round that is not good enough; false stops with the best
+     program so far. No confirm = keep going (auto).
+     onStep phases: 'request' {attempt, round, rounds, stage}, 'progress', 'continued' {n}, 'planned' {spec, sheet, notes},
+     'checked' {attempt, round, rounds, report, src}, 'measured' {measure, src}, 'failed' {error}.
+     Resolves {src, report, measure, spec, cost, attempts, round (of the returned program), stopped}. */
+  function rank(c) { var r = c.report;
+    return (r.ok ? 1000 : 0) + (c.measure && c.measure.score != null ? c.measure.score : 0) - r.errs.length * 10 - r.crashes.length * 4 - (r.warns ? r.warns.length : 0) * 0.1; }
+
   function generate(o) {
     var model = o.model || DEFAULT_MODEL, onStep = o.onStep || function () {};
-    var plan = !!(o.plan && o.measure && PART), rounds = o.rounds != null ? o.rounds : o.maxRepairs != null ? o.maxRepairs : 1;
-    var goal = o.goal || 95, cost = 0, attempt = 0, best = null, spec = null;
+    var plan = !!(o.plan && o.measure && PART), rounds = o.rounds != null ? o.rounds : o.maxRepairs != null ? o.maxRepairs : 1, total = rounds + 1;
+    var goal = o.goal || 95, cost = 0, attempt = 0, best = null, spec = null, hist = [];
     var sys = { role: 'system', content: o.system || system(o.tools, { plan: plan }) };
     var ask = { role: 'user', content: 'Write the program for this part:\n\n' + o.prompt };
     function call(messages, stage) {
       var req = { key: o.key, model: model, messages: messages, signal: o.signal, timeoutMs: o.timeoutMs, reasoning: o.reasoning, maxTokens: o.maxTokens, retryDelayMs: o.retryDelayMs };
-      onStep({ phase: 'request', attempt: attempt, stage: stage, body: JSON.parse(JSON.stringify(requestBody(req))) });
+      onStep({ phase: 'request', attempt: attempt, round: attempt + 1, rounds: total, stage: stage, body: JSON.parse(JSON.stringify(requestBody(req))) });
       return chatFull(Object.assign(req, {
-        onProgress: function (p) { onStep({ phase: 'progress', attempt: attempt, stage: p.stage, secs: p.secs, chars: p.chars, reasoningChars: p.reasoningChars, text: p.text, reasoningTail: p.reasoningTail }); }
+        onProgress: function (p) { onStep({ phase: 'progress', attempt: attempt, round: attempt + 1, rounds: total, stage: p.stage, secs: p.secs, chars: p.chars, reasoningChars: p.reasoningChars, text: p.text, reasoningTail: p.reasoningTail }); }
       }), function (c) { onStep({ phase: 'continued', attempt: attempt, n: c.n, retry: !!c.retry, maxTokens: c.maxTokens, network: !!c.network, error: c.error }); })
         .then(function (r) { cost += r.cost; return r; });
     }
-    function rank(c) { return (c.report.ok ? 1000 : 0) + (c.measure && c.measure.score != null ? c.measure.score : 0) - c.report.errs.length - c.report.crashes.length; }
-    function done() { if (!best) { var e = new Error('THE MODEL DID NOT RETURN A PROGRAM'); e.status = 0; throw e; }
-      return { src: best.src, report: best.report, measure: best.measure, spec: spec, cost: cost, attempts: attempt + 1 }; }
+    function done(stopped) {
+      if (!best) { var e = new Error('THE MODEL DID NOT RETURN A PROGRAM'); e.status = 0; throw e; }
+      return { src: best.src, report: best.report, measure: best.measure, spec: spec, cost: cost, attempts: attempt + 1, round: best.round + 1, stopped: !!stopped };
+    }
 
     /* step 1: the part spec (one retry when it does not parse) */
     function planStep(retry) {
@@ -15307,53 +15474,53 @@ toolSheet(tools, opts),
         return { answer: r.text, ex: ex };
       });
     }
-    /* step 2..n: write, check, measure, refine */
-    function writeMsgs(p, last, feedback) {
+    /* step 2..n: write, check, measure, refine. base = the program sent back (the best so far), or {raw} when there is none yet */
+    function writeMsgs(p, base, fb) {
       var m = [sys, ask];
       if (p) m.push({ role: 'assistant', content: '```partspec\n' + JSON.stringify(stripPaths(spec)) + '\n```' },
         { role: 'user', content: 'STEP 2 of 2: write the program for exactly this spec. Exact geometry:\n' + p.ex.sheet +
           (p.ex.notes.length ? '\n\nFEASIBILITY — fix these (send a corrected ```partspec first if the spec changes):\n- ' + p.ex.notes.join('\n- ') : '') +
           '\n\nReply with the program in one ```klartext fence' + (p.ex.notes.length ? ' (a corrected ```partspec before it if needed)' : '') + '.' });
-      if (last) m.push({ role: 'assistant', content: (last.specText ? last.specText + '\n' : '') + '```klartext\n' + last.src + '\n```' }, { role: 'user', content: feedback });
+      if (base) m.push({ role: 'assistant', content: base.src != null ? (base.specText ? base.specText + '\n' : '') + '```klartext\n' + base.src + '\n```' : String(base.raw || '').slice(0, 4000) },
+        { role: 'user', content: fb });
       return m;
     }
-    function write(p, last, feedback) {
-      return call(writeMsgs(p, last, feedback), last ? 'refine' : 'write').then(function (r) {
-        var src = extract(r.text), specText = null;
+    function write(p, base, fb) {
+      return call(writeMsgs(p, base, fb), base ? 'refine' : 'write').then(function (r) {
+        var src = extract(r.text), specText = null, report, meas = null, cand = null;
         if (plan && /```partspec/i.test(r.text)) {             // the model corrected its spec
           var pr = PART.parse(r.text);
           if (!pr.error) { var ex = PART.expand(pr.spec, o.tools); spec = ex.spec; p = { ex: ex }; specText = '```partspec\n' + JSON.stringify(stripPaths(spec)) + '\n```';
             onStep({ phase: 'planned', attempt: attempt, spec: spec, sheet: ex.sheet, notes: ex.notes, revised: true }); }
         }
-        if (!src) {
-          var rep0 = { ok: false, errs: ['NO PROGRAM IN THE ANSWER'], crashes: [], warns: [], text: 'NO PROGRAM IN THE ANSWER' };
-          onStep({ phase: 'checked', attempt: attempt, report: rep0 });
-          if (attempt >= rounds) return done();
-          attempt++;
-          return write(p, last || { src: '', specText: null }, 'Your answer contained no program. Reply with the complete program in one ```klartext fence.');
+        if (!src) report = { ok: false, errs: ['NO PROGRAM IN THE ANSWER'], crashes: [], warns: [], text: 'NO PROGRAM IN THE ANSWER' };
+        else {
+          try { report = o.verify ? o.verify(src) : { ok: true, errs: [], crashes: [], warns: [], text: '' }; }
+          catch (e) { report = { ok: false, errs: ['INTERNAL ERROR: ' + (e && e.message || e)], crashes: [], warns: [], text: 'INTERNAL ERROR' }; }
         }
-        var report = o.verify ? o.verify(src) : { ok: true, errs: [], crashes: [], warns: [], text: '' };
-        onStep({ phase: 'checked', attempt: attempt, report: report, src: src });
-        var meas = null;
-        if (plan && spec && report.errs.length === 0) {
+        onStep({ phase: 'checked', attempt: attempt, round: attempt + 1, rounds: total, report: report, src: src });
+        if (src && plan && spec && report.errs.length === 0) {
           try { meas = o.measure(spec, src); } catch (e) { meas = null; }
           if (meas) onStep({ phase: 'measured', attempt: attempt, measure: meas, src: src });
         }
-        var cand = { src: src, report: report, measure: meas, specText: specText };
-        if (!best || rank(cand) > rank(best)) best = cand;
+        if (src) {
+          cand = { src: src, report: report, measure: meas, specText: specText, round: attempt };
+          if (!best || rank(cand) >= rank(best)) best = cand;               // ties: the newer one
+        }
+        hist.push({ round: attempt, sum: summary(report) + (meas && meas.score != null ? ', ' + meas.score.toFixed(1) + ' % match' : '') });
         var good = report.ok && (!meas || meas.score == null || meas.score >= goal);
-        if (good || attempt >= rounds) return done();
-        attempt++;
-        var fb = (report.ok ? '' : 'The simulator reported:\n' + report.text + '\n\n') +
-          (meas ? meas.text + '\n\nChange the program so the cut matches the spec: cut what is NOT CUT, stop cutting where it SHOULD NOT. ' +
-            'If the spec itself does not describe what was asked, send a corrected ```partspec before the program.\n\n' : '') +
-          (report.warns && report.warns.length && report.ok ? 'Warnings:\n' + report.warns.join('\n') + '\n\n' : '') +
-          'Return the complete corrected program.';
-        /* a refinement that fails (timeout, network, provider error) keeps the best program so far; a cancel does not */
-        return write(p, cand, fb).catch(function (e) {
-          if (e && e.name === 'AbortError') throw e;
-          onStep({ phase: 'failed', attempt: attempt, error: String(e && e.message || e) });
-          return done();
+        if (good || attempt >= rounds) return done(false);
+        return Promise.resolve(o.confirm ? o.confirm({ round: attempt + 1, rounds: total, report: (best || { report: report }).report }) : true).then(function (go) {
+          if (!go) return done(true);
+          attempt++;
+          var next = best ? write(p, best, feedback(best, cand, hist, attempt, total))
+            : write(p, { raw: r.text }, 'ROUND ' + (attempt + 1) + ' of ' + total + '. Your answer contained no program. Reply with the complete program in one ```klartext fence, nothing else.');
+          /* a refinement that fails (timeout, network, provider error) keeps the best program so far; a cancel does not */
+          return next.catch(function (e) {
+            if ((e && e.name === 'AbortError') || !best) throw e;
+            onStep({ phase: 'failed', attempt: attempt, error: String(e && e.message || e) });
+            return done(false);
+          });
         });
       });
     }
@@ -15364,7 +15531,7 @@ toolSheet(tools, opts),
 
   return { DEFAULT_MODEL: DEFAULT_MODEL, RECOMMENDED: RECOMMENDED, FRONTIER_PROVIDERS: FRONTIER_PROVIDERS, FALLBACK_SYSTEM: FALLBACK_SYSTEM,
     listModels: listModels, providerName: providerName, _normalize: normalize, _frontier: frontier,
-    generate: generate, toolSheet: toolSheet, chatFull: chatFull, testKey: testKey, extract: extract, system: system,
+    generate: generate, testKey: testKey, extract: extract, normalizeSrc: normalizeSrc, system: system, toolSheet: toolSheet, cutCheck: cutCheck, chatFull: chatFull,
     _sseLine: sseLine, _sseFeed: sseFeed /* internal: exposed only so tests can drive the SSE parser without a network call */ };
 })();
 if (typeof module !== 'undefined') module.exports = TNC_AI;
@@ -17269,11 +17436,13 @@ function aiErr(e){
 function verifyProgram(src){
   const m=M(); let r,ex,ev=[];
   try{ r=m.run(src); ex=m.expand(r); ev=m.analyse(r,ex)||[]; }catch(e){ return {ok:false,text:'INTERNAL ERROR: '+e.message,errs:[e.message],crashes:[],warns:[]}; }
-  const nb=i=>r.blocks[i]&&r.blocks[i].n!=null?r.blocks[i].n:'?';
-  const errs=r.errors.map(e=>`BLOCK ${nb(e.block)}: ${e.msg}`);
-  const crashes=ev.filter(e=>e.sev==='crash').map(e=>`BLOCK ${nb(e.block)}: ${e.msg}`);
-  const warns=ev.filter(e=>e.sev==='warn').map(e=>`BLOCK ${nb(e.block)}: ${e.msg}`);
+  /* each item quotes its block: the AI writes no block numbers, so the text is how it finds the line */
+  const nb=i=>{ const b=r.blocks[i]; return b&&b.n!=null?`BLOCK ${b.n} \`${String(b.raw||'').trim().slice(0,80)}\``:'BLOCK ?'; };
+  const errs=r.errors.map(e=>`${nb(e.block)}: ${e.msg}`);
+  const crashes=ev.filter(e=>e.sev==='crash').map(e=>`${nb(e.block)}: ${e.msg}`);
+  const warns=ev.filter(e=>e.sev==='warn').map(e=>`${nb(e.block)}: ${e.msg}`);
   if(!r.moves.length) errs.push('THE PROGRAM MAKES NO MOVES');
+  else if(!r.errors.length&&AI&&AI.cutCheck){ const c=AI.cutCheck(r,ev); if(c&&c.err) errs.push(c.err); if(c&&c.warn) warns.push(c.warn); }
   return {ok:!errs.length&&!crashes.length,errs,crashes,warns,moves:r.moves.length,
     text:[...errs,...crashes,...warns].join('\n'), name:(/BEGIN\s+PGM\s+(\w+)/i.exec(src)||[])[1]};
 }
@@ -17290,13 +17459,17 @@ function aiLiveClose(){ const el=$('ailive'); if(el) el.hidden=true; if(!S.lesso
 function aiLiveRender(p){
   const L=S.aiLive, el=$('ailive'); if(!L||!el) return;
   const kc=n=>n<1000?n+' chars':(n/1000).toFixed(1)+'k chars';
-  const line=p?(p.stage==='thinking'?`<span class="ai-spin"></span> Thinking… ${Math.round(p.secs)} s · ${kc(p.reasoningChars||0)} of reasoning`
+  const line=L.ask?`<b>Round ${L.ask.round} of ${L.ask.rounds}</b> still has ${L.ask.n} problem${L.ask.n===1?'':'s'} (see the log). Send ${L.ask.n===1?'it':'them'} back to the model for round ${L.ask.round+1}, or stop and fix by hand?`
+    :p?(p.stage==='thinking'?`<span class="ai-spin"></span> Thinking… ${Math.round(p.secs)} s · ${kc(p.reasoningChars||0)} of reasoning`
     :`<span class="ai-spin"></span> Writing the program… ${Math.round(p.secs)} s · ${kc(p.chars||0)} · ${S.res&&S.res.blocks?S.res.blocks.length:0} blocks so far`):(L.done?'':'<span class="ai-spin"></span> Sending…');
   el.innerHTML=`<div class="coach-hd"><span class="k" style="color:#ff7ac8">AI</span><span class="t">${esc(getModel())} · ${esc(L.mode==='modify'?'changing '+L.prevPgm:'new program')}</span></div>
     <div class="coach-bd"><div class="ailine">${line}</div>${p&&p.stage==='thinking'&&p.reasoningTail?`<div class="aithink">${esc(p.reasoningTail.slice(-220))}</div>`:''}
     <div class="ailog">${L.log.map(x=>`<div>${x}</div>`).join('')}</div></div>
-    <div class="coach-ft"><button class="cbtn" id="ai-req">Request (${L.reqs.length})</button>${L.done?'<button class="cbtn pri" id="ai-close">Close</button>':'<button class="cbtn" id="ai-cancel">Cancel</button>'}</div>`;
+    <div class="coach-ft"><button class="cbtn" id="ai-req">Request (${L.reqs.length})</button>${L.ask?`<button class="cbtn pri" id="ai-more">Continue <small>ENTER</small></button><button class="cbtn" id="ai-stop">Stop — fix by hand <small>ESC</small></button><label class="fld chk" style="margin-left:auto"><input type="checkbox" id="ai-auto-live"> Auto: don't ask again</label>`
+      :L.done?'<button class="cbtn pri" id="ai-close">Close</button>':'<button class="cbtn" id="ai-cancel">Cancel</button>'}</div>`;
   $('ai-req').onclick=aiShowRequest;
+  if(L.ask){ $('ai-more').onclick=()=>L.ask.res(true); $('ai-stop').onclick=()=>L.ask.res(false);
+    $('ai-auto-live').onchange=e=>{ if(e.target.checked){ local.set('tnc426.aiauto','1'); L.ask.res(true); } }; }
   if($('ai-cancel')) $('ai-cancel').onclick=()=>{ if(aiAbort) aiAbort.abort(); };
   if($('ai-close')) $('ai-close').onclick=aiLiveClose;
   const lg=el.querySelector('.ailog'); if(lg) lg.scrollTop=lg.scrollHeight;
@@ -17329,7 +17502,7 @@ async function aiGenerate(){
   if(!key){ flog('<span class="bad">No key yet.</span> Open <b>AI setup</b> first — it takes five minutes.'); return; }
   if(prompt.length<8){ flog('<span class="bad">Describe the part in a sentence or two.</span>'); return; }
   const plan=!!window.TNC_PART&&S.aiMode!=='modify', mc=M().machine, hA=window.TNC_TOOLS3D&&TNC_TOOLS3D.holderStack?TNC_TOOLS3D.holderStack(3):100;
-  const sys=(AI.system?AI.system(mtools(),{plan,holderA:hA,sMax:mc&&mc.sMax}):AI.FALLBACK_SYSTEM)+(mc?`\n\nTHIS MACHINE (${M().label}): spindle max S${mc.sMax}, feed max F${mc.fMax}, rotary axes B ${mc.limits.B.join('..')} deg and A ${mc.limits.A.join('..')} deg (swivel head; B+ tilts the tip to X+, A+ to Y+).
+  const sys=(AI.system?AI.system(mtools(),{plan,holderA:hA,sMax:mc&&mc.sMax,fMax:mc&&mc.fMax}):AI.FALLBACK_SYSTEM)+(mc?`\n\nTHIS MACHINE (${M().label}): spindle max S${mc.sMax}, feed max F${mc.fMax}, rotary axes B ${mc.limits.B.join('..')} deg and A ${mc.limits.A.join('..')} deg (swivel head; B+ tilts the tip to X+, A+ to Y+).
 For tilted machining use CYCL DEF 19.0 WORKING PLANE / CYCL DEF 19.1 A+.. B+.. C+0 (it also positions the head); reset with 19.1 A+0 B+0 C+0. Never use M128.`:'');
   const modify=S.aiMode==='modify', before=S.text, beforePgm=S.pgm;
   const full=modify?'Here is the current program:\n```klartext\n'+S.text+'\n```\nChange it as follows: '+prompt+'\nKeep everything else as it is. Return the COMPLETE changed program.':prompt;
@@ -17338,11 +17511,11 @@ For tilted machining use CYCL DEF 19.0 WORKING PLANE / CYCL DEF 19.1 A+.. B+.. C
   aiLog(`<span class="dim">${esc(getModel())} · thinking ${esc(aiThink())} · max ${aiMaxTok()} tokens · ${plan?'plan + measure, ':''}${aiRounds()} refine round(s) · ${esc(M().label)}</span>`);
   let res=null;
   try{
-    res=await AI.generate({key,model:getModel(),prompt:full,system:sys,tools:mtools(),verify:verifyProgram,measure:measureProgram,plan,rounds:aiRounds(),signal:aiAbort.signal,
+    res=await AI.generate({key,model:getModel(),prompt:full,system:sys,tools:mtools(),verify:verifyProgram,measure:measureProgram,plan,rounds:aiRounds(),confirm:aiAsk,signal:aiAbort.signal,
       reasoning:aiThink()==='default'?undefined:aiThink(), maxTokens:aiMaxTok(),
       onStep:s=>{
         if(s.phase==='request'){ S.aiLive.reqs.push(s.body); aiLog(s.stage==='plan'?'<b>Plan</b> — the model describes the finished part first (see Request).'
-          :s.attempt?`<b>Round ${s.attempt+1}</b> — the checks${plan?' and the measured result':''} went back to the model (see Request).`:'<b>Program</b> — request sent (see Request).'); }
+          :s.attempt?`<b>Round ${s.round} of ${s.rounds}</b> — the best program so far, its checks${plan?' and the measured result':''} went back to the model (see Request).`:`<b>Round 1 of ${s.rounds}</b> — program request sent (see Request).`); }
         if(s.phase==='failed') aiLog(`<span class="bad">Refinement stopped (${esc(s.error)}) — keeping the best program so far.</span>`);
         if(s.phase==='continued') aiLog(s.network?`<span class="dim">Connection problem (${esc(s.error||'')}) — trying once more.</span>`:s.retry?`<span class="dim">Only thinking fit in the token limit — asked again with ${s.maxTokens} tokens.</span>`:`<span class="dim">The answer hit the token limit — asked for the rest (${s.n}).</span>`);
         if(s.phase==='planned') aiLog(s.error?`<span class="bad">No usable part spec (${esc(s.error)}) — writing without measuring.</span>`
@@ -17351,6 +17524,7 @@ For tilted machining use CYCL DEF 19.0 WORKING PLANE / CYCL DEF 19.1 A+.. B+.. C
           ` · ${(m.missing/1000).toFixed(2)} cm³ not cut · ${(m.extra/1000).toFixed(2)} cm³ cut that should stay.</span>`); }
         if(s.phase==='progress'){ S.aiLive.lastP=s; aiLiveRender(s); aiLiveProgram(aiPartial(s.text)); }
         if(s.phase==='checked'){ const r=s.report;
+          if(!s.src&&!r.ok){ aiLog('<span class="bad">Round '+s.round+': no program in the answer.</span>'); return; }
           aiLog(r.ok?`<span class="ok">Checked: ${r.moves} moves, no errors, no crashes${r.warns.length?', '+r.warns.length+' warning(s)':''}.</span>`
                   :`<span class="bad">Checked: ${r.errs.length} error(s), ${r.crashes.length} crash(es):</span><pre style="margin:2px 0 0;white-space:pre-wrap">${esc(r.text)}</pre>`); } }});
   }catch(e){ aiLog('<span class="bad">'+esc(aiErr(e))+'</span>'); }
@@ -17359,6 +17533,7 @@ For tilted machining use CYCL DEF 19.0 WORKING PLANE / CYCL DEF 19.1 A+.. B+.. C
     let nm;
     if(modify){ nm=beforePgm; S.pgm=beforePgm; S.text=before; raw.value=before; if(S.mode!=='edit') setMode('edit'); edit(res.src,0,'AI CHANGED '+nm+' — CTRL+Z UNDOES IT'); }
     else nm=addPgm((res.report.name||'AI_PART'),res.src,{open:true});
+    if(!res.report.ok) aiLog(`<span class="dim">${res.stopped?'Stopped':'Out of rounds'} — loaded the best version (round ${res.round}); its problems are under Checks: fix them by hand, or run AI → Change on it.</span>`);
     download(nm,new Blob([listing(res.src)],{type:'text/plain'}),'AI-GEN');
     aiLog(`<span class="${res.report.ok?'ok':'bad'}">${res.report.ok?(modify?'Changed':'Saved'):'Done — still has problems, see Checks'} ${modify?'':'as '}${esc(nm)} · also saved to TNC-SIMULATOR/AI-GEN.</span>${res.measure&&res.measure.score!=null?' Best match '+res.measure.score.toFixed(1)+' %.':''} Cost about $${(res.cost||0).toFixed(4)} · ${Math.round((Date.now()-S.aiLive.t0)/1000)} s.`);
     if(res.report.ok){ setMode('test'); reset(); if(S.speed===0) setSpeed(16,true); start(); }         // and it runs
@@ -17370,10 +17545,29 @@ For tilted machining use CYCL DEF 19.0 WORKING PLANE / CYCL DEF 19.1 A+.. B+.. C
 function aiThink(){ return local.get('tnc426.aithink')||'low'; }   // measured: low + plan/measure is as accurate and minutes faster than medium
 function aiMaxTok(){ return +(local.get('tnc426.aimaxtok')||32000); }
 /* refinement rounds after the first program: each one sends the checks and the measured misses / gouges back */
-function aiRounds(){ const v=local.get('tnc426.airounds'); return v==null||v===''?3:Math.max(0,Math.min(6,+v)); }
+function aiRounds(){ const v=local.get('tnc426.airounds'); return v==null||v===''?4:Math.max(0,Math.min(6,+v)); }
 /* the program's real cut against the model's part spec (TNC_PART) */
 function measureProgram(spec,src){ if(!window.TNC_PART) return null; const m=M(); let r;
   try{ r=m.run(src); if(r.errors.length) return null; return TNC_PART.compare(spec,r,m.expand(r)); }catch(e){ return null; } }
+/* between rounds the user says continue or stop, unless auto is on */
+function aiAuto(){ return local.get('tnc426.aiauto')==='1'; }
+function aiAsk(q){
+  if(aiAuto()) return true;
+  const L=S.aiLive; if(!L) return false;
+  return new Promise(done=>{
+    const n=q.report.errs.length+q.report.crashes.length;
+    L.ask={round:q.round,rounds:q.rounds,n,res:v=>{ if(L.ask){ L.ask=null; aiLiveRender(); done(v); } }};
+    if(aiAbort) aiAbort.signal.addEventListener('abort',()=>{ if(L.ask) L.ask.res(false); },{once:true});
+    aiLiveRender();
+  });
+}
+/* the answer cap is the user's call: any whole number. The model's own output limit (OpenRouter's catalogue) is shown
+   as the recommended ceiling, never enforced: past it the provider may refuse the request or cut the answer short */
+function aiTokRec(){ const m=MP.cat&&MP.cat.models.find(x=>x.id===getModel()); return m?m.maxOut||m.context||null:null; }
+function aiTokHint(){ const h=$('ai-tokhint'); if(!h) return; const r=aiTokRec(), v=aiMaxTok();
+  h.textContent=!r?'No known limit for this model — any number goes.'
+    :`Recommended up to ${r.toLocaleString('en')} for this model${v>r?' — yours is above it: the provider may refuse or cut the answer short':''}.`;
+  h.style.color=r&&v>r?'#ffb347':''; }
 
 /* ---------- NEW PROGRAM ---------- */
 function openNew(which){
@@ -17461,7 +17655,7 @@ function mpPick(root,id,close){
   if(close) mpOpen(root,false); else if(!root.querySelector('.mp-pal').hidden) mpTable(root);
 }
 function mpUseId(root){ const f=root.querySelector('.mp-id'), v=f.value.trim(); if(!v){ f.focus(); return; } mpPick(root,v,true); if(MP_ID.test(v)) f.value=''; }
-function mpTop(root){
+function mpTop(root){ aiTokHint();
   const cat=MP.cat, cur=getModel(), L=cat?cat.models:[], find=id=>L.find(m=>m.id===id);
   const recId=AI?AI.DEFAULT_MODEL:'deepseek/deepseek-v4.1-flash', rec=find(recId)||(AI&&AI.RECOMMENDED)||{id:recId,name:recId};
   const fr=cat?cat.frontier.filter(m=>m.id!==recId):[], curM=find(cur), known=cur===recId||fr.some(m=>m.id===cur);
@@ -17493,14 +17687,16 @@ function aiModelUI(){
   const mp=document.createElement('div'); mp.id='ai-mp'; mp.style.marginTop='16px';
   const box=document.createElement('div'); box.className='fgrid'; box.style.marginTop='12px';
   box.innerHTML=`<label class="fld"><span>THINKING (REASONING MODELS)</span><select id="ai-think"><option value="off">Off — fastest, cheapest</option><option value="low">Low (recommended)</option><option value="medium">Medium — slower</option><option value="high">High — slow, can cost more</option></select></label>
-    <label class="fld"><span>MAX ANSWER TOKENS PER REQUEST (THINKING COUNTS)</span><input id="ai-maxtok" inputmode="numeric" value="32000"></label>
-    <label class="fld"><span>MEASURE &amp; REFINE ROUNDS</span><select id="ai-rounds"><option value="0">0 — first answer only</option><option value="1">1</option><option value="2">2</option><option value="3">3 (recommended)</option><option value="4">4</option><option value="6">6 — slow</option></select></label>`;
+    <label class="fld"><span>MAX ANSWER TOKENS PER REQUEST (THINKING COUNTS)</span><input id="ai-maxtok" inputmode="numeric" value="32000"><small id="ai-tokhint" style="opacity:.75"></small></label>
+    <label class="fld"><span>MEASURE &amp; REFINE ROUNDS</span><select id="ai-rounds"><option value="0">0 — first answer only</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4 (recommended)</option><option value="5">5</option><option value="6">6 — slow</option></select></label>
+    <label class="fld chk wide"><input type="checkbox" id="ai-auto"> Auto-repair: run every round without asking</label>`;
   const ta=$('ai-prompt').closest('.fld'); ta.parentNode.insertBefore(box,ta.nextSibling); ta.parentNode.insertBefore(mp,box);
   $('ai-think').value=aiThink(); $('ai-think').onchange=()=>{ local.set('tnc426.aithink',$('ai-think').value); };
   $('ai-rounds').value=String(aiRounds()); $('ai-rounds').onchange=()=>{ local.set('tnc426.airounds',$('ai-rounds').value); };
+  $('ai-auto').checked=aiAuto(); $('ai-auto').onchange=()=>{ local.set('tnc426.aiauto',$('ai-auto').checked?'1':'0'); };
   $('ai-maxtok').value=aiMaxTok(); $('ai-maxtok').addEventListener('keydown',e=>e.stopPropagation());
-  $('ai-maxtok').onchange=()=>{ const v=Math.round(+$('ai-maxtok').value); if(v>=1000&&v<=200000) local.set('tnc426.aimaxtok',v); else { say('MAX TOKENS 1000–200000'); $('ai-maxtok').value=aiMaxTok(); } };
-  mpMount(mp);
+  $('ai-maxtok').onchange=()=>{ const v=Math.round(+String($('ai-maxtok').value).replace(/[\s,_']/g,'')); if(v>=1) local.set('tnc426.aimaxtok',v); else say('MAX TOKENS: A WHOLE NUMBER'); $('ai-maxtok').value=aiMaxTok(); aiTokHint(); };
+  mpMount(mp); aiTokHint();
 }
 
 /* AI: 'new' writes a new program, 'modify' changes the program on screen (undoable) */
@@ -17909,6 +18105,7 @@ const VIEWS=['3D','TOP','FRONT','SIDE'];
 addEventListener('keydown',e=>{
   const k=e.key, mod=e.ctrlKey||e.metaKey;
   if(!$('boot').hidden){ e.preventDefault(); dismissBoot(); return; }
+  if(S.aiLive&&S.aiLive.ask&&!openModalEl){ if(k==='Enter'||k==='Escape'){ e.preventDefault(); S.aiLive.ask.res(k==='Enter'); } return; }
   if(S.aiLive&&!S.aiLive.done&&!openModalEl){ if(k==='Escape'&&aiAbort){ e.preventDefault(); aiAbort.abort(); } return; }
   if(openModalEl){ if(k==='Escape'){ e.preventDefault(); closeModal(); } return; }
   if(drawerOpen()){ if(k==='Escape'){ e.preventDefault(); closeDrawer(); } return; }

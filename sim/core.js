@@ -29,7 +29,22 @@ var TNC = (function () {
     { t: 8,  name: 'CHAMFER_45',    l: 58.900,  r: 5.000  },
     { t: 9,  name: 'ENDMILL_3',     l: 58.000,  r: 1.500  },
     { t: 11, name: 'PROBE_TS640',   l: 155.00,  r: 3.000  },
-    { t: 42, name: 'REAMER_H7',     l: 101.30,  r: 5.000  }
+    { t: 42, name: 'REAMER_H7',     l: 101.30,  r: 5.000  },
+    /* sculpting set: small cutters for detail, ball mills for 3-D surfaces, long-reach cutters for deep blanks.
+       L is the gauge length; reach below the holder nose = L - holder A (ISO 50: 100 mm). Not from the operator's table. */
+    { t: 10, name: 'ENDMILL_2',     l: 120.00,  r: 1.000  },
+    { t: 12, name: 'ENDMILL_1',     l: 110.00,  r: 0.500  },
+    { t: 13, name: 'ENDMILL_4',     l: 125.00,  r: 2.000  },
+    { t: 14, name: 'ENDMILL_8',     l: 140.00,  r: 4.000  },
+    { t: 15, name: 'ENDMILL_16',    l: 180.00,  r: 8.000  },
+    { t: 16, name: 'ENDMILL_25_LONG', l: 400.00, r: 12.50 },
+    { t: 17, name: 'ENDMILL_32_XLONG', l: 620.00, r: 16.00 },
+    { t: 20, name: 'BALL_2',        l: 120.00,  r: 1.000  },
+    { t: 21, name: 'BALL_4',        l: 130.00,  r: 2.000  },
+    { t: 22, name: 'BALL_6',        l: 150.00,  r: 3.000  },
+    { t: 23, name: 'BALL_10',       l: 200.00,  r: 5.000  },
+    { t: 24, name: 'BALL_16_LONG',  l: 400.00,  r: 8.000  },
+    { t: 25, name: 'BALL_20_XLONG', l: 620.00,  r: 10.00  }
   ];
 
   var IMPLEMENTED_CYCLES = { 1: 1, 2: 1, 4: 1, 17: 1, 18: 1, 200: 1, 201: 1, 202: 1, 203: 1, 204: 1, 205: 1, 206: 1, 207: 1, 208: 1, 209: 1, 210: 1, 211: 1, 212: 1, 213: 1, 214: 1, 215: 1, 230: 1, 231: 1, 262: 1, 263: 1, 264: 1, 265: 1, 267: 1 };

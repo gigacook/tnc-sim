@@ -16,7 +16,7 @@ var TNC_SIM = (function () {
   TOOLS.forEach(function (t) {
     if (/CHAMFER|SPOT/.test(t.name)) CONE[t.t] = true;
     if (/FACEMILL/.test(t.name)) FLUTES[t.t] = 5;
-    else if (/ENDMILL/.test(t.name)) FLUTES[t.t] = 3;
+    else if (/ENDMILL|BALL/.test(t.name)) FLUTES[t.t] = 3;
   });
   function isCone(t) { return !!CONE[t]; }
   var STOCK = (typeof TNC_STOCK !== 'undefined' && TNC_STOCK) ||
@@ -90,7 +90,7 @@ var TNC_SIM = (function () {
   };
 
   function analyse(res, ex, g) {
-    var st = res.stock, ev = [], seen = {};
+    var st = res.stock, ev = [], seen = {}, feedLen = 0, cutLen = 0;
     var hm = STOCK.field(st, g), jaws = STOCK.vice(st);
     function add(code, sev, s, idx, t, p, extra) {
       var key = code === 'CHIP_LOAD' ? code + ':' + s.tool + ':' + s.f
@@ -130,7 +130,8 @@ var TNC_SIM = (function () {
           if (STOCK.holderHits(hm, st, g, s, p, ax)) add('HOLDER', 'crash', s, idx, t, p, holderX(s));
           if (p.z < st.z0 - 0.01 && inside(p, s.toolR)) add('THROUGH_CUT', 'info', s, idx, t, p);   // a note, never a crash: through cuts are normal
         }
-        var cut = STOCK.stamp(hm, st, g, s, p, ax);
+        var cut = STOCK.stamp(hm, st, g, s, p, ax), w = (s.len || 0) / (n + 1);
+        feedLen += w; if (cut) cutLen += w;
         if (cut) {
           if (s.spindle === 0) add('SPINDLE_OFF', 'crash', s, idx, t, p);
           var z = FLUTES[s.tool];
@@ -147,6 +148,8 @@ var TNC_SIM = (function () {
     var sMax = res.machine && res.machine.sMax;                // MP 3515: the control limits S to the gear range maximum
     if (sMax) for (var k = 0; k < ex.segs.length; k++) { var sg = ex.segs[k];
       if (Math.abs(sg.spindle || 0) > sMax + 1e-9) add('SPINDLE_MAX', 'warn', sg, k, sg.t0, sg.a, ' — S' + Math.abs(sg.spindle) + ' > ' + sMax + ' RPM (MP 3515), THE CONTROL LIMITS IT'); }
+    /* feed path length that removed material vs all feed path (mm): lets a caller spot a program that mills air */
+    Object.defineProperty(ev, 'cut', { value: { feed: feedLen, cut: cutLen }, enumerable: false });
     return ev;
   }
 

@@ -796,6 +796,10 @@ var TNC_TOOLS3D = (function () {
     11: { cutter: buildProbe,                             holder: holderProbeBody },
     42: { cutter: buildReamer,                            holder: holderSK40Collet }
   };
+  /* the sculpting set in core.js (T10, T12-17 end mills, T20-25 ball mills): drawn as end mills */
+  [10, 12, 13, 14, 15, 16, 17, 20, 21, 22, 23, 24, 25].forEach(function (t) {
+    TABLE[t] = { cutter: function (tl, g) { return buildEndmill(tl, g, tl.r > 4 ? 4 : 2); }, holder: holderSK40Collet };
+  });
 
   function build(THREE_, tool) {
     if (typeof THREE_ !== 'undefined') { /* THREE global already used directly below */ }
