@@ -16,6 +16,25 @@ function segSummary(segs) {
   return { n: segs.length, len, time, h };
 }
 
+/* the height field after every cutting segment is stamped: as the live view does (eps 0, spindle on, tool axis per
+   point) and as part.js measures (default eps). Hashed bit for bit: the field is f32 in both engines. */
+function carve(S, st, ex, g) {
+  const out = {};
+  for (const [key, eps, live] of [['view', 0, true], ['part', undefined, false]]) {
+    const hm = S.field(st, g);
+    for (const s of ex.segs) {
+      if (s.kind !== 'feed' || s.probe || (live && !s.spindle)) continue;
+      const step = Math.max(0.3, Math.min(s.toolR * 0.45, live ? 2 : 1.5)), n = Math.max(1, Math.ceil(s.len / step));
+      for (let i = 0; i <= n; i++) { const u = i / n;
+        S.stamp(hm, st, g, s, { x: s.a.x + (s.b.x - s.a.x) * u, y: s.a.y + (s.b.y - s.a.y) * u, z: s.a.z + (s.b.z - s.a.z) * u }, S.axis(s, u), eps); }
+    }
+    const w = new Uint32Array(hm.buffer, hm.byteOffset, hm.length); let h = 17;
+    for (let k = 0; k < w.length; k++) h = (Math.imul(h, 31) + w[k]) | 0;
+    out[key] = h;
+  }
+  return out;
+}
+
 function snapshot(E, src) {
   const out = {};
   for (const [key, opts] of OPTS(E)) {
@@ -23,7 +42,7 @@ function snapshot(E, src) {
     const o = { blocks: r.blocks, moves: r.moves, errors: r.errors, stock: r.stock, stats: r.stats, exec: r.exec };
     if (!r.errors.length) {
       const ex = E.expand(r), g = E.grid(r.stock, ex.segs), ev = E.analyse(r, ex, g);
-      o.check = { segs: segSummary(ex.segs), total: ex.total, grid: g, events: ev.slice(), cut: ev.cut };
+      o.check = { segs: process.env.PARITY_FULL ? ex.segs : segSummary(ex.segs), total: ex.total, grid: g, events: ev.slice(), cut: ev.cut, carve: carve(E.STOCK, r.stock, ex, g) };
     }
     out[key] = o;
   }
@@ -75,6 +94,6 @@ function diff(a, b, path) {
 
 const jsEngine = () => {
   const T = require('../../sim/core.js'), SIM = require('../../sim/sim.js');
-  return { name: 'js', run: T.run, TOOLS: T.TOOLS, MACHINES: require('../../sim/machines.js'), expand: SIM.expand, grid: SIM.grid, analyse: SIM.analyse };
+  return { name: 'js', run: T.run, TOOLS: T.TOOLS, MACHINES: require('../../sim/machines.js'), expand: SIM.expand, grid: SIM.grid, analyse: SIM.analyse, STOCK: require('../../sim/stock.js') };
 };
 module.exports = { snapshot, canon, compact, diff, jsEngine, OPTS };

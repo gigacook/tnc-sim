@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/tnc-formats", "crates/tnc-engine", "crates/tnc-server"]
+members = ["crates/tnc-formats", "crates/tnc-core", "crates/tnc-engine", "crates/tnc-server"]
 
 [workspace.package]
 version = "0.1.0"
@@ -11,6 +11,7 @@ rust-version = "1.80"
 [workspace.dependencies]
 tnc-formats = { path = "crates/tnc-formats" }
 tnc-engine = { path = "crates/tnc-engine" }
+tnc-core = { path = "crates/tnc-core" }
 anyhow = "1"
 thiserror = "2"
 serde = { version = "1", features = ["derive"] }

@@ -1,0 +1,14 @@
+[package]
+name = "tnc-core"
+description = "The simulator's Klartext interpreter and checks: parse, compile, expand, analyse, the height-field stock"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+[dependencies]
+libm = "0.2"
+regex-lite = "0.1"
+serde_json.workspace = true
