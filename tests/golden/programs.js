@@ -8,7 +8,7 @@ const SOURCES = ['tests/manual.js', 'tests/part.js', 'tests/ai/loop.js', 'sim/pr
 
 /* JS string / template literal bodies that hold a whole program */
 function harvest(file) {
-  const txt = fs.readFileSync(path.join(ROOT, file), 'utf8'), out = [];
+  const txt = fs.readFileSync(path.join(ROOT, file), 'utf8').replace(/\r\n/g, '\n'), out = [];   // a Windows checkout has CRLF: the record must not depend on it
   const lit = /`((?:[^`\\]|\\.)*)`|'((?:[^'\\\n]|\\.)*)'|"((?:[^"\\\n]|\\.)*)"/g;
   let m;
   const unesc = (s) => s.replace(/\\(n|t|'|"|`|\\)/g, (_, c) => ({ n: '\n', t: '\t' })[c] || c);
@@ -34,7 +34,7 @@ function programs(opts) {
     harvest(f).forEach((src, i) => add(f + '#' + i, src));
   }
   // lessons and demo programs as the modules export them (some are built from arrays)
-  const walk = (o, p) => { if (typeof o === 'string') { if (/BEGIN PGM/.test(o) && /END PGM/.test(o)) add(p, o); }
+  const walk = (o, p) => { if (typeof o === 'string') { if (/BEGIN PGM/.test(o) && /END PGM/.test(o)) add(p, o.replace(/\r\n/g, '\n')); }
     else if (o && typeof o === 'object') for (const k of Object.keys(o)) walk(o[k], p + '.' + k); };
   walk(require(path.join(ROOT, 'sim/lessons.js')), 'lessons');
   walk(require(path.join(ROOT, 'sim/programs.js')), 'programs');
