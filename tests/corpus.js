@@ -3,7 +3,9 @@
    node tests/corpus.js [dir]   (default: search-heidenhain/clones — local research, gitignored) */
 const fs = require('fs'), T = require('../sim/core.js');
 const dir = process.argv[2] || __dirname + '/../search-heidenhain/clones';
-const files = require('child_process').execSync(`find "${dir}" -iname '*.h' -type f`).toString().trim().split('\n').filter(Boolean);
+if (!fs.existsSync(dir)) { console.log('corpus not found: ' + dir + ' (gitignored research, see README)'); process.exit(2); }
+const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => e.isDirectory() ? walk(d + '/' + e.name) : /\.h$/i.test(e.name) ? [d + '/' + e.name] : []);
+const files = walk(dir);   // node, not `find`: Windows has its own find.exe
 let clean = 0, crash = 0; const H = {};
 for (const f of files) {
   let r; try { r = T.run(fs.readFileSync(f, 'latin1'), { autoTools: !!process.env.AUTOTOOLS }); } catch (e) { crash++; const k = 'CRASH ' + e.message.slice(0, 60); H[k] = (H[k] || 0) + 1; continue; }

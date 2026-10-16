@@ -1187,7 +1187,8 @@ function aiLiveClose(){ const el=$('ailive'); if(el) el.hidden=true; if(!S.lesso
 function aiLiveRender(p){
   const L=S.aiLive, el=$('ailive'); if(!L||!el) return;
   const kc=n=>n<1000?n+' chars':(n/1000).toFixed(1)+'k chars';
-  const line=L.ask?`<b>Round ${L.ask.round} of ${L.ask.rounds}</b> still has ${L.ask.n} problem${L.ask.n===1?'':'s'} (see the log). Send ${L.ask.n===1?'it':'them'} back to the model for round ${L.ask.round+1}, or stop and fix by hand?`
+  const line=L.ask?(L.ask.n?`<b>Round ${L.ask.round} of ${L.ask.rounds}</b> still has ${L.ask.n} problem${L.ask.n===1?'':'s'} (see the log). Send ${L.ask.n===1?'it':'them'} back to the model for round ${L.ask.round+1}, or stop and fix by hand?`
+    :`<b>Round ${L.ask.round} of ${L.ask.rounds}</b> runs clean but matches the planned part only ${L.ask.score==null?'—':L.ask.score.toFixed(1)+' %'}. Send the measurement back for round ${L.ask.round+1}, or stop and keep it?`)
     :p?(p.stage==='thinking'?`<span class="ai-spin"></span> Thinking… ${Math.round(p.secs)} s · ${kc(p.reasoningChars||0)} of reasoning`
     :`<span class="ai-spin"></span> Writing the program… ${Math.round(p.secs)} s · ${kc(p.chars||0)} · ${S.res&&S.res.blocks?S.res.blocks.length:0} blocks so far`):(L.done?'':'<span class="ai-spin"></span> Sending…');
   el.innerHTML=`<div class="coach-hd"><span class="k" style="color:#ff7ac8">AI</span><span class="t">${esc(getModel())} · ${esc(L.mode==='modify'?'changing '+L.prevPgm:'new program')}</span></div>
@@ -1284,7 +1285,7 @@ function aiAsk(q){
   const L=S.aiLive; if(!L) return false;
   return new Promise(done=>{
     const n=q.report.errs.length+q.report.crashes.length;
-    L.ask={round:q.round,rounds:q.rounds,n,res:v=>{ if(L.ask){ L.ask=null; aiLiveRender(); done(v); } }};
+    L.ask={round:q.round,rounds:q.rounds,n,score:q.measure&&q.measure.score,res:v=>{ if(L.ask){ L.ask=null; aiLiveRender(); done(v); } }};
     if(aiAbort) aiAbort.signal.addEventListener('abort',()=>{ if(L.ask) L.ask.res(false); },{once:true});
     aiLiveRender();
   });

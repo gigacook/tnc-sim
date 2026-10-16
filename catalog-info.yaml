@@ -1,0 +1,13 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: tnc-sim
+  description: TNC simulator server and web UI
+  annotations:
+    gigacook/ports: "8426 http, 5426 vite-dev"
+    gigacook/bind: "127.0.0.1"
+    gigacook/exposure: local
+spec:
+  type: service
+  lifecycle: experimental
+  owner: gigacook

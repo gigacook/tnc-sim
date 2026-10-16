@@ -527,3 +527,19 @@ async fn local_mode_one_time_sign_in_link() {
     let r = t.call(Method::POST, "/api/v1/auth/signup", None, Some(json!({ "email": "x@y.test", "name": "X", "password": "12345678" }))).await;
     assert_eq!(r.status, StatusCode::FORBIDDEN);
 }
+
+#[tokio::test]
+async fn ai_proxy_without_a_cap_passes_the_users_max_tokens() {
+    let (base, seen) = fake_openrouter().await;
+    let t = setup_with(|c| {
+        c.openrouter_api_key = Some("test-server-secret".into());
+        c.openrouter_base = base;
+        c.ai_models = vec!["deepseek/deepseek-v4.1-flash".into()];
+        c.ai_monthly_budget_usd = 100.0;
+    })
+    .await;
+    let tok = t.signup("a@shop.test").await;
+    let r = t.post("/api/ai/v1/chat/completions", &tok, json!({ "model": "deepseek/deepseek-v4.1-flash", "messages": [], "max_tokens": 500000 })).await;
+    assert_eq!(r.status, StatusCode::OK);
+    assert_eq!(seen.lock().unwrap()[0].1["max_tokens"], 500000);
+}

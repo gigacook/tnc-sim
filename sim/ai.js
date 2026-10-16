@@ -540,7 +540,7 @@ toolSheet(tools, opts),
      rounds = refinements after the first program (rounds + 1 answers in all). Each refinement sends ONE program back, the best so far
      (checked clean first, then match %, then fewest problems), with its report, hints and a one-line history of the earlier rounds:
      the context stays small and a worse attempt cannot derail it.
-     confirm({round, rounds, report}) -> Promise<bool>: asked after each round that is not good enough; false stops with the best
+     confirm({round, rounds, report, measure}) -> Promise<bool>: asked after each round that is not good enough; false stops with the best
      program so far. No confirm = keep going (auto).
      onStep phases: 'request' {attempt, round, rounds, stage}, 'progress', 'continued' {n}, 'planned' {spec, sheet, notes},
      'checked' {attempt, round, rounds, report, src}, 'measured' {measure, src}, 'failed' {error}.
@@ -618,7 +618,7 @@ toolSheet(tools, opts),
         hist.push({ round: attempt, sum: summary(report) + (meas && meas.score != null ? ', ' + meas.score.toFixed(1) + ' % match' : '') });
         var good = report.ok && (!meas || meas.score == null || meas.score >= goal);
         if (good || attempt >= rounds) return done(false);
-        return Promise.resolve(o.confirm ? o.confirm({ round: attempt + 1, rounds: total, report: (best || { report: report }).report }) : true).then(function (go) {
+        return Promise.resolve(o.confirm ? o.confirm({ round: attempt + 1, rounds: total, report: (best || { report: report }).report, measure: best && best.measure }) : true).then(function (go) {
           if (!go) return done(true);
           attempt++;
           var next = best ? write(p, best, feedback(best, cand, hist, attempt, total))

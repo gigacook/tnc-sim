@@ -44,10 +44,10 @@ function skipped(name, why) { skip++; console.log('  SKIP  ' + name + '  (' + wh
 /* ---------- browsers ---------- */
 async function launch(type) {
   const tries = type === chromium
-    ? [{}, { executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' }]
+    ? [{}, { executablePath: process.env.PW_CHROMIUM || '' }, { executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' }]   // PW_CHROMIUM: an already-installed chrome when the pinned one is missing
     : [{}];
   for (const t of tries) {
-    if (t.executablePath && !existsSync(t.executablePath)) continue;
+    if ('executablePath' in t && !(t.executablePath && existsSync(t.executablePath))) continue;
     try { return await type.launch({ ...t, args: type === chromium ? ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] : [] }); }
     catch (e) { if (!/Executable doesn't exist|browserType.launch/.test(String(e))) throw e; }
   }
@@ -262,8 +262,8 @@ async function phoneFlows(browser, tag) {
   const prevOk = (await paneAfter(page, 'gfx')) === 'gfx';
   ok(prevOk, `${L}: swipe right goes to the previous workspace`, prevOk ? '' : JSON.stringify({ mid, pane: await page.evaluate(() => document.querySelector('.main').dataset.pane), touches: await page.evaluate(() => window.__t), scrollY: await page.evaluate(() => scrollY) }));
   const g = await box(page, '#gl');
-  await swipe(page, g.x + 300, g.y + g.height / 2, g.x + 40, g.y + g.height / 2);
-  ok(await page.evaluate(() => document.querySelector('.main').dataset.pane) === 'gfx', `${L}: a swipe on the 3-D view orbits, never switches`);
+  if (g) await swipe(page, g.x + 300, g.y + g.height / 2, g.x + 40, g.y + g.height / 2);
+  ok(g && await page.evaluate(() => document.querySelector('.main').dataset.pane) === 'gfx', `${L}: a swipe on the 3-D view orbits, never switches`, g ? '' : '3-D view not on screen');
   await page.click('#mt-pgm');
   mid = await swipeY();
   await swipe(page, 200, mid - 150, 210, mid + 150);
@@ -386,6 +386,50 @@ async function aiMocked(browser, tag) {
   await ctx.close();
 }
 
+/* the repair loop: a failing round asks Continue / Stop, Enter continues; the Auto checkbox and any max-tokens number stick */
+async function aiRepairMocked(browser, tag) {
+  const { ctx, page, errors } = await simPage(browser, { width: 390, height: 844, storage: { 'tnc426.orkey': 'test-key-not-real' } });
+  const L = `[${tag}] AI repair (mocked)`;
+  const prog = (cut) => ['BEGIN PGM MOCK MM', 'BLK FORM 0.1 Z X+0 Y+0 Z-20', 'BLK FORM 0.2 X+100 Y+80 Z+0', 'TOOL CALL 4 Z S3000',
+    'L Z+50 R0 FMAX M3', 'L X+10 Y+10 R0 FMAX', 'L Z+2 R0 FMAX', cut, 'L X+90 R0 F500', 'L Z+50 R0 FMAX M5', 'M30', 'END PGM MOCK MM'].join('\n');
+  const SPEC = { blank: { x: [0, 100], y: [0, 80], z: [-20, 0] }, features: [{ id: 'S1', type: 'slot', from: [10, 10], to: [90, 10], w: 6, z: -1 }] };
+  const progs = [prog('L Z-1 R0 FMAX'), prog('L Z-1 R0 F150')];          // round 1 rapids into the blank, round 2 is clean
+  let calls = 0;
+  await page.route('https://openrouter.ai/**', async (route) => {
+    const u = route.request().url();
+    if (u.endsWith('/models')) return route.fulfill({ json: { data: [{ id: 'deepseek/deepseek-v4.1-flash', name: 'DeepSeek: V4.1 Flash', created: 1, pricing: { prompt: '0.000000035', completion: '0.00000029' }, context_length: 128000 }] } });
+    if (u.endsWith('/chat/completions')) {
+      calls++;
+      const req = JSON.parse(route.request().postData() || '{}'), planStep = /STEP 1 of 2/.test(JSON.stringify(req.messages || []));
+      const chunk = (o) => 'data: ' + JSON.stringify(o) + '\n\n';
+      const content = planStep ? '```partspec\n' + JSON.stringify(SPEC) + '\n```' : '```klartext\n' + progs.shift() + '\n```';
+      const body = chunk({ choices: [{ delta: { content }, finish_reason: 'stop' }] }) + chunk({ choices: [], usage: { prompt_tokens: 10, completion_tokens: 20, cost: 0 } }) + 'data: [DONE]\n\n';
+      return route.fulfill({ status: 200, headers: { 'content-type': 'text/event-stream' }, body });
+    }
+    return route.fulfill({ status: 404, body: '{}' });
+  });
+  await page.click('#b-menu'); await page.click('#b-ai');
+  await page.click('.hmenu button:has-text("New program from a description")');
+  await page.fill('#ai-maxtok', '500000'); await page.dispatchEvent('#ai-maxtok', 'change');
+  ok(await page.evaluate(() => localStorage.getItem('tnc426.aimaxtok') === '500000' && document.getElementById('ai-maxtok').value === '500000'),
+    `${L}: max tokens keeps 500000`, await page.evaluate(() => localStorage.getItem('tnc426.aimaxtok')));
+  await page.check('#ai-auto'); const autoOn = await page.evaluate(() => localStorage.getItem('tnc426.aiauto'));
+  await page.uncheck('#ai-auto'); const autoOff = await page.evaluate(() => localStorage.getItem('tnc426.aiauto'));
+  ok(autoOn === '1' && autoOff === '0', `${L}: the Auto checkbox is stored`, `${autoOn}/${autoOff}`);
+  await page.fill('#ai-prompt', 'A 100 x 80 plate with one slot 1 mm deep.');
+  await page.click('#ai-go');
+  await page.waitForSelector('#ai-more', { timeout: 15000 }).catch(() => {});
+  ok(await page.evaluate(() => !!document.getElementById('ai-more') && !!document.getElementById('ai-stop')), `${L}: a failing round asks Continue / Stop`,
+    await page.evaluate(() => (document.getElementById('ailive') || {}).textContent));
+  ok(calls === 2, `${L}: nothing is sent while the question is open`, `calls=${calls}`);
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => /MOCK/.test(document.getElementById('hdr-stat').textContent), null, { timeout: 15000 }).catch(() => {});
+  ok(calls === 3, `${L}: Enter continues with round 2`, `calls=${calls}`);
+  ok(await page.evaluate(() => /MOCK/.test(document.getElementById('hdr-stat').textContent)), `${L}: the repaired program opened`);
+  ok(errors.length === 0, `${L}: no page errors`, errors.slice(0, 3).join(' | '));
+  await ctx.close();
+}
+
 /* axe-core: reported per state; serious/critical in the shell's new parts fail the run */
 async function axeScan(browser, tag) {
   let AxeBuilder;
@@ -413,12 +457,12 @@ async function axeScan(browser, tag) {
 
 /* the Rust server, when built: the simulator and the web app under the desktop shell's CSP */
 async function serverChecks(browser, tag) {
-  const bin = join(ROOT, 'server', 'target', process.platform === 'win32' ? 'debug/tnc-server.exe' : 'debug/tnc-server');
+  const bin = join(process.env.CARGO_TARGET_DIR || join(ROOT, 'server', 'target'), process.platform === 'win32' ? 'debug/tnc-server.exe' : 'debug/tnc-server');
   if (!existsSync(bin)) { skipped(`[${tag}] server + CSP`, 'server/target/debug/tnc-server not built (cd server && cargo build)'); return; }
   const web = join(ROOT, 'web', 'dist', 'index.html');
   const lib = readFileSync(join(ROOT, 'desktop', 'src-tauri', 'src', 'lib.rs'), 'utf8');
   const m = lib.match(/const CSP: &str = "([\s\S]*?)";/);
-  const csp = m[1].replace(/\\\n\s*/g, '');
+  const csp = m[1].replace(/\\\r?\n\s*/g, '');   // \r: a Windows checkout has CRLF
   const data = mkdtempSync(join(tmpdir(), 'tnc-ui-'));
   const port = 18000 + Math.floor(Math.random() * 2000);
   const proc = spawn(bin, [], { env: { ...process.env, TNC_BIND: `127.0.0.1:${port}`, TNC_DATA_DIR: data, TNC_SIM_FILE: SIM, TNC_WEB_DIR: join(ROOT, 'web', 'dist'),
@@ -488,6 +532,7 @@ for (const [type, tag] of [[chromium, 'chromium'], [webkit, 'webkit']]) {
     if (type === chromium) await phoneFlows(b, tag); else skipped(`[${tag}] phone flows`, 'swipe tests drive the CDP touch pipeline (Chromium only)');
     await desktopFlows(b, tag);
     await aiMocked(b, tag);
+    await aiRepairMocked(b, tag);
     await axeScan(b, tag);
     await serverChecks(b, tag);
   } catch (e) { fail++; failures.push(`[${tag}] crashed: ${e.stack || e}`); console.log(e); }
