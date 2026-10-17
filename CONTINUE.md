@@ -12,7 +12,7 @@ META
 | key | value | check |
 |---|---|---|
 | interpreter manual tests | ALL PASS | `node tests/manual.js` |
-| real-program corpus | 2,767 / 2,806 clean. The 39 left are malformed programs a real TNC also rejects | `AUTOTOOLS=1 node tests/corpus.js` |
+| real-program corpus | 2,767 / 2,806 clean on the Rust engine (2026-10-17). The 39 left are malformed programs a real TNC also rejects. None of the corpus uses SL cycles | `AUTOTOOLS=1 node tests/corpus.js` |
 | rust | 32 tests pass (tnc-core 3, tnc-engine 9, tnc-formats 6, tnc-server 14), 2026-10-17, Windows | `cd server && cargo test` |
 | engine parity | the Rust engine (native + WebAssembly) is identical to the record on 5,511 / 5,511 programs (both option sets, events, cut length, carved height field); it matched the retired JS engine live, in full | `node tests/parity.js` |
 | browser UI suite | 151 pass, 0 fail (3 runs in a row), Chromium 141 (Playwright 1.56.1), 2026-10-03. WebKit: not installed in the cloud box → SKIPPED, CI installs it (never run yet). The old untracked `.tools/qa/qa.mjs` (93/93) is not in git and was not restored | `node tests/ui/run.mjs` |
@@ -20,7 +20,7 @@ META
 | AI | live bench, DeepSeek V4.1 Flash, 2026-10-03: see README "AI accuracy" (old pipeline vs plan + measure + refine) | `node tests/ai/bench.mjs` (needs a key) |
 | desktop | Linux: `cargo build` + `tauri build` (deb, rpm, AppImage) OK; debug binary launched under Xvfb: splash → server → one-time sign-in → web app signed in (server log + screenshot). macOS / Windows: CI job written, never run | `cd desktop && npx tauri build` |
 | CI | first runs 2026-10-16: desktop builds pass on Linux, macOS, Windows; core job fails only on the phone swipe check (B17) | GitHub Actions |
-| cycles | 1 2 4 7 8 9 10 11 17 18 19 32 200–215 220 221 230 231 247 262 263 264 265 267; TCH PROBE 408–413 417 419 (motion), 30–33 480–483 562 (no motion) | `tests/manual.js` |
+| cycles | 1 2 4 7 8 9 10 11 14 17 18 19 20–25 32 200–215 220 221 230 231 247 262 263 264 265 267; TCH PROBE 408–413 417 419 (motion), 30–33 480–483 562 (no motion) | `tests/manual.js` |
 | material model | `tnc-core` `stock.rs`: f32 height field; tilted tool cuts along its axis; no undercuts | — |
 | vice | standard 160 mm vice, jaws on the Y faces, grips the bottom 6 mm; ON; toggle under Effects & view | — |
 | holder | DIN 69871 ISO 50 (A=100) / SK40 (A=70), ER32 nut Ø50. The crash check uses nut R = max(25, toolR+6); L=0 → check skipped | `stock.rs` NUT_R |
@@ -47,7 +47,7 @@ META
 | B3 | blocked(B4) | **Programs to the machine: all obvious paths.** (a) USB stick: export .H / TOOL.T with TNC-safe names and CRLF, Latin-1. (b) Ethernet LSV-2 (TNCremo protocol; 426/430 manual §12.5; check `pyLSV2` licence and 426/430 support before writing our own). (c) RS-232 serial (V.24; FE1 / FE2 / EXT blockwise per manual ch. 12). Both directions. | new `desktop/` (Tauri, Rust side), `server/crates/tnc-formats` | round-trip on the programming station (B5); later on the real machine |
 | B4 | done (Linux) | **Tauri 2 desktop** shell (mac/Linux/Windows) hosting web + sim; local mode = the same server crates in-process with a local SQLite. Linux built + launched; macOS / Windows only via CI (not yet run). Signing / notarisation not set up. | `desktop/`, `server/crates/tnc-server/src/local.rs` | CI desktop job green on all three |
 | B5 | blocked(user: Windows VM + HEIDENHAIN station demo) | **Programming-station oracle**: golden set 15–25 programs, capture moves/errors/timing, `tests/golden/*.json` + `tests/station.js`. Settles every OPEN item. | `tests/`, `docs/PROGRAMMING-STATION.md` | golden diff report |
-| B6 | todo | Interpreter coverage: SL contour cycles 14/20–25 (common on real 426 programs), 3, 5, 12 PGM CALL, 13, 26, 27/28, FK, F AUTO. Manual-first; tests per cycle. | `server/crates/tnc-core`, `sim/dialogs.js`, `tests/` | manual.js pass; corpus not worse; parity re-recorded on purpose |
+| B6 | doing | Interpreter coverage. Done 2026-10-17: SL cycles 14, 20–25 (tool paths of 21–24 are placeholders SL3–SL13). Left: FK (the manual's SL example C20 needs it), 3, 5, 12 PGM CALL, 13, 26, 27/28, F AUTO. Manual-first; tests per cycle. | `server/crates/tnc-core`, `sim/dialogs.js`, `tests/` | manual.js pass; corpus not worse; parity re-recorded on purpose |
 | B7 | doing | CI: GitHub Action = `node tests/manual.js` + `cargo test` + web type-check/build + `python3 build.py`; deploy Pages from CI instead of committing index.html. Written (+ part/AI-loop tests, UI suite with WebKit, desktop builds); never run; Pages deploy not done. | `.github/` | green run |
 | B8 | done | Docs to reality: README (layout moved to sim/, fullstack), `docs/FEATURES.txt` (DEV tab; still says TCH PROBE/thread milling missing), `docs/HISTORY.txt`. Sonnet job. | `README.md`, `docs/` | no statement contradicts STATE |
 | B9 | todo | Wire `probeSpec` to a TOUCH PROBE soft key; `TCHPROBE` node in flow.js. | `sim/ui.js` soft keys, `sim/flow.js` | manual click-through |
@@ -70,6 +70,20 @@ META
 | T5 | tnc-core exec.rs cycle_thread | 264 countersink feed = Q206 |
 | T6 | tnc-core exec.rs cycles | positive depths: sign ignored (the manual says a positive depth reverses direction) |
 | T7 | tnc-core exec.rs cycle_thread | no error for M4 / spindle off on 262/263/264/267 |
+| SL1 | tnc-core sl.rs capture | a subcontour with R0 counts as a pocket |
+| SL2 | tnc-core sl.rs field | only islands: sim error "SL CONTOUR WITHOUT POCKET NOT SIMULATED" |
+| SL3 | tnc-core sl.rs plan/centre | rough-out plunges at the point of each innermost clearing loop farthest from the walls; channel loops start where the trace starts; clearing loops join at the nearest vertex |
+| SL4 | tnc-core sl.rs reposition | between passes: straight at depth while the tool centre stays in the allowed area, else up to Q7, rapid to Q5+Q6, plunge at Q11 |
+| SL5 | tnc-core sl.rs tool_r | 21: Q13 = 0 = the current tool |
+| SL6 | tnc-core sl.rs run/train | sign of Q1 ignored (works into −Z), like T6 |
+| SL7 | tnc-core sl.rs run | tool too big for the contour: TOOL RADIUS TOO LARGE (message not in the manual) |
+| SL8 | tnc-core sl.rs run | 23: the rough-out loops once at the floor, straight plunge (manual: vertical tangential arc) |
+| SL9 | tnc-core sl.rs side_finish | 24: quarter-arc in/out of radius R, halved until it fits; start at the first vertex where it fits best |
+| SL10 | tnc-core sl.rs train | 25: rapid to Q5 + 2 mm, then Q11 |
+| SL11 | tnc-core sl.rs run | channel direction by MP 7420 bit 0, clearing loops by Q9; Q8, Q18 (rest material), Q19, MP 7420 +4 not simulated; MP 7420 default 0 on the 426 profile, 8 on the 430 (operator's MP list) |
+| SL12 | tnc-core sl.rs train | 25: climb = RL assumes M3; Q15 = ±1 goes up to Q7 between infeeds |
+| SL13 | tnc-core sl.rs run | 24: down to Q1 (Q4 not kept); the p. 294 check Q14 + R < Q3 + rough-out R is not made |
+| SL14 | tnc-core sl.rs field | more than two subcontours: each tested against the first one's start point (manual shows two); missing 14/20 = CYCL DEF INCOMPLETE |
 | P1–P7 | tnc-core exec.rs run_probe | MP 6140 = 2 mm; Q261 tip = Q261 − stylus R; Q305=0 keeps cycle 7 on top; Q303=0 tables not simulated; presets translation-only; touch order from the figures; 419/Q381 write no results |
 | V1 | tnc-core stock.rs vice | jaw axis Y, grip 6, jaw 160×25 — standard guess, not the operator's vice |
 | K1 | ui.js coordinate keypad (wizPad/ck*), dialogs.js PAD | key list is the manual's (inside front cover, p. 66–67, 151, 357); NOT verified: END takes the typed entry before ending the dialog (p. 67 only says "end the dialog immediately"; p. 68 END = accept is about editing stored words), I and −/+ toggle the word being entered, I after a word with its value starts the next word (x10iy5 = X+10 IY+5), CE twice drops the axis, ACTUAL POSITION with no axis selected fills X Y Z (CC: X Y) = the MOD %00111 case, IV = B / V = A (machines.js order), CTP asks RC like CT, P during APPR/DEP coordinates → APPR P… / DEP PLCT keeping the form (block forms are the manual's, p. 155–157; the dialog route and the PLT/PLN forms rest on p. 134 "Cartesian or polar" only), PC-keyboard bindings (#, DELETE, ⇧ENTER) are sim-only |

@@ -25,9 +25,9 @@ macro_rules! re {
     };
 }
 
-fn implemented(n: f64) -> bool { [1., 2., 4., 17., 18., 200., 201., 202., 203., 204., 205., 206., 207., 208., 209., 210., 211., 212., 213., 214., 215., 230., 231., 262., 263., 264., 265., 267.].contains(&n) }
+fn implemented(n: f64) -> bool { [1., 2., 4., 17., 18., 21., 22., 23., 24., 25., 200., 201., 202., 203., 204., 205., 206., 207., 208., 209., 210., 211., 212., 213., 214., 215., 230., 231., 262., 263., 264., 265., 267.].contains(&n) }
 fn pattern_cycle(n: f64) -> bool { n == 220.0 || n == 221.0 }
-fn nomotion(n: f64) -> bool { [7., 8., 9., 10., 11., 19., 32., 247.].contains(&n) }
+fn nomotion(n: f64) -> bool { [7., 8., 9., 10., 11., 14., 19., 20., 32., 247.].contains(&n) }
 fn probe_cycle(n: f64) -> bool { [408., 409., 410., 411., 412., 413., 417., 419.].contains(&n) }
 fn tt_cycle(n: f64) -> bool { [30., 31., 32., 33., 480., 481., 482., 483., 562.].contains(&n) }
 
@@ -78,6 +78,8 @@ pub struct Mach {
     pub limits: HashMap<char, [f64; 2]>,
     pub axes: Vec<String>,
     pub c19pos_false: bool,
+    /// MP 7420 (SL cycles), NaN = 0
+    pub mp7420: f64,
     pub probe: Option<[f64; 3]>, // f rapid clr (NaN = missing)
 }
 
@@ -163,6 +165,8 @@ pub struct St<'a> {
     tool_order: Vec<f64>, tool_stat: HashMap<String, ToolStat>,
     tool_table: Vec<ToolEntry>, mach: Mach, arc_tol: f64, holder: Option<f64>, auto_tools: bool,
     labels: HashMap<String, usize>, comment_tools: HashMap<String, f64>, auto_feed: f64,
+    /// SL cycles: capturing a contour subprogram (emit records program coordinates only); cycle 14 labels; cycle 20 data
+    cap: bool, sl_labels: Option<Vec<f64>>, sl_data: Option<Cycle>,
 }
 
 fn fail(st: &mut St, bi: usize, msg: &str) {
@@ -286,6 +290,7 @@ fn stick_of(st: &St) -> Option<f64> {
 
 fn emit(st: &mut St, kind: MK, to: P3, feed: f64, bi: usize, cycle: Option<&str>, arc: Option<&Arc>) {
     if st.abort { return; }
+    if st.cap { sl::capture_move(st, kind, to, feed, bi, arc); return; }
     if kind == MK::Arc && st.xf.tilt.is_some() {
         let arc = arc.unwrap();
         let p0 = st.pos; let sw0 = arc_sweep(p0, to, arc); let r0_ = js::hypot2(p0.x - arc.cx, p0.y - arc.cy); let a00 = js::atan2(p0.y - arc.cy, p0.x - arc.cx);
@@ -949,7 +954,11 @@ fn exec_cycle(st: &mut St, cy: &Cycle, bi: usize, at: Option<(f64, f64)>) {
     else if n == 210.0 || n == 211.0 { cycle_slot(st, cy, bi, at); }
     else if n == 230.0 || n == 231.0 { cycle_surface(st, cy, bi); }
     else if n == 1.0 || n == 2.0 || n == 17.0 || n == 18.0 { cycle_old(st, cy, bi); }
+    else if (21.0..=25.0).contains(&n) { sl::run(st, cy, bi); }
 }
+
+#[path = "sl.rs"]
+mod sl;
 
 /* ------------------------------------------------------------------ touch probe */
 
@@ -1515,6 +1524,9 @@ fn exec_range(st: &mut St, from: usize, to: isize, depth: i32) {
                 if pattern_cycle(num) { let g = gather_cycle(st, iu); cycle_pattern(st, &g, iu); }
                 else {
                     let c = gather_cycle(st, iu); let cn = c.num;
+                    if (20.0..=25.0).contains(&cn) { sl::def_q(st, &c); }
+                    if cn == 14.0 { st.sl_labels = Some(sl::labels_of(&c)); i += 1; continue; }
+                    if cn == 20.0 { st.sl_data = Some(c); i += 1; continue; }
                     st.cycle = Some(c);
                     if !implemented(cn) && !nomotion(cn) { fail(st, iu, &format!("CYCLE {} NOT IMPLEMENTED IN SIMULATOR", js::num_str(cn))); }
                     if cn == 247.0 { let c = st.cycle.clone().unwrap(); activate_preset(st, &c); }
@@ -2020,6 +2032,7 @@ pub fn compile(blocks: &mut Vec<Block>, opts: &Opts) -> Compiled {
         abort: false, done: false, tool_order: vec![], tool_stat: HashMap::new(),
         tool_table: opts.tools.clone().unwrap_or(builtin), mach: opts.mach.clone(), arc_tol: js::or(opts.mach.arc_tol, ARC_TOL), holder: opts.holder_a, auto_tools: opts.auto_tools,
         labels: HashMap::new(), comment_tools: HashMap::new(), auto_feed: f64::NAN,
+        cap: false, sl_labels: None, sl_data: None,
     };
     for i in 0..st.blocks.len() {
         if st.blocks[i].kind == Kind::Lbl {

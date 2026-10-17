@@ -40,7 +40,7 @@ pub fn opts_from_json(s: &str) -> Opts {
 
 /// machine parameters from a machines.js entry (null / missing = the 3-axis defaults)
 pub fn mach_from(m: Option<&Value>) -> Mach {
-    let mut mach = Mach { arc_tol: f64::NAN, pocket_k: f64::NAN, f_max: f64::NAN, accel: f64::NAN, s_max: f64::NAN, ..Default::default() };
+    let mut mach = Mach { arc_tol: f64::NAN, pocket_k: f64::NAN, f_max: f64::NAN, accel: f64::NAN, s_max: f64::NAN, mp7420: f64::NAN, ..Default::default() };
     if let Some(m) = m.filter(|m| m.is_object()) {
         mach.arc_tol = f(m.get("arcTol")); mach.pocket_k = f(m.get("pocketK")); mach.f_max = f(m.get("fMax")); mach.accel = f(m.get("accel")); mach.s_max = f(m.get("sMax"));
         if let Some(r) = m.get("rapid").filter(|r| r.is_object()) { mach.rapid = Some(["x", "y", "z", "a", "b", "c"].map(|k| f(r.get(k)))); }
@@ -49,6 +49,7 @@ pub fn mach_from(m: Option<&Value>) -> Mach {
         }
         if let Some(a) = m.get("axes").and_then(|a| a.as_array()) { mach.axes = a.iter().filter_map(|x| x.as_str().map(String::from)).collect(); }
         mach.c19pos_false = m.get("c19pos") == Some(&Value::Bool(false));
+        mach.mp7420 = f(m.get("mp7420"));
         if let Some(p) = m.get("probe").filter(|p| p.is_object()) { mach.probe = Some([f(p.get("f")), f(p.get("rapid")), f(p.get("clr"))]); }
     }
     mach
@@ -65,7 +66,7 @@ pub fn machine(id: &str) -> Mach {
 /// A hash of the interpreter source compiled in (this crate + machines.js): stored with every server check,
 /// so a stale report can be told apart from a fresh one. FNV-1a 64, stable across builds and platforms.
 pub fn version() -> String {
-    const SRC: [&str; 8] = [include_str!("lib.rs"), include_str!("exec.rs"), include_str!("parse.rs"), include_str!("sim.rs"),
+    const SRC: [&str; 9] = [include_str!("lib.rs"), include_str!("exec.rs"), include_str!("sl.rs"), include_str!("parse.rs"), include_str!("sim.rs"),
         include_str!("stock.rs"), include_str!("js.rs"), include_str!("val.rs"), MACHINES_JS];
     let mut h: u64 = 0xcbf29ce484222325;
     for s in SRC { for b in s.bytes().filter(|b| *b != b'\r') { h ^= b as u64; h = h.wrapping_mul(0x100000001b3); } }

@@ -129,7 +129,14 @@ var TNC_DIALOGS = (function () {
     [221, 'CARTESIAN PATTERN', 'PATTERN', [[225, 'STARTNG PNT 1ST AXIS', 15], [226, 'STARTNG PNT 2ND AXIS', 15], [237, 'SPACING IN 1ST AXIS', 10], [238, 'SPACING IN 2ND AXIS', 8], [242, 'NUMBER OF COLUMNS', 6], [243, 'NUMBER OF LINES', 4], [224, 'ANGLE OF ROTATION', 0], [200, 'SET-UP CLEARANCE', 2], [203, 'SURFACE COORDINATE', 0], [204, '2ND SET-UP CLEARANCE', 50], [301, 'MOVE TO CLEARANCE', 1]]],
     [230, 'MULTIPASS MILLING', 'SURFACE', [[225, 'STARTNG PNT 1ST AXIS', 0], [226, 'STARTNG PNT 2ND AXIS', 0], [227, 'STARTNG PNT 3RD AXIS', 0], [218, 'FIRST SIDE LENGTH', 100], [219, 'SECOND SIDE LENGTH', 80], [240, 'NUMBER OF CUTS', 10], [206, 'FEED RATE FOR PLNGNG', 150], [207, 'FEED RATE FOR MILLNG', 500], [209, 'STEPOVER FEED RATE', 200], [200, 'SET-UP CLEARANCE', 2]]],
     [231, 'RULED SURFACE', 'SURFACE', [[225, 'STARTNG PNT 1ST AXIS', 0], [226, 'STARTNG PNT 2ND AXIS', 0], [227, 'STARTNG PNT 3RD AXIS', 0], [228, '2ND POINT 1ST AXIS', 100], [229, '2ND POINT 2ND AXIS', 0], [230, '2ND POINT 3RD AXIS', 0], [231, '3RD POINT 1ST AXIS', 100], [232, '3RD POINT 2ND AXIS', 80], [233, '3RD POINT 3RD AXIS', 0], [234, '4TH POINT 1ST AXIS', 0], [235, '4TH POINT 2ND AXIS', 80], [236, '4TH POINT 3RD AXIS', 0], [240, 'NUMBER OF CUTS', 20], [207, 'FEED RATE FOR MILLNG', 500]]],
-    [247, 'DATUM SETTING', 'TRANSF', [[339, 'DATUM NUMBER', 1]]]
+    [247, 'DATUM SETTING', 'TRANSF', [[339, 'DATUM NUMBER', 1]]],
+    /* SL cycles: Q1-Q19, example values from the 426/430 manual 8.6 (p. 290-296) */
+    [20, 'CONTOUR DATA', 'SL', [[1, 'MILLING DEPTH', -20], [2, 'TOOL PATH OVERLAP', 1], [3, 'ALLOWANCE FOR SIDE', 0.2], [4, 'ALLOWANCE FOR FLOOR', 0.1], [5, 'SURFACE COORDINATE', 0], [6, 'SET-UP CLEARANCE', 2], [7, 'CLEARANCE HEIGHT', 80], [8, 'ROUNDING RADIUS', 0.5], [9, 'DIRECTION OF ROTATION', 1]]],
+    [21, 'PILOT DRILLING', 'SL', [[10, 'PLUNGING DEPTH', 5], [11, 'FEED RATE FOR PLUNGING', 100], [13, 'ROUGH-OUT TOOL', 1]]],
+    [22, 'ROUGH-OUT', 'SL', [[10, 'PLUNGING DEPTH', 5], [11, 'FEED RATE FOR PLUNGING', 100], [12, 'FEED RATE FOR MILLING', 350], [18, 'COARSE ROUGHING TOOL', 0], [19, 'RECIPROCATION FEED RATE', 150]]],
+    [23, 'FLOOR FINISHING', 'SL', [[11, 'FEED RATE FOR PLUNGING', 100], [12, 'FEED RATE FOR MILLING', 350]]],
+    [24, 'SIDE FINISHING', 'SL', [[9, 'DIRECTION OF ROTATION', 1], [10, 'PLUNGING DEPTH', 5], [11, 'FEED RATE FOR PLUNGING', 100], [12, 'FEED RATE FOR MILLING', 350], [14, 'ALLOWANCE FOR SIDE', 0]]],
+    [25, 'CONTOUR TRAIN', 'SL', [[1, 'MILLING DEPTH', -20], [3, 'ALLOWANCE FOR SIDE', 0], [5, 'WORKPIECE SURFACE COORD.', 0], [7, 'CLEARANCE HEIGHT', 50], [10, 'PLUNGING DEPTH', 5], [11, 'FEED RATE FOR PLUNGING', 100], [12, 'FEED RATE FOR MILLING', 350], [15, 'CLIMB OR UP-CUT', -1]]]
   ];
   /* dotted (old-style) cycles: sub-blocks [text, default, kind] */
   var DOTTED = [
@@ -144,7 +151,8 @@ var TNC_DIALOGS = (function () {
     [11, 'SCALING', 'TRANSF', [['SCL', 1]]],
     [19, 'WORKING PLANE', 'TRANSF', [['A', 0, 'rot'], ['B', 0, 'rot'], ['C', 0, 'rot']]],
     [9, 'DWELL TIME', 'SPECIAL', [['DWELL', 1]]],
-    [32, 'TOLERANCE', 'SPECIAL', [['T', 0.05]]]
+    [32, 'TOLERANCE', 'SPECIAL', [['T', 0.05]]],
+    [14, 'CONTOUR GEOMETRY', 'SL', [['CONTOUR LABEL', '1', 'labels']]]
   ];
   /* TCH PROBE cycles (TOUCH PROBE key), Q style; example values from the iTNC 530 manual ch. 15/19 (the 426/430 probe manual is not at hand) */
   var TS = [[381, 'PROBE IN TS AXIS', 0], [382, '1ST CO. FOR TS AXIS', 85], [383, '2ND CO. FOR TS AXIS', 50], [384, '3RD CO. FOR TS AXIS', 0], [333, 'DATUM', 1]];
@@ -167,7 +175,7 @@ var TNC_DIALOGS = (function () {
     [481, 'TOOL LENGTH', [[340, 'CHECK', 1], [260, 'CLEARANCE HEIGHT', 100], [341, 'PROBING THE TEETH', 1]]]
   ];
   var GROUPS = [['DRILL', 'DRILLING/\nTHREAD'], ['TAP', 'TAPPING'], ['POCKET', 'POCKETS/\nSTUDS/SLOTS'], ['PATTERN', 'POINT\nPATTERNS'],
-                ['SURFACE', 'MULTIPASS\nMILLING'], ['TRANSF', 'COORD.\nTRANSF.'], ['SPECIAL', 'SPECIAL\nCYCLES']];
+                ['SURFACE', 'MULTIPASS\nMILLING'], ['TRANSF', 'COORD.\nTRANSF.'], ['SPECIAL', 'SPECIAL\nCYCLES'], ['SL', 'SL\nCYCLES']];
 
   function cycleList(group) {
     return CYCLES.filter(function (c) { return c[2] === group; }).map(function (c) { return { num: c[0], name: c[1] }; })
@@ -189,13 +197,14 @@ var TNC_DIALOGS = (function () {
   /* a spec for one cycle: one question per Q parameter (Q style) or per sub-block (dotted) */
   function cycleSpec(num) {
     var q = CYCLES.filter(function (c) { return c[0] === num; })[0];
-    if (q) return qSpec('CYCL DEF ' + q[0] + ' ' + q[1], q[0], q[3]);
+    if (q) return qSpec('CYCL DEF ' + q[0] + (q[0] < 200 ? '.0' : '') + ' ' + q[1], q[0], q[3]);   // SL: "CYCL DEF 20.0 CONTOUR DATA" (p. 290)
     var d = DOTTED.filter(function (c) { return c[0] === num; })[0];
     if (!d) return null;
     return { title: 'CYCL DEF ' + d[0] + ' ' + d[1], cycle: d[0],
       steps: d[3].map(function (s, i) {
         if (s[2] === 'axes') return { k: 's' + i, ask: 'MIRROR IMAGE AXES ? (ENT = CANCEL MIRRORING)', type: 'text', opt: true };
         if (s[2] === 'axis') return { k: 's' + i, ask: 'DATUM SHIFT ' + s[0] + ' ? (I = INCREMENTAL)', type: 'text', dflt: String(s[1]) };
+        if (s[2] === 'labels') return { k: 's' + i, ask: 'LABEL NUMBERS FOR THE CONTOUR ? (1/2/3, UP TO 12)', type: 'text', dflt: String(s[1]) };
         if (s[2] === 'rot') return { k: 's' + i, ask: 'ROT. ANGLE ' + s[0] + ' ? (0 = NONE; ALL 0 = RESET)', type: 'num', dflt: String(s[1]) };
         return { k: 's' + i, ask: s[0] + ' ?', type: 'num', dflt: String(s[1]) }; })
         .concat(num === 4 ? [{ k: 'p2', ask: 'PLUNGING FEED F ?', type: 'num', dflt: '80' }, { k: 'dr', ask: 'DIRECTION DR ?', type: 'choice', opts: ['DR+', 'DR-'], dflt: 'DR+' }] : []),
@@ -204,6 +213,7 @@ var TNC_DIALOGS = (function () {
         if (num === 19) { out.push('CYCL DEF 19.1 ' + ['A', 'B', 'C'].map(function (a, i) { return a + fmtQ(v['s' + i] || 0); }).join(' ')); return out.join('\n'); }
         d[3].forEach(function (s, i) {
           var val = v['s' + i];
+          if (s[2] === 'labels') { out.push('CYCL DEF 14.' + (sub++) + ' CONTOUR LABEL ' + String(val || s[1]).split(/[\s,\/]+/).filter(Boolean).join(' /')); return; }
           if (s[2] === 'axes') { out.push('CYCL DEF ' + d[0] + '.' + (sub++) + ' ' + (String(val || '').toUpperCase().replace(/[^XYZ]/g, '').split('').join(' ') || 'NO ENT')); return; }
           if (s[2] === 'axis') { var t = String(val == null ? s[1] : val).toUpperCase().replace(/\s+/g, ''), inc = /^I/.test(t); out.push('CYCL DEF ' + d[0] + '.' + (sub++) + ' ' + (inc ? 'I' : '') + s[0] + fmtQ(t.replace(/^I?[XYZ]?/, '') || 0)); return; }
           if (num === 4 && s[0] === 'PECKG') { out.push('CYCL DEF 4.' + (sub++) + ' PECKG ' + String(val).replace(/^\+/, '') + ' F' + String(v.p2 || 80).replace(/^\+/, '')); return; }

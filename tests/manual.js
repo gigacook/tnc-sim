@@ -597,5 +597,133 @@ console.log('TNC 430 (operator\'s machine) — limits, arc tolerance 0.006, F ca
   ok(!r.errors.length && tilt, 'cycle 19 B-90 turns the head to B-90 (MP 7500 bit 2)');
   ok(after && near(Math.hypot(after.to.x, after.to.y, after.to.z), 10), 'a point 10 mm out in the tilted plane stays 10 mm from the datum');
 }
+console.log('SL cycles 14, 20-25 (8.6, p. 284-307): contour geometry from subprograms, rough-out, finishing, contour train');
+{ /* the manual's example C21 (p. 303-305): pilot drilling, rough-out, floor and side finishing of two overlapping pockets with two islands */
+  const C21 = 'BEGIN PGM C21 MM\nBLK FORM 0.1 Z X+0 Y+0 Z-40\nBLK FORM 0.2 X+100 Y+100 Z+0\nTOOL DEF 1 L+0 R+6\nTOOL DEF 2 L+0 R+6\nTOOL CALL 1 Z S2500\nL Z+250 R0 F MAX\n' +
+    'CYCL DEF 14.0 CONTOUR GEOMETRY\nCYCL DEF 14.1 CONTOUR LABEL 1 /2 /3 /4\nCYCL DEF 20.0 CONTOUR DATA\n Q1=-20 ;MILLING DEPTH\n Q2=1 ;TOOL PATH OVERLAP\n Q3=+0.5 ;ALLOWANCE FOR SIDE\n' +
+    ' Q4=+0.5 ;ALLOWANCE FOR FLOOR\n Q5=+0 ;WORKPIECE SURFACE COORD.\n Q6=2 ;SET-UP CLEARANCE\n Q7=+100 ;CLEARANCE HEIGHT\n Q8=0.1 ;ROUNDING RADIUS\n Q9=-1 ;DIRECTION OF ROTATION\n' +
+    'CYCL DEF 21.0 PILOT DRILLING\n Q10=5 ;PLUNGING DEPTH\n Q11=250 ;FEED RATE FOR PLUNGING\n Q13=2 ;ROUGH-OUT TOOL\nCYCL CALL M3\nL Z+250 R0 F MAX M6\nTOOL CALL 2 Z S3000\n' +
+    'CYCL DEF 22.0 ROUGH-OUT\n Q10=5 ;PLUNGING DEPTH\n Q11=100 ;FEED RATE FOR PLUNGING\n Q12=350 ;FEED RATE FOR MILLING\n Q18=0 ;COARSE ROUGHING TOOL\n Q19=150 ;RECIPROCATION FEED RATE\nCYCL CALL M3\n' +
+    'CYCL DEF 23.0 FLOOR FINISHING\n Q11=100 ;FEED RATE FOR PLUNGING\n Q12=200 ;FEED RATE FOR MILLING\nCYCL CALL\n' +
+    'CYCL DEF 24.0 SIDE FINISHING\n Q9=+1 ;DIRECTION OF ROTATION\n Q10=5 ;PLUNGING DEPTH\n Q11=100 ;FEED RATE FOR PLUNGING\n Q12=400 ;FEED RATE FOR MILLING\n Q14=+0 ;ALLOWANCE FOR SIDE\nCYCL CALL\n' +
+    'L Z+250 R0 F MAX M2\nLBL 1\nCC X+35 Y+50\nL X+10 Y+50 RR\nC X+10 DR-\nLBL 0\nLBL 2\nCC X+65 Y+50\nL X+90 Y+50 RR\nC X+90 DR-\nLBL 0\n' +
+    'LBL 3\nL X+27 Y+50 RL\nL Y+58\nL X+43\nL Y+42\nL X+27\nLBL 0\nLBL 4\nL X+65 Y+42 RL\nL X+57\nL X+65 Y+58\nL X+73 Y+42\nLBL 0\nEND PGM C21 MM';
+  const seg = (p, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy; let u = l2 ? ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2 : 0; u = Math.max(0, Math.min(1, u)); return Math.hypot(a[0] + dx * u - p[0], a[1] + dy * u - p[1]); };
+  const inPoly = (p, Q) => { let c = false; for (let i = 0; i < Q.length; i++) { const a = Q[i], b = Q[(i + 1) % Q.length]; if ((a[1] > p[1]) !== (b[1] > p[1]) && p[0] < a[0] + (p[1] - a[1]) * (b[0] - a[0]) / (b[1] - a[1])) c = !c; } return c; };
+  const wall = (p, Q) => Math.min(...Q.map((a, i) => seg(p, a, Q[(i + 1) % Q.length])));
+  const sq = [[27, 50], [27, 58], [43, 58], [43, 42], [27, 42]], tri = [[65, 42], [57, 42], [65, 58], [73, 42]];
+  /* room around the tool centre: in either circle (pockets A, B), outside both islands */
+  const room = p => Math.min(Math.max(25 - Math.hypot(p[0] - 35, p[1] - 50), 25 - Math.hypot(p[0] - 65, p[1] - 50)), inPoly(p, sq) ? -wall(p, sq) : wall(p, sq), inPoly(p, tri) ? -wall(p, tri) : wall(p, tri));
+  const pts = m => [...Array(11).keys()].map(k => { const t = k / 10;
+    if (m.kind !== 'arc') return [m.from.x + (m.to.x - m.from.x) * t, m.from.y + (m.to.y - m.from.y) * t];
+    const a0 = Math.atan2(m.from.y - m.cy, m.from.x - m.cx), rr = Math.hypot(m.from.x - m.cx, m.from.y - m.cy); return [m.cx + rr * Math.cos(a0 + m.sweep * t), m.cy + rr * Math.sin(a0 + m.sweep * t)]; });
+  const cyc = (r, n) => r.moves.filter(m => (m.cycle || '').endsWith(' ' + n));
+  const cutting = ms => ms.filter(m => m.kind !== 'rapid' && Math.max(m.from.z, m.to.z) < -1e-6);
+  const minRoom = ms => Math.min(...cutting(ms).flatMap(pts).map(room));
+  let r = TNC.run(C21);
+  const c21 = cyc(r, 21), c22 = cyc(r, 22), c23 = cyc(r, 23), c24 = cyc(r, 24);
+  ok(!r.errors.length && c21.length && c22.length && c23.length && c24.length, 'C21 runs clean; cycles 21 22 23 24 all move');
+  ok(minRoom(c22) >= 6.5 - 1e-6 && minRoom(c23) >= 6.5 - 1e-6, '22 / 23: the tool centre keeps R 6 + Q3 0.5 from every pocket and island wall (combined contour): ' + minRoom(c22).toFixed(4));
+  ok(minRoom(c24) >= 6 - 1e-6 && minRoom(c24) < 6.01, '24 Q14 = 0: the finish path runs at R 6 from the walls: ' + minRoom(c24).toFixed(4));
+  const lv = ms => [...new Set(cutting(ms).filter(m => m.kind !== 'rapid' && Math.abs(m.to.z - m.from.z) < 1e-9).map(m => +m.to.z.toFixed(3)))].sort((a, b) => b - a).join();
+  ok(lv(c22) === '-5,-10,-15,-19.5' && lv(c23) === '-20' && lv(c24) === '-5,-10,-15,-20', 'depths: 22 in Q10 steps to Q1 + Q4 = -19.5, 23 on the floor -20, 24 in Q10 steps to -20: ' + [lv(c22), lv(c23), lv(c24)].join(' | '));
+  const plunge = ms => ms.filter(m => m.kind === 'feed' && Math.hypot(m.to.x - m.from.x, m.to.y - m.from.y) < 1e-9 && m.to.z < m.from.z);
+  const holes = [...new Set(plunge(c21).map(m => m.to.x.toFixed(3) + ',' + m.to.y.toFixed(3)))], in22 = new Set(plunge(c22).map(m => m.to.x.toFixed(3) + ',' + m.to.y.toFixed(3)));
+  ok(holes.length && holes.every(h => in22.has(h)) && Math.min(...plunge(c21).map(m => m.to.z)) === -19.5 && plunge(c21).every(m => m.feed === 250),
+    '21: drills where 22 plunges (Q13 = T2, R6 + Q3), like cycle 1 in Q10 pecks at Q11 F250 to Q1 + Q4 = -19.5: ' + holes.join(' '));
+  ok(c22.every(m => m.kind === 'rapid' || m.feed === 100 || m.feed === 350) && c24.every(m => m.kind === 'rapid' || m.feed === 100 || m.feed === 400), 'feeds: Q11 plunging, Q12 milling');
+  const arcs24 = c24.filter(m => m.kind === 'arc');
+  ok(arcs24.length === 3 * 4 * 2 && arcs24.every(m => Math.abs(Math.abs(m.sweep) - Math.PI / 2) < 1e-9), '24: three subcontours (the pocket outline, two islands), each depth in and out on a quarter arc');
+  const end22 = c22[c22.length - 1];
+  ok(near(end22.to.x, 0) && near(end22.to.y, 0) && near(end22.to.z, 250) && c22.some(m => near(m.to.z, 100) && m.kind === 'rapid'), 'end of 22 (MP 7420 bit 4 = 0): clearance height Q7, then back to the position before the call');
+  /* p. 288-289: overlapping pockets — union, intersection (the first starts inside the second), exclusion (island) */
+  const two = (a, b) => 'BEGIN PGM S MM\nBLK FORM 0.1 Z X+0 Y+0 Z-20\nBLK FORM 0.2 X+100 Y+100 Z+0\nTOOL DEF 1 L+0 R+3\nTOOL CALL 1 Z S3000\nL Z+50 R0 FMAX\nCYCL DEF 14.0 CONTOUR GEOMETRY\nCYCL DEF 14.1 CONTOUR LABEL 1 /2\n' +
+    'CYCL DEF 20.0 CONTOUR DATA\n Q1=-5\n Q2=1\n Q3=+0\n Q4=+0\n Q5=+0\n Q6=2\n Q7=+20\n Q8=0\n Q9=+1\nCYCL DEF 22.0 ROUGH-OUT\n Q10=5\n Q11=100\n Q12=350\n Q18=0\n Q19=150\nCYCL CALL M3\nL Z+50 R0 FMAX M2\n' +
+    'LBL 1\n' + a + '\nCC X+35 Y+50\nC ' + a.split(' ').slice(1, 3).join(' ') + ' DR-\nLBL 0\nLBL 2\n' + b + '\nCC X+65 Y+50\nC X+90 Y+50 DR-\nLBL 0\nEND PGM S MM';
+  const dA = p => 25 - Math.hypot(p[0] - 35, p[1] - 50), dB = p => 25 - Math.hypot(p[0] - 65, p[1] - 50);
+  const span = (r, f) => { const c = cutting(cyc(r, 22)).flatMap(pts); return [Math.min(...c.map(f)), Math.min(...c.map(p => p[0])), Math.max(...c.map(p => p[0]))]; };
+  r = TNC.run(two('L X+10 Y+50 RR', 'L X+90 Y+50 RR'));
+  let s = span(r, p => Math.max(dA(p), dB(p)));
+  ok(!r.errors.length && s[0] >= 3 - 1e-6 && near(s[1], 13, 0.01) && near(s[2], 87, 0.01), 'area of inclusion: A starts outside B -> both circles: x ' + s[1].toFixed(2) + '..' + s[2].toFixed(2));
+  r = TNC.run(two('L X+60 Y+50 RR', 'L X+90 Y+50 RR'));
+  s = span(r, p => Math.min(dA(p), dB(p)));
+  ok(!r.errors.length && s[0] >= 3 - 1e-6 && near(s[1], 43, 0.01) && near(s[2], 57, 0.01), 'area of intersection: A starts inside B -> only the overlap: x ' + s[1].toFixed(2) + '..' + s[2].toFixed(2));
+  r = TNC.run(two('L X+10 Y+50 RR', 'L X+90 Y+50 RL'));
+  s = span(r, p => Math.min(dA(p), -dB(p)));
+  ok(!r.errors.length && s[0] >= 3 - 1e-6 && near(s[1], 13, 0.01) && s[2] < 50, 'area of exclusion: B with RL is an island -> A without B: x ' + s[1].toFixed(2) + '..' + s[2].toFixed(2));
+}
+{ /* a 60 x 40 pocket, R5: the channel on the exact offset, clearing loops Q2 x R apart, MP 7420 order and end position */
+  const pk = (c20, cyc, opt) => TNC.run('BEGIN PGM R MM\nBLK FORM 0.1 Z X+0 Y+0 Z-20\nBLK FORM 0.2 X+100 Y+100 Z+0\nTOOL DEF 1 L+0 R+5\nTOOL CALL 1 Z S2000\nL X+0 Y+0 Z+50 R0 FMAX\n' +
+    'CYCL DEF 14.0 CONTOUR GEOMETRY\nCYCL DEF 14.1 CONTOUR LABEL 1\nCYCL DEF 20.0 CONTOUR DATA\n Q1=' + (c20 == null ? -10 : c20) + '\n Q2=1\n Q3=+0\n Q4=+0\n Q5=+0\n Q6=2\n Q7=+20\n Q8=0\n Q9=+1\n' +
+    (cyc || 'CYCL DEF 22.0 ROUGH-OUT\n Q10=5\n Q11=100\n Q12=350\n Q18=0\n Q19=150') + '\nCYCL CALL M3\nL X+Q1 Y+Q9 R0 FMAX M2\nLBL 1\nL X+20 Y+20 RR\nL Y+60\nL X+80\nL Y+20\nL X+20\nLBL 0\nEND PGM R MM', opt);
+  let r = pk();
+  const c = r.moves.filter(m => m.cycle === 'ROUGH-OUT 22'), at5 = c.filter(m => m.kind === 'feed' && near(m.from.z, -5) && near(m.to.z, -5));
+  const corners = new Set(at5.map(m => m.to.x.toFixed(3) + ',' + m.to.y.toFixed(3)));
+  ok(!r.errors.length && ['25.003,25.003', '74.997,25.003', '74.997,54.997', '25.003,54.997', '35.003,35.003', '30.003,30.003'].every(k => corners.has(k)),
+    'channel corners on the R5 offset (25,25)-(75,55) within 0.003 mm, clearing loops every Q2 x R = 5 mm');
+  let miss = 0;
+  for (let x = 25; x <= 75; x += 1) for (let y = 25; y <= 55; y += 1) if (!at5.some(m => { const dx = m.to.x - m.from.x, dy = m.to.y - m.from.y, l2 = dx * dx + dy * dy; let u = l2 ? ((x - m.from.x) * dx + (y - m.from.y) * dy) / l2 : 0; u = Math.max(0, Math.min(1, u)); return Math.hypot(m.from.x + dx * u - x, m.from.y + dy * u - y) <= 5 + 1e-6; })) miss++;
+  ok(miss === 0, 'the floor at Z-5 is cleared: every tool-centre point of the pocket within R of the path (' + miss + ' missed)');
+  const ccw = at5.slice(0, 4).map(m => [m.to.x - m.from.x, m.to.y - m.from.y]).every(([dx, dy], i, a) => { const n = a[(i + 1) % 4]; return dx * n[1] - dy * n[0] > 0 || i === 3; });
+  ok(ccw, 'channel of a pocket counterclockwise (MP 7420 bit 0 = 0)');
+  /* which pass works at which depth, in order: C = channel (on the R5 offset), R = rough-out loops inside it */
+  const pl = r2 => r2.moves.filter(m => m.cycle && m.kind === 'feed' && near(m.from.z, m.to.z) && m.to.z < 0).map(m => (near(Math.min(m.to.x - 25, 75 - m.to.x, m.to.y - 25, 55 - m.to.y), 0, 0.01) ? 'C' : 'R') + m.to.z)
+    .filter((x, i, a) => x !== a[i - 1]).join(' ');
+  ok(pl(r) === 'C-5 C-10 R-5 R-10', 'MP 7420 = 0: the channel at every depth, then the rough-out at every depth: ' + pl(r));
+  r = pk(null, null, { machine: { mp7420: 8 } });
+  ok(pl(r) === 'C-5 R-5 C-10 R-10', 'MP 7420 = 8 (the operator\'s 430): channel and rough-out at each depth in turn: ' + pl(r));
+  r = pk(null, null, { machine: { mp7420: 16 } });
+  const lc = r.moves.filter(m => m.cycle).pop();
+  ok(near(lc.to.z, 20) && !near(lc.to.x, 0), 'MP 7420 + 16: the cycle ends at the clearance height Q7 above its last point');
+  r = pk();
+  const last = r.moves[r.moves.length - 1];
+  ok(near(last.to.x, -10) && near(last.to.y, 1), 'cycle 20 writes Q1-Q9 (p. 290: "cannot be used as program parameters"): L X+Q1 Y+Q9 goes to X-10 Y+1');
+  ok(!pk(0).moves.some(m => m.cycle), 'Q1 = 0: the cycle is not executed (p. 290)');
+  r = TNC.run('BEGIN PGM R MM\nTOOL CALL 4 Z S2000\nCYCL DEF 22.0 ROUGH-OUT\n Q10=5\n Q11=100\n Q12=350\n Q18=0\n Q19=150\nCYCL CALL M3\nEND PGM R MM');
+  ok(r.errors.some(e => e.msg === 'CYCL DEF INCOMPLETE'), '22 without 14 / 20: CYCL DEF INCOMPLETE');
+  r = pk(null, 'CYCL DEF 200 DRILLING\n Q200=2\n Q201=-5\n Q206=150\n Q202=5\n Q210=0\n Q203=+0\n Q204=20\n Q211=0\nCYCL DEF 20.0 CONTOUR DATA\n Q1=-3');
+  ok(r.moves.some(m => m.cycle === 'DRILLING 200'), 'cycles 14 and 20 are DEF active: CYCL CALL still calls the last machining cycle');
+  r = pk(null, 'CYCL DEF 24.0 SIDE FINISHING\n Q9=-1\n Q10=5\n Q11=100\n Q12=350\n Q14=+0');
+  const f24 = r.moves.filter(m => m.cycle === 'SIDE FINISHING 24' && m.kind === 'feed' && near(m.from.z, -5) && near(m.to.z, -5) && Math.hypot(m.to.x - m.from.x, m.to.y - m.from.y) > 20);
+  ok(!r.errors.length && f24.length === 4 && f24.every(m => [m.from, m.to].every(p => near(Math.min(p.x - 20, 80 - p.x, p.y - 20, 60 - p.y), 5, 0.004))), '24 without 22: the walls at R from the contour');
+  ok(f24.reduce((a, m) => a + m.from.x * m.to.y - m.to.x * m.from.y, 0) < 0, '24 Q9 = -1: clockwise');
+}
+{ /* the manual's example C25 (p. 306-307): contour train, open contour, RL, R10 */
+  const C25 = (q15, q3, pre) => 'BEGIN PGM C25 MM\nBLK FORM 0.1 Z X+0 Y+0 Z-40\nBLK FORM 0.2 X+100 Y+100 Z+0\nTOOL DEF 1 L+0 R+10\nTOOL CALL 1 Z S2000\nL Z+250 R0 F MAX\n' + (pre || '') +
+    'CYCL DEF 14.0 CONTOUR GEOMETRY\nCYCL DEF 14.1 CONTOUR LABEL 1\nCYCL DEF 25.0 CONTOUR TRAIN\n Q1=-20 ;MILLING DEPTH\n Q3=+' + (q3 || 0) + ' ;ALLOWANCE FOR SIDE\n Q5=+0 ;WORKPIECE SURFACE COORD.\n Q7=+250 ;CLEARANCE HEIGHT\n' +
+    ' Q10=5 ;PLUNGING DEPTH\n Q11=100 ;FEED RATE FOR PLUNGING\n Q12=200 ;FEED RATE FOR MILLING\n Q15=' + q15 + ' ;CLIMB OR UP-CUT\nCYCL CALL M3\nL IX+10 R0 FMAX\nL Z+250 R0 F MAX M2\n' +
+    'LBL 1\nL X+0 Y+15 RL\nL X+5 Y+20\nCT X+5 Y+75\nL Y+95\nRND R7.5\nL X+50\nRND R7.5\nL X+100 Y+80\nLBL 0\nEND PGM C25 MM';
+  const s2 = Math.SQRT1_2 * 10, en = [100 + 10 * 15 / Math.hypot(50, 15), 80 + 10 * 50 / Math.hypot(50, 15)];
+  let r = TNC.run(C25('+1'));
+  const c = r.moves.filter(m => m.cycle === 'CONTOUR TRAIN 25'), cut = c.filter(m => m.kind !== 'rapid' && near(m.from.z, m.to.z) && m.to.z < 0);
+  const starts = c.filter(m => m.kind === 'feed' && m.to.z < m.from.z);
+  ok(!r.errors.length && starts.length === 4 && starts.every(m => near(m.to.x, -s2) && near(m.to.y, 15 + s2)) && starts.map(m => m.to.z).join() === '-5,-10,-15,-20',
+    'Q15 +1 with RL = climb (M3): every pass plunges at the compensated start (-7.071, 22.071), depths -5 -10 -15 -20');
+  ok(cut.every(m => m.feed === 200) && starts.every(m => m.feed === 100), 'feeds Q12 200 on the contour, Q11 100 plunging');
+  const ends = c.filter(m => m.kind === 'rapid' && near(m.to.z, 250) && m.from.z < 0);
+  ok(ends.length === 4 && ends.every(m => near(m.to.x, en[0]) && near(m.to.y, en[1])), 'each pass ends on the compensated end point and retracts to Q7 250');
+  const nx = r.moves.find(m => !m.cycle && near(m.to.x - m.from.x, 10));
+  ok(nx && near(nx.from.x, en[0]) && near(nx.to.x, en[0] + 10), 'p. 295: L IX+10 after the cycle starts from the tool\'s real end position: X ' + (nx && nx.to.x.toFixed(3)));
+  r = TNC.run(C25('-1'));
+  const st2 = r.moves.filter(m => m.cycle && m.kind === 'feed' && m.to.z < m.from.z);
+  ok(!r.errors.length && st2.length === 4 && st2.every(m => near(m.to.x, en[0]) && near(m.to.y, en[1])), 'Q15 -1 (up-cut): the contour is run backwards, the tool stays on the same side');
+  r = TNC.run(C25('+0'));
+  const ups = r.moves.filter(m => m.cycle && m.kind === 'rapid' && near(m.to.z, 250) && m.from.z < 0), st0 = r.moves.filter(m => m.cycle && m.kind === 'feed' && m.to.z < m.from.z && m.to.z < 0);
+  ok(!r.errors.length && ups.length === 1 && st0.length === 4 && near(st0[1].to.x, en[0]) && near(st0[2].to.x, -s2), 'Q15 0: back and forth without retracting between the infeeds');
+  r = TNC.run(C25('+1', 0.5));
+  const s3 = r.moves.filter(m => m.cycle && m.kind === 'feed' && m.to.z < m.from.z)[0];
+  ok(near(s3.to.x, -Math.SQRT1_2 * 10.5) && near(s3.to.y, 15 + Math.SQRT1_2 * 10.5), 'Q3 0.5: the path runs at R + Q3 = 10.5');
+  r = TNC.run(C25('+1', 0, 'CYCL DEF 8.0 MIRROR IMAGE\nCYCL DEF 8.1 X\n'));
+  const sm = r.moves.filter(m => m.cycle && m.kind === 'feed' && m.to.z < m.from.z);
+  ok(!r.errors.length && sm.length === 4 && sm.every(m => near(m.to.x, -en[0]) && near(m.to.y, en[1])), 'mirrored in X: climb milling kept (p. 295) -> the mirrored contour is run from its other end');
+}
+{ const hdr = 'BEGIN PGM D MM\nBLK FORM 0.1 Z X+0 Y+0 Z-40\nBLK FORM 0.2 X+100 Y+100 Z+0\nTOOL CALL 5 Z S2000\nL Z+100 R0 FMAX\n', sub = '\nL Z+100 R0 FMAX M2\nLBL 1\nL X+10 Y+10 RR\nL Y+90\nL X+90\nL Y+10\nL X+10\nLBL 0\nEND PGM D MM';
+  const b = n => { const s = TNC_DIALOGS.cycleSpec(n), v = {}; s.steps.forEach(t => v[t.k] = t.dflt); return s.build(v); };
+  ok(b(14) === 'CYCL DEF 14.0 CONTOUR GEOMETRY\nCYCL DEF 14.1 CONTOUR LABEL 1' && /^CYCL DEF 20\.0 CONTOUR DATA\n  Q1=-20 /.test(b(20)), 'dialog: 14 and 20 in the manual\'s block form');
+  ok([21, 22, 23, 24, 25].every(n => { const r = TNC.run(hdr + b(14) + '\n' + b(20) + '\n' + b(n) + '\nCYCL CALL M3' + sub); return !r.errors.length && r.moves.some(m => m.cycle && m.cycle.endsWith(' ' + n)); }),
+    'dialog: 21-25 with the example values run clean after 14 + 20');
+  ok(TNC.parse('CYCL DEF 20.0 CONTOUR DATA\n Q1=-20 ;MILLING DEPTH\n Q2=1\nL X+0\nQ1 = 5').blocks.map(x => x.kind).join() === 'CYCLDEF,CYCLPARM,CYCLPARM,L,FORMULA', 'parse: Q1-Q19 lines after CYCL DEF 20-25 belong to the cycle; a Q1 = assignment elsewhere stays a formula');
+}
+
 console.log(fails ? `\n${fails} FAILED` : '\nALL MANUAL EXAMPLES PASS');
 process.exit(fails ? 1 : 0);

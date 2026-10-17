@@ -580,12 +580,16 @@ pub fn parse(text: &str) -> Parsed {
     let mut errors = Vec::new();
     let mut nc = 0.0f64; let mut owner = 0.0f64;
     let mut ctx: Option<&'static str> = None;
+    let mut cyc = f64::NAN; // the cycle whose parameter lines may follow
     for line in text.split('\n') {
         let line = line.strip_suffix('\r').unwrap_or(line);
         let mut b = parse_line(line, blocks.len());
+        if b.kind == Kind::CyclDef || b.kind == Kind::TchProbe { cyc = b.args.num("num").unwrap_or(f64::NAN); }
         if b.kind == Kind::QAssign {
             let q = b.args.num("q").unwrap_or(0.0);
-            let in_cycle = matches!(ctx, Some("CYCLDEF") | Some("CYCLPARM") | Some("TCHPROBE")) && q >= 200.0 && !matches!(b.args.get("value"), Some(V::Null));
+            // SL cycles 20-25 take Q1-Q19 (manual 8.6, p. 290-296); every other Q-style cycle Q200 and up
+            let sl = (20.0..=25.0).contains(&cyc) && (1.0..=19.0).contains(&q);
+            let in_cycle = matches!(ctx, Some("CYCLDEF") | Some("CYCLPARM") | Some("TCHPROBE")) && (q >= 200.0 || sl) && !matches!(b.args.get("value"), Some(V::Null));
             if in_cycle { b.kind = Kind::CyclParm; b.indent = true; b.args.remove("expr"); }
             else { b.kind = Kind::Formula; if !matches!(b.args.get("expr"), Some(V::Ast(_))) { mark_err(&mut b, "ARITHMETICAL ERROR"); } }
         }

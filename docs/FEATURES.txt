@@ -1,5 +1,8 @@
 TNC 426 / 430 SIMULATOR - DEVELOPER FEATURE LOG
-Updated 2026-10-03
+Updated 2026-10-17
+
+2026-10-17: SL cycles 14, 20-25 (contour pockets with islands, pilot drilling,
+rough-out, floor/side finishing, contour train) in the Rust engine.
 
 2026-10-03: desktop app (Tauri 2, server in-process), phone layout (workspaces, soft-key
 dock, menu drawer, swipes), accessibility pass, AI plans the part and is measured against
@@ -16,8 +19,8 @@ LIVE - IN THE BUILD, VERIFIED
 ==============================================================================
 Verified by: node tests/manual.js (all pass), node tests/parity.js (5,511 / 5,511
 programs identical to the behaviour record), tests/ui/run.mjs (browser suite),
-cargo test. The 2,806-program CAM corpus (2,767 clean on the JS engine) is not
-on the current machine and has not been re-run on the Rust engine.
+cargo test. The 2,806-program CAM corpus: 2,767 clean on the Rust engine
+(2026-10-17, AUTOTOOLS=1 node tests/corpus.js); none of it uses SL cycles.
 
 ENGINE (Rust, server/crates/tnc-core):
   - The interpreter, the checks and the material model are one Rust crate:
@@ -33,6 +36,20 @@ INTERPRETER:
     datum shift, mirror, rotation, scaling, tolerance, working plane, datum
     point); 200-215 (drilling/reaming/boring/tapping/slots); 220/221
     (patterns); 230/231 (surface milling); 262-265/267 (thread milling).
+  - SL cycles (manual 8.6): 14 CONTOUR GEOMETRY (up to 12 subcontour
+    labels), 20 CONTOUR DATA (both DEF active; Q1-Q19 are written as Q
+    parameters), 21 PILOT DRILLING, 22 ROUGH-OUT, 23 FLOOR FINISHING,
+    24 SIDE FINISHING, 25 CONTOUR TRAIN. Pocket / island from direction +
+    RL/RR, overlapping pockets and islands combined by the manual's rules
+    (inclusion, exclusion, intersection), subcontours closed automatically,
+    RND/CHF/CT inside them, F and M ignored. MP 7420 is a machine parameter
+    (430 profile: 8 = channel and rough-out per depth). 25 runs the open
+    contour through the radius compensation (exact arcs, climb/up-cut/
+    alternate, kept under mirroring). The paths of 21-24 are the
+    simulator's own (the manual does not draw them): tool-centre loops at
+    R + allowance, clearing loops Q2 x R apart from the inside out, traced
+    within 0.003 mm of the exact offset on the free side, as short lines.
+    Placeholders SL1-SL14 in CONTINUE.md; Q8, Q18, Q19 not simulated.
   - Touch probe: TCH PROBE blocks parse (both forms). Datum-setting cycles
     408-413, 417 and 419 move and write nominal results. Tool-measuring
     cycles 30-33, 480-483 and 562 are recognized with no motion. Any other
@@ -236,7 +253,9 @@ BUILD:
 
 IN PROGRESS - NOT YET DONE
 ==============================================================================
-  - Cycles 3, 5, 12, 13, 14/20-25, 26, 27/28 not implemented.
+  - Cycles 3, 5, 12, 13, 26, 27/28 not implemented. SL cycles 21-24 move
+    on the simulator's own paths until the programming station shows the
+    real ones (CONTINUE.md OPEN SL1-SL14).
   - FK (free contour programming) not implemented.
   - Radius compensation inside a tilted working plane (TNC 430) is
     approximate.
