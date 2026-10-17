@@ -203,7 +203,7 @@ fn iso(g: &Grid, fl: &Field, lv: f64) -> Vec<Vec<P2>> {
     } }
     let at = |k: u64| -> P2 {
         let idx = (k / 2) as usize; let (i, j) = (idx % nx, idx / nx);
-        let (i2, j2) = if k % 2 == 0 { (i + 1, j) } else { (i, j + 1) };
+        let (i2, j2) = if k.is_multiple_of(2) { (i + 1, j) } else { (i, j + 1) };
         let pa = (g.x0 + i as f64 * g.h, g.y0 + j as f64 * g.h); let pb = (g.x0 + i2 as f64 * g.h, g.y0 + j2 as f64 * g.h);
         let (va, vb) = (node(i, j) - lv, node(i2, j2) - lv);
         let (mut ta, mut tb) = (0.0, 1.0); let a_in = va >= 0.0;
@@ -269,8 +269,7 @@ fn simplify(mut lp: Vec<P2>, tol: f64) -> Vec<P2> {
         if b <= a + 1 { continue; }
         let (p, q) = (lp[a], lp[b]); let (dx, dy) = (q.0 - p.0, q.1 - p.1); let l = js::hypot2(dx, dy);
         let mut best = (0.0, a);
-        for i in a + 1..b {
-            let r = lp[i];
+        for (i, &r) in lp.iter().enumerate().take(b).skip(a + 1) {
             let d = if l < 1e-12 { js::hypot2(r.0 - p.0, r.1 - p.1) } else { ((r.0 - p.0) * dy - (r.1 - p.1) * dx).abs() / l };
             if d > best.0 { best = (d, i); }
         }

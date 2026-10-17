@@ -309,13 +309,12 @@ fn emit(st: &mut St, kind: MK, to: P3, feed: f64, bi: usize, cycle: Option<&str>
     let psw = if kind == MK::Arc { arc_sweep(pfrom, pto, arc.unwrap()) } else { 0.0 };
     let sw = if st.xf.flip { -psw } else { psw };
     let mut mc: Option<P3> = None;
-    let len;
-    if kind == MK::Arc {
+    let len = if kind == MK::Arc {
         let a = arc.unwrap();
         let c = to_m(st, p3(a.cx, a.cy, 0.0)); mc = Some(c);
         let rr = js::sqrt((from.x - c.x) * (from.x - c.x) + (from.y - c.y) * (from.y - c.y));
-        len = js::sqrt(rr * sw * rr * sw + (to.z - from.z) * (to.z - from.z));
-    } else { len = dist3(from, to); }
+        js::sqrt(rr * sw * rr * sw + (to.z - from.z) * (to.z - from.z))
+    } else { dist3(from, to) };
     let tag_rc = if cycle.is_some() { None } else { flip_rc(st, if st.rc == "RL" || st.rc == "RR" { Some(st.rc.as_str()) } else { None }) };
     let r0 = st.rot; let mut r1 = r0; let mut d_rot = 0.0;
     if let Some(rt) = st.rot_to.take() {
@@ -391,7 +390,7 @@ fn apply_m(st: &mut St, list: Option<&Vec<f64>>, start: bool) {
     }
     st.spindle = st.s_rpm * st.spin_dir;
 }
-fn has_m99(l: Option<&Vec<f64>>) -> bool { l.map(|l| l.iter().any(|m| *m == 99.0)).unwrap_or(false) }
+fn has_m99(l: Option<&Vec<f64>>) -> bool { l.map(|l| l.contains(&99.0)).unwrap_or(false) }
 fn has_end_m(l: Option<&Vec<f64>>) -> bool { l.map(|l| l.iter().any(|m| *m == 2.0 || *m == 30.0)).unwrap_or(false) }
 
 /* ------------------------------------------------------------------ cycles */
@@ -1320,13 +1319,12 @@ fn do_cp(st: &mut St, bi: usize) {
     if let Some(pl) = cc.plane { if pl != Plane::XY {
         let ax = plane_axes(pl); let (pu, pv, pw) = (ax[0], ax[1], ax[2]); let pf = st.pos;
         let pa0 = js::atan2(pget(&pf, pv) - cc.ax(pv), pget(&pf, pu) - cc.ax(pu));
-        let psw;
         let a = st.blocks[bi].args.clone();
-        if a.has("ipa") { psw = resolve(a.nq("ipa"), &st.q).map(|v| v.abs()).unwrap_or(0.0) * PI / 180.0 * (if ccw { 1.0 } else { -1.0 }); }
+        let psw = if a.has("ipa") { resolve(a.nq("ipa"), &st.q).map(|v| v.abs()).unwrap_or(0.0) * PI / 180.0 * (if ccw { 1.0 } else { -1.0 }) }
         else if a.has("pa") {
             let pa = resolve(a.nq("pa"), &st.q).unwrap_or(0.0);
-            let mut s = dir_angle(pa0, pa * PI / 180.0, if ccw { 1.0 } else { -1.0 }); if s.abs() < EPS { s = if ccw { 2.0 * PI } else { -2.0 * PI }; } psw = s;
-        } else { fail(st, bi, "ARC END POS. INCORRECT"); return; }
+            let mut s = dir_angle(pa0, pa * PI / 180.0, if ccw { 1.0 } else { -1.0 }); if s.abs() < EPS { s = if ccw { 2.0 * PI } else { -2.0 * PI }; } s
+        } else { fail(st, bi, "ARC END POS. INCORRECT"); return; };
         let mut wz = pget(&pf, pw);
         let (kw, kiw) = match pw { 'x' => ("x", "ix"), 'y' => ("y", "iy"), _ => ("z", "iz") };
         if let Some(v) = a.get(kw).map(|v| v.as_nq()) { if let Some(v) = resolve(v, &st.q) { wz = v; } }
@@ -1507,18 +1505,31 @@ fn exec_range(st: &mut St, from: usize, to: isize, depth: i32) {
                 if kind == Kind::Blk1 { st.stock.x0 = x; st.stock.y0 = y; st.stock.z0 = z; } else { st.stock.x1 = x; st.stock.y1 = y; st.stock.z1 = z; }
             }
             Kind::ToolCall => do_tool_call(st, iu),
-            Kind::L => { do_line(st, iu); if has_m99(m.as_ref()) { run_cycle(st, iu); } if has_end_m(m.as_ref()) { st.done = true; return; } }
+            Kind::L => {
+                do_line(st, iu);
+                if has_m99(m.as_ref()) { run_cycle(st, iu); }
+                if has_end_m(m.as_ref()) { st.done = true; return; }
+            }
             Kind::Cc => do_cc(st, iu),
             Kind::Ct | Kind::Cp | Kind::Lp | Kind::Ctp => {
                 match kind { Kind::Ct => do_ct(st, iu), Kind::Cp => do_cp(st, iu), Kind::Lp => do_lp(st, iu), _ => do_ctp(st, iu) }
-                if has_m99(m.as_ref()) { run_cycle(st, iu); } if has_end_m(m.as_ref()) { st.done = true; return; }
+                if has_m99(m.as_ref()) { run_cycle(st, iu); }
+                if has_end_m(m.as_ref()) { st.done = true; return; }
             }
             Kind::Rnd | Kind::Chf => do_corner(st, iu),
             Kind::Appr => do_appr(st, iu),
             Kind::Dep => { do_dep(st, iu); if has_end_m(m.as_ref()) { st.done = true; return; } }
             Kind::ToolDef => do_tool_def(st, iu),
-            Kind::C => { do_arc_c(st, iu); if has_m99(m.as_ref()) { run_cycle(st, iu); } if has_end_m(m.as_ref()) { st.done = true; return; } }
-            Kind::Cr => { do_arc_cr(st, iu); if has_m99(m.as_ref()) { run_cycle(st, iu); } if has_end_m(m.as_ref()) { st.done = true; return; } }
+            Kind::C => {
+                do_arc_c(st, iu);
+                if has_m99(m.as_ref()) { run_cycle(st, iu); }
+                if has_end_m(m.as_ref()) { st.done = true; return; }
+            }
+            Kind::Cr => {
+                do_arc_cr(st, iu);
+                if has_m99(m.as_ref()) { run_cycle(st, iu); }
+                if has_end_m(m.as_ref()) { st.done = true; return; }
+            }
             Kind::CyclDef => {
                 let num = st.blocks[iu].args.num("num").unwrap_or(f64::NAN);
                 if pattern_cycle(num) { let g = gather_cycle(st, iu); cycle_pattern(st, &g, iu); }
@@ -1773,15 +1784,14 @@ fn resolve_corners(st: &mut St) {
         if !planar(&p) || !planar(&q) { fail(st, m.block as usize, bad_msg); st.moves.remove(ku); continue; }
         let t1 = p_tan(&p, true).unwrap(); let t2 = p_tan(&q, false).unwrap(); let cross = t1.0 * t2.1 - t1.1 * t2.0; let pp = p_end(&p);
         let feed = js::or(m.feed.unwrap_or(0.0), a.feed);
-        let ins;
-        if m.mark == "CHF" {
+        let ins = if m.mark == "CHF" {
             let (ps, pe, qs, qe) = match (&p, &q) { (Prim::Line { s: ps, e: pe }, Prim::Line { s: qs, e: qe }) => (*ps, *pe, *qs, *qe), _ => { fail(st, m.block as usize, "CHAMFER NOT PERMITTED"); st.moves.remove(ku); continue; } };
             let l1 = js::hypot2(pe.x - ps.x, pe.y - ps.y); let l2 = js::hypot2(qe.x - qs.x, qe.y - qs.y);
             if m.len > l1 + 1e-9 || m.len > l2 + 1e-9 { fail(st, m.block as usize, "CHAMFER NOT PERMITTED"); st.moves.remove(ku); continue; }
             let tt1 = p3(pp.x - t1.0 * m.len, pp.y - t1.1 * m.len, ps.z + (pe.z - ps.z) * (1.0 - m.len / l1));
             let tt2 = p3(pp.x + t2.0 * m.len, pp.y + t2.1 * m.len, pp.z);
             set_end_p(&mut p, tt1); set_start_p(&mut q, tt2);
-            ins = line_p(tt1, tt2);
+            line_p(tt1, tt2)
         } else {
             if cross.abs() < 1e-9 { st.moves.remove(ku); continue; }
             let s = if cross > 0.0 { 1.0 } else { -1.0 };
@@ -1794,8 +1804,8 @@ fn resolve_corners(st: &mut St) {
             f1.z = pp.z; f2.z = pp.z;
             set_end_p(&mut p, f1); set_start_p(&mut q, f2);
             let a0 = js::atan2(f1.y - c.y, f1.x - c.x); let a1 = js::atan2(f2.y - c.y, f2.x - c.x);
-            ins = arc_p(c.x, c.y, m.r, a0, dir_angle(a0, a1, s), pp.z, pp.z);
-        }
+            arc_p(c.x, c.y, m.r, a0, dir_angle(a0, a1, s), pp.z, pp.z)
+        };
         let n_a = move_from(&p, &tpl_move(&a), Extra { rc: Some(a.rc.clone()), rc_act: Some(a.rc_act), ..Default::default() });
         let n_b = move_from(&q, &tpl_move(&b), Extra { rc: Some(b.rc.clone()), rc_act: Some(b.rc_act), ..Default::default() });
         let lit = Tpl { kind: if a.kind == MK::Rapid && b.kind == MK::Rapid { "rapid" } else { "feed" }, feed, tool: a.tool, tool_r: a.tool_r, tool_dr: a.tool_dr,

@@ -36,7 +36,7 @@ pub fn num_or_q(s: &str) -> Option<NQ> {
 /// parseFloat on a string the caller already validated as [+-]?(\d+\.?\d*|\.\d+)
 pub fn parse_float(s: &str) -> f64 {
     let t = s.strip_prefix('+').unwrap_or(s);
-    let t = if t.ends_with('.') { &t[..t.len() - 1] } else { t };
+    let t = t.strip_suffix('.').unwrap_or(t);
     let t2 = if t.starts_with("-.") { format!("-0{}", &t[1..]) } else if t.starts_with('.') { format!("0{}", t) } else { t.to_string() };
     t2.parse::<f64>().unwrap_or(f64::NAN)
 }
@@ -170,7 +170,7 @@ re!(re_scan_f, r"^F(\S+)$");
 re!(re_scan_r, r"^R(\S+)$");
 re!(re_scan_polar, r"^(I)?P([RA])(\S+)$");
 re!(re_scan_lencca, r"^(LEN|CCA)(\S+)$");
-re!(re_scan_rot, &format!(r"^(I)?([ABC])([+-]?(?:\d+\.?\d*|\.\d+|Q\d+))$"));
+re!(re_scan_rot, r"^(I)?([ABC])([+-]?(?:\d+\.?\d*|\.\d+|Q\d+))$");
 
 fn axis_key(i: bool, a: &str) -> &'static str {
     match (i, a) { (false, "X") => "x", (false, "Y") => "y", (false, "Z") => "z", (true, "X") => "ix", (true, "Y") => "iy", _ => "iz" }
@@ -375,8 +375,8 @@ pub fn parse_line(raw: &str, idx: usize) -> Block {
         b.args.set("axis", V::Null); b.args.set("s", V::Null); b.args.set("dl", V::Num(0.0)); b.args.set("dr", V::Num(0.0));
         for tok in toks.iter().skip(if tn.is_none() { 0 } else { 1 }) {
             if re_xyz1().is_match(tok) { b.args.set("axis", V::Str(tok.to_string())); }
-            else if tok.starts_with('S') { b.args.set("s", V::nq(num_or_q(&tok[1..]))); }
-            else if tok.starts_with('F') { b.args.set("f", V::nq(num_or_q(&tok[1..]))); }
+            else if let Some(v) = tok.strip_prefix('S') { b.args.set("s", V::nq(num_or_q(v))); }
+            else if let Some(v) = tok.strip_prefix('F') { b.args.set("f", V::nq(num_or_q(v))); }
             else if let Some(d) = re_dlr().captures(tok) { b.args.set(if &d[1] == "L" { "dl" } else { "dr" }, V::Num(parse_float(&d[2]))); }
         }
         if tn.is_none() && !b.args.truthy("axis") && matches!(b.args.get("s"), Some(V::Null)) { mark_err(&mut b, "TOOL NUMBER MISSING"); }
@@ -497,9 +497,9 @@ pub fn parse_line(raw: &str, idx: usize) -> Block {
             b.args.set("form", V::Str(form.clone())); b.args.set("polar", V::Bool(!m[1].is_empty()));
             let bad = scan_words(&js::words(&m[3]), &mut b.args);
             if !bad.is_empty() { mark_err(&mut b, "BLOCK FORMAT INCORRECT"); }
-            else if (form == "LT" || form == "LN") && !b.args.has("len") { mark_err(&mut b, "ENTRY INCOMPLETE"); }
-            else if (form == "CT" || form == "LCT") && !b.args.has("r") { mark_err(&mut b, "ENTRY INCOMPLETE"); }
-            else if form == "CT" && !b.args.has("cca") { mark_err(&mut b, "ENTRY INCOMPLETE"); }
+            else if ((form == "LT" || form == "LN") && !b.args.has("len"))
+                || ((form == "CT" || form == "LCT") && !b.args.has("r"))
+                || (form == "CT" && !b.args.has("cca")) { mark_err(&mut b, "ENTRY INCOMPLETE"); }
             return b;
         }
     }

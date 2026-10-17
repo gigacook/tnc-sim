@@ -142,7 +142,7 @@ fn body_low(kind: i32, dx: f64, dy: f64, ax: &[f64; 3], r: f64, l: f64) -> f64 {
         h = cone_low(dx, dy, ax, r);
         c = cyl_low(dx, dy, ax, r, r, js::max(r, l));
     } else { c = cyl_low(dx, dy, ax, r, 0.0, l); }
-    if h == h && !(c < h) { h } else { c }
+    if !h.is_nan() && !(c < h) { h } else { c }
 }
 #[allow(clippy::too_many_arguments)]
 fn visit(hm: &mut dyn Field, st: &St, g: &Grid, p: &P, ax: &[f64; 3], kind: i32, r: f64, t0: f64, t1: f64, l: f64, stamp: bool, eps: f64) -> bool {
@@ -158,7 +158,7 @@ fn visit(hm: &mut dyn Field, st: &St, g: &Grid, p: &P, ax: &[f64; 3], kind: i32,
             if !(hv > st.z0 + 1e-6) { i += 1.0; continue; }
             let dx = st.x0 + i * g.dx - p.x;
             let h = if kind < 0 { cyl_low(dx, dy, ax, r, t0, t1) } else { body_low(kind, dx, dy, ax, r, l) };
-            if h != h { i += 1.0; continue; }
+            if h.is_nan() { i += 1.0; continue; }
             let zz = p.z + h;
             if hv > zz + eps { hit = true; if stamp { hm.set(iu, ju, js::max(st.z0, zz) as f32); } else { return true; } }
             i += 1.0;
@@ -229,7 +229,7 @@ fn box_hit(bx: &BoxB, p: &P, ax: &Ax, kind: i32, r: f64, t0: f64, t1: f64, l: f6
         while i <= nx {
             let dx = x0 + (x1 - x0) * i / nx - p.x;
             let h = if kind < 0 { cyl_low(dx, dy, &a, r, t0, t1) } else { body_low(kind, dx, dy, &a, r, l) };
-            if h == h && p.z + h < bx.z1 - 1e-6 && p.z + h > bx.z0 { return true; }
+            if !h.is_nan() && p.z + h < bx.z1 - 1e-6 && p.z + h > bx.z0 { return true; }
             i += 1.0;
         }
         j += 1.0;

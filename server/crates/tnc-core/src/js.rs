@@ -30,7 +30,7 @@ pub fn pow(b: f64, e: f64) -> f64 {
 pub fn round(x: f64) -> f64 {
     if !x.is_finite() || x == 0.0 { return x; }
     if x > 0.0 && x < 0.5 { return 0.0; }
-    if x < 0.0 && x >= -0.5 { return -0.0; }
+    if (-0.5..0.0).contains(&x) { return -0.0; }
     let f = floor(x);
     if x - f >= 0.5 { f + 1.0 } else { f }
 }
@@ -157,8 +157,7 @@ pub fn to_fixed(x: f64, f: usize) -> String {
         format!("{:.*}", f, a)
     };
     // JS keeps the sign of a negative number even when it rounds to zero ("-0.00")
-    if neg && s.chars().any(|c| c != '0' && c != '.') { s.insert(0, '-'); }
-    else if neg { s.insert(0, '-'); }
+    if neg { s.insert(0, '-'); }
     s
 }
 

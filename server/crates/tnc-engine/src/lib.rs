@@ -4,6 +4,9 @@
 //! A small pool of worker threads runs the checks off the async runtime. Every check has a wall-clock limit for
 //! the caller; the interpreter's own guards (2,000,000 executed blocks, 400,000 moves) bound the work itself.
 
+// `!(a > b)` is true for NaN on purpose: a stock with NaN bounds falls back to the default blank.
+#![allow(clippy::neg_cmp_op_on_partial_ord)]
+
 use std::sync::mpsc::{self, Receiver, SyncSender};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;

@@ -23,7 +23,8 @@ impl Seg {
 /// the built-in table decides cone / flutes (sim.js reads TNC.TOOLS)
 fn is_cone_tool(t: f64) -> bool { crate::TOOLS.iter().any(|(n, name, _, _)| *n == t && (name.contains("CHAMFER") || name.contains("SPOT"))) }
 fn flutes(t: f64) -> f64 {
-    for (n, name, _, _) in crate::TOOLS { if *n == t { if name.contains("FACEMILL") { return 5.0; } if name.contains("ENDMILL") || name.contains("BALL") { return 3.0; } } }
+    for (n, name, _, _) in crate::TOOLS { if *n == t { if name.contains("FACEMILL") { return 5.0; }
+        if name.contains("ENDMILL") || name.contains("BALL") { return 3.0; } } }
     // a later entry with the same number would win in sim.js; the table has unique numbers
     f64::NAN
 }

@@ -2,6 +2,9 @@
 //! server (native). `run(text, opts)` returns what `TNC.run` returned, as JSON; the browser glue turns it back into
 //! the same objects, so the UI cannot tell the engines apart. Parity with the old JS engine: tests/parity.js.
 
+// Ported JS semantics: `!(x > 0.0)` is true for NaN (e.g. an unset Q) on purpose; `x <= 0.0` would change behaviour.
+#![allow(clippy::neg_cmp_op_on_partial_ord)]
+
 pub mod exec;
 pub mod js;
 pub mod parse;
