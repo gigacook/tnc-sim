@@ -33,7 +33,7 @@ it re-records the golden file in the same commit and says why. A Rust change shi
 5. Name any install and ask before running it. Never rebuild what exists: search GitHub, brew and npm first.
 6. A DEV tab that lies is worse than none: keep `docs/FEATURES.txt` true.
 7. No personal names or data in tracked files; personal material goes in `private/`.
-8. Commits end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
+8. No Claude attribution in commits or PRs (no Co-Authored-By trailer).
 
 ## How the user works
 - Opus (main thread): priority work (interpreter, I/O, profiles, AI, server).
