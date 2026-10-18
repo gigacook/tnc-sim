@@ -589,6 +589,9 @@ pub fn parse(text: &str) -> Parsed {
     for line in text.split('\n') {
         let line = line.strip_suffix('\r').unwrap_or(line);
         let mut b = parse_line(line, blocks.len());
+        // a comment ending in ~ goes on in the next line (the TNC 430 post wraps long blocks that way)
+        let cont = blocks.last().is_some_and(|p: &Block| p.kind == Kind::Comment && p.raw.trim_end().ends_with('~'));
+        if cont { b.kind = Kind::Comment; b.error = None; b.perr = None; b.args = Args::default(); b.args.set("comment", V::Str(js::trim(line).to_string())); b.indent = true; }
         if b.kind == Kind::CyclDef || b.kind == Kind::TchProbe { cyc = b.args.num("num").unwrap_or(f64::NAN); }
         if b.kind == Kind::QAssign {
             let q = b.args.num("q").unwrap_or(0.0);
@@ -601,7 +604,7 @@ pub fn parse(text: &str) -> Parsed {
         if b.kind != Kind::Blank && b.kind != Kind::Comment {
             ctx = Some(if b.kind == Kind::CyclParm && b.args.truthy("dot") { "DOT" } else { b.kind.as_str() });
         }
-        if b.kind == Kind::CyclParm && !b.args.truthy("dot") { b.n = Some(owner); }
+        if cont || (b.kind == Kind::CyclParm && !b.args.truthy("dot")) { b.n = Some(owner); }
         else if b.kind == Kind::Blank { b.n = None; }
         else { b.n = Some(nc); nc += 1.0; owner = b.n.unwrap(); }
         if let Some(e) = &b.error { errors.push((blocks.len(), e.clone())); }

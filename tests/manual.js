@@ -777,6 +777,13 @@ console.log('SL cycles 14, 20-25 (8.6, p. 284-307): contour geometry from subpro
   r = TNC.run(sl('1', '', pocket).replace(/CYCL DEF 22\.0 ROUGH-OUT[^]*?Q19=150\n/, 'CYCL DEF 21.0 PILOT DRILLING\n Q10=4\n Q11=100\n Q13=1\n'));
   const b21 = r.moves.filter(m => m.cycle && m.kind === 'rapid' && m.to.z < m.from.z && m.to.z < 0).map(m => +m.to.z.toFixed(3));
   ok(!r.errors.length && b21.length && b21.every(z => [-3.4, -7.4].includes(z)), 'cycle 21 (Q1 -10, Q10 4) pecks like cycle 1 with t = 0.6: ' + [...new Set(b21)].join(' '));
+  /* 10.10 preassigned Q parameters (p. 386): Q108 radius R + DR, Q109 axis, Q110 spindle, Q111 coolant, Q113 unit, Q114 length */
+  r = TNC.run('BEGIN PGM X MM\nFN 0: Q1 = +Q109\nFN 0: Q2 = +Q110\nTOOL DEF 1 L+40 R+5\nTOOL CALL 1 Z S2000 DR+0.5\nL X+0 Y+0 Z+50 R0 FMAX M3\nFN 0: Q3 = +Q110\nL Z+60 R0 FMAX M5\nFN 0: Q4 = +Q110\nL Z+70 R0 FMAX M8\nL X+Q108 Y+Q109 Z+Q114 R0 FMAX\nL X+Q1 Y+Q2 Z+Q3 R0 FMAX\nL X+Q4 Y+Q111 Z+Q113 R0 FMAX\nEND PGM X MM');
+  const q10 = r.moves.slice(-3).map(m => [m.to.x, m.to.y, m.to.z].map(v => +v.toFixed(3)).join(' '));
+  ok(!r.errors.length && q10.join(' | ') === '5.5 2 40 | -1 -1 0 | 2 1 0', 'Q108 = R + DR = 5.5, Q109 = 2 (Z), Q114 = 40; before: Q109 -1, Q110 -1; M3 -> Q110 0, M5 after M3 -> 2; M8 -> Q111 1; Q113 0 (MM): ' + q10.join(' | '));
+  /* a ';' comment ending in ~ continues on the next line (as the TNC 430 post writes long blocks) */
+  r = TNC.run(hd + '; a long comment that goes on~\n over two more lines of text with words~\n and L X+5 inside it\nL X+10 Y+10 R0 FMAX\nEND PGM X MM');
+  ok(!r.errors.length && !r.moves.some(m => near(m.to.x, 5)) && r.blocks.filter(x => x.kind === 'COMMENT').length >= 3, 'a comment ending in ~ goes on in the next lines: ' + r.errors.map(e => e.msg));
   /* cycle 26 axis-specific scaling (p. 329): each axis its own factor about the centre CC; factor 1 cancels */
   r = TNC.run(hd + 'CYCL DEF 26.0 AXIS-SPEC. SCALING\nCYCL DEF 26.1 X 1.4 Y 0.6 CCX+15 CCY+20\nL X+25 Y+30 R0 FMAX\nCYCL DEF 26.0 AXIS-SPEC. SCALING\nCYCL DEF 26.1 X 1 Y 1\nL X+25 Y+30 R0 FMAX\nEND PGM X MM');
   const p26 = r.moves.filter(m => !m.cycle).slice(-2).map(m => [+m.to.x.toFixed(3), +m.to.y.toFixed(3)]);
@@ -793,7 +800,7 @@ console.log('SL cycles 14, 20-25 (8.6, p. 284-307): contour geometry from subpro
   r = TNC.run(hd + 'CALL PGM NOPE\nEND PGM X MM');
   ok(r.errors.some(e => e.msg === 'PGM NOPE.H NOT FOUND'), 'CALL PGM of a program that is not there: PGM NOPE.H NOT FOUND');
   r = TNC.run(hd + 'CALL PGM B\nEND PGM X MM', { programs: { 'B.H': 'BEGIN PGM B MM\nTOOL CALL 77 Z S100\nEND PGM B MM' } });
-  ok(r.errors.some(e => e.msg === 'B.H: TOOL 77 NOT DEFINED'), 'an error in the called program names it: ' + r.errors.map(e => e.msg));
+  ok(r.errors.some(e => e.msg === 'B.H 1: TOOL 77 NOT DEFINED'), 'an error in the called program names it: ' + r.errors.map(e => e.msg));
   r = TNC.run(hd + 'CALL PGM X\nEND PGM X MM', { programs: { 'X.H': hd + 'CALL PGM X\nEND PGM X MM' } });
   ok(r.errors.some(e => /EXCESSIVE SUBPROGRAM NESTING/.test(e.msg)), 'a program that calls itself stops at the nesting limit (main programs 4 deep, p. 345)');
   /* 6.6 FK free contour programming is not simulated: every FK block says so (manual example FK2, p. 170) */

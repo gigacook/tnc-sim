@@ -44,7 +44,7 @@ the same commit and says why. A Rust change ships with `python3 build.py --wasm`
 | `node tests/manual.js` | the 426/430 manual's examples and rules |
 | `node tests/post.js` | every block shape the operator's CAM post (Hermle C800U, TNC 430) writes runs without errors |
 | `node tests/parity.js` | the behaviour freeze (`--record` to re-record on purpose) |
-| `AUTOTOOLS=1 node tests/corpus.js` | 2,806 real programs from `search-heidenhain/clones` run without errors (not that the moves are right) |
+| `AUTOTOOLS=1 node tests/corpus.js` | real programs from `search-heidenhain/clones` run without errors (not that the moves are right): 2,807 of 2,829 clean on 10-18 |
 | `node tests/part.js`, `node tests/ai/loop.js` | AI part measurement, AI loop (mocked) |
 | `node tests/ui/run.mjs` | browser suite |
 | `cd server && cargo test` | Rust |

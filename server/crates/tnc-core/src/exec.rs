@@ -404,9 +404,14 @@ fn apply_m(st: &mut St, list: Option<&Vec<f64>>, start: bool) {
     if let Some(list) = list {
         for &m in list {
             if start {
+                // 10.10: Q110 spindle (M3 0, M4 1, M5 after M3 2, after M4 3), Q111 coolant
+                if m == 3.0 || m == 13.0 { st.q.set(110.0, 0.0); } else if m == 4.0 || m == 14.0 { st.q.set(110.0, 1.0); }
+                if m == 8.0 || m == 13.0 || m == 14.0 { st.q.set(111.0, 1.0); }
                 if m == 3.0 || m == 13.0 { st.spin_dir = 1.0; } else if m == 4.0 || m == 14.0 { st.spin_dir = -1.0; }
                 if m == 8.0 || m == 13.0 || m == 14.0 { st.coolant = true; }
             } else {
+                if m == 5.0 && st.spin_dir != 0.0 { st.q.set(110.0, if st.spin_dir > 0.0 { 2.0 } else { 3.0 }); }
+                if m == 9.0 { st.q.set(111.0, 0.0); }
                 if m == 5.0 || m == 2.0 || m == 30.0 { st.spin_dir = 0.0; }
                 if m == 9.0 || m == 2.0 || m == 30.0 { st.coolant = false; }
             }
@@ -1559,6 +1564,8 @@ fn do_tool_call(st: &mut St, bi: usize) {
         }
         Some(e) => st.tool = Tool { t: e.t, name: e.name.clone(), r: e.r, l: e.l, dr },
     }
+    // 10.10 preassigned: Q108 active radius (R + DR), Q109 tool axis (Z = 2; X / Y stop above), Q114 tool length
+    st.q.set(108.0, st.tool.r + js::or(st.tool.dr, 0.0)); st.q.set(109.0, 2.0); st.q.set(114.0, st.tool.l);
     let tk = js::num_str(st.tool.t);
     if !st.tool_stat.contains_key(&tk) {
         st.tool_stat.insert(tk, ToolStat { t: st.tool.t, name: st.tool.name.clone(), r: st.tool.r, l: st.tool.l, moves: 0.0, time: 0.0 });
@@ -1587,7 +1594,7 @@ fn jump_taken(st: &mut St, bi: usize) -> bool {
 
 /// 9.4 / cycle 12: run another program from start to end, then go on after the call. Q parameters, tool, position and
 /// transformations carry over, as on the control. The called program's moves and steps show on the calling block, its
-/// errors as "NAME.H: message". Not in the manual (placeholder PC1): the not-found message, and M2 / M30 in the called
+/// errors as "NAME.H <block>: message". Not in the manual (placeholder PC1): the not-found message, and M2 / M30 in the called
 /// program ("must not contain", p. 345) simply end the run.
 fn call_pgm(st: &mut St, bi: usize, raw: &str) {
     let base = raw.rsplit(['\\', '/', ':']).next().unwrap_or("").trim_matches('"').to_uppercase();
@@ -1608,8 +1615,8 @@ fn call_pgm(st: &mut St, bi: usize, raw: &str) {
     std::mem::swap(&mut *st.blocks, &mut blocks); std::mem::swap(&mut st.labels, &mut labels);
     for m in st.moves[n_mv..].iter_mut() { match m { Item::M(m) => m.block = bi as f64, Item::K(k) => k.block = bi as f64 } }
     for e in st.exec[n_ex..].iter_mut() { *e = bi; }
-    let errs: Vec<String> = st.errors.drain(n_err..).map(|(_, m)| m).collect();
-    for m in errs { fail(st, bi, &format!("{name}: {m}")); }
+    let errs: Vec<(usize, String)> = st.errors.drain(n_err..).collect();
+    for (b, m) in errs { let n = blocks.get(b).and_then(|x| x.n).map(|n| format!(" {}", js::num_str(n))).unwrap_or_default(); fail(st, bi, &format!("{name}{n}: {m}")); }
 }
 
 fn exec_range(st: &mut St, from: usize, to: isize, depth: i32) {
@@ -1626,7 +1633,7 @@ fn exec_range(st: &mut St, from: usize, to: isize, depth: i32) {
         if st.blocks[iu].error.as_deref().map(|e| !e.is_empty()).unwrap_or(false) { i += 1; continue; }
         let m = ms(st, iu);
         match kind {
-            Kind::Begin => {}
+            Kind::Begin => { if st.pgm_depth == 0 { let inch = st.blocks[iu].raw.to_uppercase().contains("INCH"); st.q.set(113.0, if inch { 1.0 } else { 0.0 }); } }
             Kind::End => return,
             Kind::Blk1 | Kind::Blk2 => {
                 let a = &st.blocks[iu].args;
@@ -2176,6 +2183,8 @@ pub fn compile(blocks: &mut Vec<Block>, opts: &Opts) -> Compiled {
         labels: HashMap::new(), comment_tools: HashMap::new(), auto_feed: f64::NAN,
         cap: false, sl_labels: None, sl_data: None, cap_xf: Xf { s: 1.0, ..Default::default() }, programs: opts.programs.clone(), pgm_depth: 0,
     };
+    // 10.10 preassigned before any TOOL CALL / M: no tool axis, no spindle status, coolant off, MP 7430 overlap
+    st.q.set(109.0, -1.0); st.q.set(110.0, -1.0); st.q.set(111.0, 0.0); st.q.set(112.0, js::or(st.mach.pocket_k, 0.7));
     for i in 0..st.blocks.len() {
         if st.blocks[i].kind == Kind::Lbl {
             let k = Lbl::from_v(st.blocks[i].args.get("lbl").unwrap_or(&V::Null)).key();
