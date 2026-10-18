@@ -112,7 +112,11 @@ import gzip, base64
 for name, label in ENGINE_MODULES:
     scripts += tag(label, (src / name).read_text(encoding='utf-8')); included.append(name)
 # gzip + base64; DecompressionStream (all current browsers) restores it, then the deferred modules run in order
-b64 = base64.b64encode(gzip.compress(WASM.read_bytes(), 9, mtime=0)).decode('ascii')
+wasm = WASM.read_bytes()
+b64 = base64.b64encode(gzip.compress(wasm, 9, mtime=0)).decode('ascii')
+# zlib and zlib-ng (Windows Python 3.14) compress differently: keep the committed bytes while they hold the same module
+old = re.search(r'window\.TNC_WASM_GZ = "([^"]*)"', (d / 'index.html').read_text(encoding='utf-8')) if (d / 'index.html').exists() else None
+if old and gzip.decompress(base64.b64decode(old.group(1))) == wasm: b64 = old.group(1)
 scripts += tag('TNC engine module (WebAssembly, gzip, base64)', f'window.TNC_WASM_GZ = "{b64}";')
 deferred = ''
 for name, label in MODULES:
