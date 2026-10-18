@@ -33,8 +33,8 @@ verified, where it ran, and the commit (pushed to main).
 | ✓ | id | task | date | verified via | tested on | commit |
 |---|---|---|---|---|---|---|
 | x | #15 | CI: index.html reproducible on Linux (zlib vs zlib-ng) | 10-18 | CI step green | ubuntu CI | bcebb94 |
-|   | #16 | CI: browser suite I/O checks (Ctrl+O, CRLF listing, zip, profile zip) fail on Linux, pass on Windows | | CI green | | |
-|   | #17 | CI: phone swipe check passes 3 runs in a row | | CI | | |
+| x | #16 | CI: browser suite green on Linux (uploads waited for, WebKit touch events, SL volume read) | 10-18 | CI all jobs green | ubuntu CI: Chromium + WebKit | 9cd7d6d |
+|   | #17 | CI: phone swipe check passes 3 runs in a row (1 of 3: 9cd7d6d) | | CI | | |
 |   | #24 | Local WebKit on Windows freezes the page in the desktop checks (CI's Linux WebKit passes; Mac Safari is neither): find out or document | | `node tests/ui/run.mjs` | | |
 |   | #18 | GitHub Pages: site from `/docs` on main (today 404) | | the README link opens | | |
 |   | #19 | Desktop app opens on macOS and Windows (CI only builds them) | | launched by hand | | |
