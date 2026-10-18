@@ -26,8 +26,8 @@ verified, where it ran, and the commit (pushed to main).
 |   | #13 | Cycles 27 / 28 cylinder surface | | manual.js | | |
 |   | #14 | F AUTO from a cutting-data table (today: the TOOL CALL feed) | | manual.js | | |
 
-|   | #22 | TCH PROBE 400 / 403 (basic rotation): the operator's CAM post emits them for angle probing; today NOT IMPLEMENTED | | manual.js | | |
-|   | #23 | Acceptance: every block type the operator's post (Hermle C800U, TNC 430: `search-heidenhain/clones/postprocessors/`) can write runs without error, as `tests/post.js` | | tests/post.js | | |
+| ✓ | #22 | TCH PROBE 400 / 403 (basic rotation): the operator's CAM post emits them for angle probing; placeholder from the iTNC 530 manual (see Open placeholders) | 10-18 | tests/post.js, parity re-recorded (only 400/403 errors gone) | Win 11 | this branch |
+| ✓ | #23 | Acceptance: every block type the operator's post (Hermle C800U, TNC 430: `search-heidenhain/clones/postprocessors/`) can write runs without error, as `tests/post.js`; still OPEN there: CYCL DEF 241, CYCL DEF 252, TCH PROBE 415 | 10-18 | node tests/post.js | Win 11 | this branch |
 
 ### 2. Shipping
 | ✓ | id | task | date | verified via | tested on | commit |
@@ -61,6 +61,7 @@ FK solver · horizontal spindle (TOOL CALL X / Y) · programs to the machine (US
 | C3 | exec.rs cycle_slot3 | roughing on the slot centre line; straight feed to the +X wall (manual: tangential arc); cutter < half the slot width = SLOT WIDTH TOO LARGE (message not in the manual) |
 | C5 | exec.rs cycle_circ5 | "spiral" = concentric full circles at k x R joined by radial feeds in +X |
 | T-thread | exec.rs cycle_thread | 262–267: helix whole turns from +X; approach semicircle +½ pitch; 267 start R + pitch; 263 countersink circle not simulated; 264 countersink feed Q206; no M4 / spindle-off error |
+| P400 / P403 | exec.rs run_probe | two touches along Q272 from Q263/Q264, Q265/Q266, direction Q267 (iTNC 530 manual); ideal part so Q150 = 0, no basic rotation / rotary-axis correction applied; Q307/Q312/Q337/Q380 ignored |
 | T6 / SL6 | exec.rs, sl.rs | a positive depth's sign is ignored (manual: it reverses the direction) |
 | SL1 | sl.rs capture | a subcontour with R0 counts as a pocket |
 | O13 | exec.rs CyclDef | cycle 13 is accepted but its angle is not stored (M19/M20 spindle orientation not modelled); it does not replace the active machining cycle |

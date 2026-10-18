@@ -28,7 +28,7 @@ macro_rules! re {
 fn implemented(n: f64) -> bool { [1., 2., 3., 4., 5., 17., 18., 21., 22., 23., 24., 25., 200., 201., 202., 203., 204., 205., 206., 207., 208., 209., 210., 211., 212., 213., 214., 215., 230., 231., 262., 263., 264., 265., 267.].contains(&n) }
 fn pattern_cycle(n: f64) -> bool { n == 220.0 || n == 221.0 }
 fn nomotion(n: f64) -> bool { [7., 8., 9., 10., 11., 14., 19., 20., 32., 247.].contains(&n) }
-fn probe_cycle(n: f64) -> bool { [408., 409., 410., 411., 412., 413., 417., 419.].contains(&n) }
+fn probe_cycle(n: f64) -> bool { [400., 403., 408., 409., 410., 411., 412., 413., 417., 419.].contains(&n) }
 fn tt_cycle(n: f64) -> bool { [30., 31., 32., 33., 480., 481., 482., 483., 562.].contains(&n) }
 
 /* ------------------------------------------------------------------ small types */
@@ -1111,7 +1111,17 @@ fn run_probe(st: &mut St, cy: &Cycle, bi: usize) {
     let sc = js::or(pr[2], PROBE_CLR) + js::max(qp(cy, 320.0, 0.0), 0.0);
     let h = qp(cy, 260.0, st.pos.z); let z = qp(cy, 261.0, 0.0) - r; let mut via = js::round(qp(cy, 301.0, 1.0)) == 1.0; let cx = qp(cy, 321.0, 0.0); let cyy = qp(cy, 322.0, 0.0);
     let mut p: Vec<PPt> = vec![]; let mut meas: Axes = vec![]; let mut tgt: Axes = vec![];
-    if n == 408.0 || n == 409.0 {
+    if n == 400.0 || n == 403.0 {
+        // PLACEHOLDER (#22, iTNC 530 manual; 426/430 manual has no TCH PROBE 4xx): two touches along Q272 from Q263/Q264 and Q265/Q266, direction Q267; ideal part so angle Q150 = 0, no rotation applied
+        let a = js::round(qp(cy, 272.0, 1.0)); let d = if qp(cy, 267.0, 1.0) < 0.0 { -1.0 } else { 1.0 };
+        for (x0, y0) in [(qp(cy, 263.0, 0.0), qp(cy, 264.0, 0.0)), (qp(cy, 265.0, 0.0), qp(cy, 266.0, 0.0))] {
+            if a == 2.0 { p.push(PPt { s: (x0, y0 - d * (r + sc)), e: (x0, y0 - d * r), c: None }); } else { p.push(PPt { s: (x0 - d * (r + sc), y0), e: (x0 - d * r, y0), c: None }); }
+        }
+        probe_pts(st, &p, z, h, via, bi, &lab, None);
+        st.q.set(150.0, 0.0);
+        let q = st.pos; pmv(st, PK::Rapid, p3(q.x, q.y, h), bi, &lab, None);
+        return;
+    } else if n == 408.0 || n == 409.0 {
         let ax = if js::round(qp(cy, 272.0, 1.0)) == 2.0 { 'y' } else { 'x' }; let w = qp(cy, 311.0, 0.0).abs() / 2.0; let c0 = if ax == 'x' { cx } else { cyy };
         let inside = n == 408.0; let e = if inside { w - r } else { w + r }; let mut s0 = if inside { e - sc } else { e + sc };
         if n == 409.0 { via = true; }
