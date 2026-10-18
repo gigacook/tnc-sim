@@ -541,6 +541,50 @@ fn reversed(p: &Prim) -> Prim {
     }
 }
 
+/// 25 (p. 295 "monitors the operation to prevent undercuts ... the corners may have to be reworked"): the tool-centre
+/// path at distance r as a polyline (arcs as chords within 1 um) with every loop cut out, so where the tool doesn't fit
+/// the material stays. None when nothing had to be cut: the exact compensation pass is used then.
+fn undercut_free(ps: &[Prim], s: f64, r: f64) -> Option<Vec<P2>> {
+    let mut pts: Vec<P2> = vec![]; let mut cut = false;
+    fn add(pts: &mut Vec<P2>, p: P2) { if pts.last().map(|q| js::hypot2(q.0 - p.0, q.1 - p.1) > 1e-6).unwrap_or(true) { pts.push(p); } }
+    fn arc(pts: &mut Vec<P2>, cx: f64, cy: f64, r: f64, a0: f64, sw: f64) {
+        let step = if r > 1e-3 { 2.0 * js::sqrt(2.0 * 0.001 / r) } else { PI };
+        let n = js::max(1.0, js::ceil(sw.abs() / step)) as usize;
+        for k in 1..=n { let a = a0 + sw * k as f64 / n as f64; add(pts, (cx + r * js::cos(a), cy + r * js::sin(a))); }
+    }
+    let mut prev: Option<&Prim> = None;
+    for p in ps {
+        let off = match offset_p(p, s, r) { Some(o) if !matches!(o, Prim::Invalid) => o, _ => { cut = true; continue; } }; // arc smaller than r
+        let a = p_start(&off);
+        match prev.and_then(|q| Some((p_tan(q, true)?, p_tan(p, false)?))) {
+            Some((t1, t2)) if !pts.is_empty() => {
+                let cross = t1.0 * t2.1 - t1.1 * t2.0; let c = p_start(p); let l = *pts.last().unwrap();
+                if s * cross < -1e-9 { // outside corner: arc around it
+                    let a0 = js::atan2(l.1 - c.y, l.0 - c.x); let a1 = js::atan2(a.y - c.y, a.x - c.x);
+                    arc(&mut pts, c.x, c.y, r, a0, dir_angle(a0, a1, if cross > 0.0 { 1.0 } else { -1.0 }));
+                } else { add(&mut pts, (a.x, a.y)); } // inside corner: the loop removal below finds the meeting point
+            }
+            _ => add(&mut pts, (a.x, a.y)),
+        }
+        match &off { Prim::Arc { cx, cy, r, a0, sw, .. } => arc(&mut pts, *cx, *cy, *r, *a0, *sw), _ => { let e = p_end(&off); add(&mut pts, (e.x, e.y)); } }
+        prev = Some(p);
+    }
+    if pts.len() < 2 { return if cut { Some(pts) } else { None }; }
+    // walk the path; a segment that crosses a later one skips everything between (that part is a loop = an undercut)
+    let x = |a: P2, b: P2, c: P2, d: P2| -> Option<P2> {
+        let (r, q) = ((b.0 - a.0, b.1 - a.1), (d.0 - c.0, d.1 - c.1)); let den = r.0 * q.1 - r.1 * q.0;
+        if den.abs() < 1e-15 { return None; }
+        let t = ((c.0 - a.0) * q.1 - (c.1 - a.1) * q.0) / den; let u = ((c.0 - a.0) * r.1 - (c.1 - a.1) * r.0) / den;
+        if (0.0..=1.0).contains(&t) && (0.0..=1.0).contains(&u) { Some((a.0 + r.0 * t, a.1 + r.1 * t)) } else { None }
+    };
+    let mut out = vec![pts[0]]; let mut i = 0;
+    while i + 1 < pts.len() {
+        let hit = (i + 2..pts.len() - 1).rev().find_map(|j| x(pts[i], pts[i + 1], pts[j], pts[j + 1]).map(|p| (j, p)));
+        match hit { Some((j, p)) => { add(&mut out, p); pts[j] = p; i = j; cut = true; } None => { add(&mut out, pts[i + 1]); i += 1; } }
+    }
+    if cut { Some(out) } else { None }
+}
+
 /// 25 CONTOUR TRAIN: the open contour of the first label, offset by R + Q3 through the radius compensation pass
 fn train(st: &mut St, cy: &Cycle, bi: usize) {
     let lbl = match st.sl_labels.as_ref().and_then(|l| l.first().copied()) { Some(l) => l, None => { fail(st, bi, "CYCL DEF INCOMPLETE"); return; } };
@@ -569,6 +613,19 @@ fn train(st: &mut St, cy: &Cycle, bi: usize) {
         let ps: Vec<Prim> = if rev { sub.prims.iter().rev().map(reversed).collect() } else { sub.prims.clone() };
         let sd = if rev { swap(&side) } else { side.clone() };
         let s0 = p_start(&ps[0]);
+        if let Some(path) = if sd != "R0" { undercut_free(&ps, if sd == "RL" { 1.0 } else { -1.0 }, rr) } else { None } {
+            st.rc = "R0".into(); st.rc_act = false;
+            let (p0, pe) = match (path.first(), path.last()) { (Some(a), Some(b)) => (*a, *b), _ => { fail(st, bi, "TOOL RADIUS TOO LARGE"); break; } }; // SL7
+            if alt && i > 0 { emit(st, MK::Feed, p3(p0.0, p0.1, z), f_pl, bi, None, None); } else {
+                if st.pos.z < q7 { let p = st.pos; emit(st, MK::Rapid, p3(p.x, p.y, q7), RAPID_RATE, bi, None, None); }
+                let zz = st.pos.z; emit(st, MK::Rapid, p3(p0.0, p0.1, zz), RAPID_RATE, bi, None, None);
+                emit(st, MK::Rapid, p3(p0.0, p0.1, q5 + 2.0), RAPID_RATE, bi, None, None);
+                emit(st, MK::Feed, p3(p0.0, p0.1, z), f_pl, bi, None, None);
+            }
+            for p in &path[1..] { if st.abort { break; } emit(st, MK::Feed, p3(p.0, p.1, z), f_mill, bi, None, None); }
+            if !(alt && i + 1 < zs.len()) { emit(st, MK::Rapid, p3(pe.0, pe.1, q7), RAPID_RATE, bi, None, None); }
+            continue;
+        }
         if alt && i > 0 {
             // Q15 = 0: back and forth; the plunge at the end of the last pass starts the new compensated run
             st.rc = sd.clone(); st.rc_act = true; emit(st, MK::Feed, p3(s0.x, s0.y, z), f_pl, bi, None, None);

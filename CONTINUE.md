@@ -15,7 +15,7 @@ verified, where it ran, and the commit (pushed to main).
 | x | #2 | SL: datum shift / rotation / mirror inside a subcontour stays in the cycle | 10-18 | manual.js, parity | Win 11 | 6ceb646 |
 | x | #3 | SL: channels just wider than the tool are cut | 10-18 | manual.js, parity | Win 11 | 6a13a4f |
 | x | #4 | Cycles 1 and 21: advanced stop distance 0.6 mm / depth÷50 (p. 211) | 10-18 | manual.js, parity re-recorded | Win 11 | f9b38ba |
-|   | #5 | SL 25: tool too big for an inside corner leaves the corner, no error, no gouge (p. 295) | | manual.js | | |
+| x | #5 | SL 25: tool too big for an inside corner leaves the corner, no error, no gouge (p. 295) | 10-18 | manual.js, parity | Win 11 | see git log |
 |   | #6 | Infeed in the TOOL CALL axis (Y, X), all cycles (p. 205) | | manual.js | | |
 |   | #7 | FK free contour programming (also needed by the manual's SL example C20) | | manual.js | | |
 |   | #8 | Cycle 3 slot milling | | manual.js | | |

@@ -758,6 +758,19 @@ console.log('SL cycles 14, 20-25 (8.6, p. 284-307): contour geometry from subpro
   r = TNC.run(sl('1', '', pocket).replace(/CYCL DEF 22\.0 ROUGH-OUT[^]*?Q19=150\n/, 'CYCL DEF 21.0 PILOT DRILLING\n Q10=4\n Q11=100\n Q13=1\n'));
   const b21 = r.moves.filter(m => m.cycle && m.kind === 'rapid' && m.to.z < m.from.z && m.to.z < 0).map(m => +m.to.z.toFixed(3));
   ok(!r.errors.length && b21.length && b21.every(z => [-3.4, -7.4].includes(z)), 'cycle 21 (Q1 -10, Q10 4) pecks like cycle 1 with t = 0.6: ' + [...new Set(b21)].join(' '));
+  /* p. 295: cycle 25 prevents undercuts; where the tool is too big the corner is left for rework (no error, no gouge) */
+  const c25 = (contour) => hd.replace('R+5', 'R+10') + 'CYCL DEF 14.0 CONTOUR GEOMETRY\nCYCL DEF 14.1 CONTOUR LABEL 1\nCYCL DEF 25.0 CONTOUR TRAIN\n Q1=-5\n Q3=+0\n Q5=+0\n Q7=+50\n Q10=5\n Q11=100\n Q12=200\n Q15=+1\nCYCL CALL M3\nL Z+60 R0 FMAX M2\nLBL 1\n' + contour + 'LBL 0\nEND PGM X MM';
+  for (const [name, contour, segs, span] of [
+    ['a 5 mm notch', 'L X+10 Y+50 RL\nL X+40\nL Y+40\nL X+45\nL Y+50\nL X+90\n', [[10, 50, 40, 50], [40, 50, 40, 40], [40, 40, 45, 40], [45, 40, 45, 50], [45, 50, 90, 50]], [10, 90]],
+    ['an R2 inside corner', 'L X+10 Y+10 RL\nL X+50\nRND R2\nL Y+80\n', [[10, 10, 48, 10], [50, 12, 50, 80]], [10, 80]]]) {
+    r = TNC.run(c25(contour));
+    const mv = r.moves.filter(m => m.cycle && m.kind !== 'rapid' && near(m.from.z, -5) && near(m.to.z, -5));
+    const ds = p => Math.min(...segs.map(([x0, y0, x1, y1]) => dseg({ from: { x: x0, y: y0 }, to: { x: x1, y: y1 } }, p.x, p.y)));
+    const minD = Math.min(...mv.flatMap(m => [m.from, m.to]).map(ds));
+    const xs = mv.flatMap(m => [m.from.x, m.from.y, m.to.x, m.to.y]);
+    ok(!r.errors.length && mv.length && minD >= 10 - 0.01 && Math.max(...xs) >= span[1] - 1e-6,
+      `cycle 25, R10 tool, ${name}: no error, the path stays >= R from the contour (min ${isFinite(minD) ? minD.toFixed(3) : '-'}) ${r.errors.map(e => e.msg)}`);
+  }
   /* p. 285 "the cutter traverses around islands": a strip just wider than the tool between an island and the wall is cut */
   for (const [size, w] of [[100, 10.2], [300, 11]]) {
     const top = size === 100 ? 60 : 300, x1 = size === 100 ? 80 : 300, x0 = size === 100 ? 20 : 0; const xi = (x0 < 10 ? "" : "+") + (x0 - 10);
