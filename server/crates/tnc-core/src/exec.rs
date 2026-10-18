@@ -1148,7 +1148,8 @@ fn feed_of(st: &mut St, bi: usize) -> bool {
     let fv = resolve(f, &st.q);
     match fv { Some(v) if v > 0.0 => { st.feed = v; true } _ => { fail(st, bi, "FEED RATE MISSING"); false } }
 }
-fn ms(st: &St, bi: usize) -> Option<Vec<f64>> { st.blocks[bi].args.ms().cloned() }
+/// the M functions of a block; none while an SL contour subprogram is captured ("The TNC ignores ... M", p. 285)
+fn ms(st: &St, bi: usize) -> Option<Vec<f64>> { if st.cap { None } else { st.blocks[bi].args.ms().cloned() } }
 
 fn do_line(st: &mut St, bi: usize) {
     if !set_rc(st, bi) { return; }

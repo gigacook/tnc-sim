@@ -724,6 +724,16 @@ console.log('SL cycles 14, 20-25 (8.6, p. 284-307): contour geometry from subpro
     'dialog: 21-25 with the example values run clean after 14 + 20');
   ok(TNC.parse('CYCL DEF 20.0 CONTOUR DATA\n Q1=-20 ;MILLING DEPTH\n Q2=1\nL X+0\nQ1 = 5').blocks.map(x => x.kind).join() === 'CYCLDEF,CYCLPARM,CYCLPARM,L,FORMULA', 'parse: Q1-Q19 lines after CYCL DEF 20-25 belong to the cycle; a Q1 = assignment elsewhere stays a formula');
 }
+{ /* SL subprogram rules (p. 285), found by the adversarial run 2026-10-17 */
+  const hd = 'BEGIN PGM X MM\nBLK FORM 0.1 Z X+0 Y+0 Z-40\nBLK FORM 0.2 X+100 Y+100 Z+0\nTOOL DEF 1 L+0 R+5\nTOOL CALL 1 Z S2000\nL X+0 Y+0 Z+50 R0 FMAX\n';
+  const sl = (labels, after, subs) => hd + 'CYCL DEF 14.0 CONTOUR GEOMETRY\nCYCL DEF 14.1 CONTOUR LABEL ' + labels + '\nCYCL DEF 20.0 CONTOUR DATA\n Q1=-10\n Q2=1\n Q3=+0\n Q4=+0\n Q5=+0\n Q6=2\n Q7=+20\n Q8=0\n Q9=+1\n' +
+    'CYCL DEF 22.0 ROUGH-OUT\n Q10=5\n Q11=100\n Q12=350\n Q18=0\n Q19=150\nCYCL CALL M3\n' + after + 'L Z+60 R0 FMAX M2\n' + subs + 'END PGM X MM';
+  const box = r => { const c = r.moves.filter(m => m.cycle && m.kind !== 'rapid' && m.to.z < 0).flatMap(m => [m.from, m.to]); return [Math.min(...c.map(p => p.x)), Math.max(...c.map(p => p.x))].map(v => v.toFixed(3)).join('..'); };
+  for (const m of ['M99', 'M2', 'M30']) {
+    let r; try { r = TNC.run(sl('1', '', 'LBL 1\nL X+20 Y+20 RR\nL Y+60 ' + m + '\nL X+80\nL Y+20\nL X+20\nLBL 0\n')); } catch (e) { r = { errors: [{ msg: e.message }], moves: [] }; }
+    ok(!r.errors.length && box(r) === '25.003..74.997', m + ' in a contour subprogram is ignored (p. 285 "ignores ... M"): ' + (r.errors[0] ? r.errors[0].msg : box(r)));
+  }
+}
 
 console.log(fails ? `\n${fails} FAILED` : '\nALL MANUAL EXAMPLES PASS');
 process.exit(fails ? 1 : 0);
