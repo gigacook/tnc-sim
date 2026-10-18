@@ -1608,6 +1608,8 @@ fn exec_range(st: &mut St, from: usize, to: isize, depth: i32) {
                     if (20.0..=25.0).contains(&cn) { sl::def_q(st, &c); }
                     if cn == 14.0 { st.sl_labels = Some(sl::labels_of(&c)); i += 1; continue; }
                     if cn == 20.0 { st.sl_data = Some(c); i += 1; continue; }
+                    // placeholder O13: the angle only takes effect on M19/M20 (spindle angle not modelled), so cycle 13 is accepted and keeps the active machining cycle
+                    if cn == 13.0 { i += 1; continue; }
                     st.cycle = Some(c);
                     if !implemented(cn) && !nomotion(cn) { fail(st, iu, &format!("CYCLE {} NOT IMPLEMENTED IN SIMULATOR", js::num_str(cn))); }
                     if cn == 247.0 { let c = st.cycle.clone().unwrap(); activate_preset(st, &c); }

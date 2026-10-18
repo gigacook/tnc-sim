@@ -21,7 +21,7 @@ verified, where it ran, and the commit (pushed to main).
 | x | #8 | Cycle 3 slot milling (p. 270) | 10-18 | manual.js, parity | Win 11 | 33e39f0 |
 | x | #9 | Cycle 5 circular pocket (p. 264) | 10-18 | manual.js, parity | Win 11 | 33e39f0 |
 |   | #10 | Cycle 12 PGM CALL | | manual.js | | |
-|   | #11 | Cycle 13 oriented spindle stop | | manual.js | | |
+| x | #11 | Cycle 13 oriented spindle stop: accepted, angle not modelled (placeholder O13) | 10-18 | manual.js, parity | Win 11 | |
 |   | #12 | Cycle 26 axis-specific scaling | | manual.js | | |
 |   | #13 | Cycles 27 / 28 cylinder surface | | manual.js | | |
 |   | #14 | F AUTO from a cutting-data table (today: the TOOL CALL feed) | | manual.js | | |
@@ -63,6 +63,7 @@ FK solver · horizontal spindle (TOOL CALL X / Y) · programs to the machine (US
 | T-thread | exec.rs cycle_thread | 262–267: helix whole turns from +X; approach semicircle +½ pitch; 267 start R + pitch; 263 countersink circle not simulated; 264 countersink feed Q206; no M4 / spindle-off error |
 | T6 / SL6 | exec.rs, sl.rs | a positive depth's sign is ignored (manual: it reverses the direction) |
 | SL1 | sl.rs capture | a subcontour with R0 counts as a pocket |
+| O13 | exec.rs CyclDef | cycle 13 is accepted but its angle is not stored (M19/M20 spindle orientation not modelled); it does not replace the active machining cycle |
 | SL2 | sl.rs field | only islands: "SL CONTOUR WITHOUT POCKET NOT SIMULATED" |
 | SL3 | sl.rs plan/centre | rough-out plunge = the point farthest from the walls; loops join at the nearest vertex |
 | SL4 | sl.rs reposition | between passes: straight at depth if safe, else up to Q7, over, down at Q11 |
