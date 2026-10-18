@@ -16,7 +16,7 @@ verified, where it ran, and the commit (pushed to main).
 | x | #3 | SL: channels just wider than the tool are cut | 10-18 | manual.js, parity | Win 11 | 6a13a4f |
 | x | #4 | Cycles 1 and 21: advanced stop distance 0.6 mm / depth÷50 (p. 211) | 10-18 | manual.js, parity re-recorded | Win 11 | f9b38ba |
 | x | #5 | SL 25: tool too big for an inside corner leaves the corner, no error, no gouge (p. 295) | 10-18 | manual.js, parity | Win 11 | 02ca566 |
-| x | #6 | TOOL CALL X / Y: stops with TOOL AXIS n NOT SIMULATED instead of milling as Z (p. 205). Full X / Y spindle support moved to Later: all 3,564 corpus TOOL CALLs are Z | 10-18 | manual.js, parity | Win 11 | AXISCOMMIT |
+| x | #6 | TOOL CALL X / Y: stops with TOOL AXIS n NOT SIMULATED instead of milling as Z (p. 205). Full X / Y spindle support moved to Later: all 3,564 corpus TOOL CALLs are Z | 10-18 | manual.js, parity | Win 11 | f35bd8c |
 |   | #7 | FK free contour programming (also needed by the manual's SL example C20) | | manual.js | | |
 |   | #8 | Cycle 3 slot milling | | manual.js | | |
 |   | #9 | Cycle 5 circular pocket | | manual.js | | |

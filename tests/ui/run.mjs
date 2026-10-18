@@ -101,8 +101,14 @@ const active = (page) => page.evaluate(() => { const a = document.activeElement;
 async function swipe(page, x0, y0, x1, y1, steps = 3) {
   await page.evaluate(async ([x0, y0, x1, y1, steps]) => {
     const target = document.elementFromPoint(x0, y0);
-    const mk = (x, y) => new Touch({ identifier: 1, target, clientX: x, clientY: y, pageX: x + scrollX, pageY: y + scrollY, radiusX: 4, radiusY: 4, force: 1 });
-    const fire = (type, t, list) => target.dispatchEvent(new TouchEvent(type, { bubbles: true, cancelable: true, touches: list, targetTouches: list, changedTouches: [t] }));
+    // desktop WebKit has no Touch constructor ("Illegal constructor"): there the same touch lists ride on a plain Event
+    let real = true; try { new Touch({ identifier: 0, target }); } catch { real = false; }
+    const mk = (x, y) => { const o = { identifier: 1, target, clientX: x, clientY: y, pageX: x + scrollX, pageY: y + scrollY, radiusX: 4, radiusY: 4, force: 1 }; return real ? new Touch(o) : o; };
+    const fire = (type, t, list) => {
+      let e; if (real) e = new TouchEvent(type, { bubbles: true, cancelable: true, touches: list, targetTouches: list, changedTouches: [t] });
+      else { e = new Event(type, { bubbles: true, cancelable: true }); for (const [k, v] of [['touches', list], ['targetTouches', list], ['changedTouches', [t]]]) Object.defineProperty(e, k, { value: v }); }
+      target.dispatchEvent(e);
+    };
     let t = mk(x0, y0); fire('touchstart', t, [t]);
     for (let i = 1; i <= steps; i++) { await new Promise((r) => setTimeout(r, 40)); t = mk(x0 + ((x1 - x0) * i) / steps, y0 + ((y1 - y0) * i) / steps); fire('touchmove', t, [t]); }
     fire('touchend', t, []);
@@ -565,6 +571,9 @@ async function upload(p, files) {
   const fc = await fcP.catch(async (e) => { throw new Error('no file chooser on Ctrl+O; open: ' + await p.evaluate(() => [...document.querySelectorAll('.modal:not([hidden]),[role=dialog]:not([hidden])')].map((m) => m.id || m.className).join(',') + ' focus=' + (document.activeElement && (document.activeElement.id || document.activeElement.tagName)))); });
   await fc.setFiles(files); await p.waitForTimeout(700);
 }
+/* wait until the page state matches (slow CI boxes load files later than a fixed sleep), then let the check report */
+const until = (p, fn, arg) => p.waitForFunction(fn, arg, { timeout: 10000 }).catch(() => {});
+const hasPgms = (p, names) => until(p, (n) => { const s = TNC_UI.state; return n.every((x) => x in s.pgms[s.machine]); }, names);
 async function menu(p, btn, label) { await p.click(btn); await p.locator('.hmenu button', { hasText: label }).first().click(); }
 /* zip entry names, read with the page's own JSZip (inlined by build.py): no unzip binary, no extra package */
 const zipNames = (p, file) => p.evaluate(async (b64) => Object.keys((await JSZip.loadAsync(b64, { base64: true })).files), readFileSync(file).toString('base64'));
@@ -668,6 +677,7 @@ async function ioFlows(browser, tag) {
     /* 4 uploads */
     await step(p, `${L} 4 upload`, async () => {
       await upload(p, [join(FX, 'PLAIN1.H'), join(FX, 'UMLAUT.H')]);
+      await hasPgms(p, ['PLAIN1.H', 'UMLAUT.H']); await until(p, () => TNC_UI.state.pgm === 'UMLAUT.H' && TNC_UI.state.res);
       let s = await S(p); ok(s.names.includes('PLAIN1.H') && s.names.includes('UMLAUT.H'), `${L} 4: Ctrl+O loads two .H files`);
       const um = await p.evaluate(() => TNC_UI.state.pgms[TNC_UI.state.machine]['UMLAUT.H'] || '');
       ok(um.includes('Fräsen für Größe') && !um.includes('�'), `${L} 4: Windows-1252 comment decoded`, um.split('\n').find((l) => l.includes(';')));
@@ -695,6 +705,7 @@ END PGM ${n} MM
         return z.generateAsync({ type: 'base64' }); });
       writeFileSync(join(out, 'multi.zip'), Buffer.from(zb64, 'base64'));
       await upload(p, join(out, 'multi.zip'));
+      await hasPgms(p, ['ZIPA.H', 'ZIPB.H', 'ZIPC.H']);
       s = await S(p); ok(['ZIPA.H', 'ZIPB.H', 'ZIPC.H'].every((n) => s.names.includes(n)), `${L} 4: a zip of three .H loads all three`);
       await upload(p, join(FX, 'PLAIN1.H'));
       s = await S(p); ok(s.names.includes('PLAIN1_2.H') && s.names.includes('PLAIN1.H'), `${L} 4: the same name again → PLAIN1_2.H (no overwrite)`);
@@ -786,6 +797,7 @@ END PGM ${n} MM
       if (!profileZip) throw new Error('no profile export from section 3');
       let nav = p.waitForEvent('load', { timeout: 8000 }).catch(() => null);
       await upload(p, profileZip);
+      await p.locator('#imp-merge').first().waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
       ok(await prof().isVisible() && await p.locator('#imp-merge').count() === 1 && await p.locator('#imp-replace').count() === 1, `${L} 8: a profile zip offers Merge / Replace`);
       await p.click('#imp-merge'); await nav; await ready(p); await p.waitForTimeout(600);
       let s = await S(p);
