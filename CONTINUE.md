@@ -22,7 +22,7 @@ verified, where it ran, and the commit (pushed to main).
 | x | #9 | Cycle 5 circular pocket (p. 264) | 10-18 | manual.js, parity | Win 11 | 33e39f0 |
 | x | #10 | CALL PGM and cycle 12 PGM CALL: the called program runs from the profile's programs (p. 337, 345) | 10-18 | manual.js, parity | Win 11 | 7dc5e03 |
 | x | #11 | Cycle 13 oriented spindle stop: accepted, angle not modelled (placeholder O13) | 10-18 | manual.js, parity | Win 11 | 2dbdeed |
-| x | #12 | Cycle 26 axis-specific scaling about CC, factor 1 cancels, arcs with unequal factors refused (p. 329) | 10-18 | manual.js, parity | Win 11 | ASCOMMIT |
+| x | #12 | Cycle 26 axis-specific scaling about CC, factor 1 cancels, arcs with unequal factors refused (p. 329) | 10-18 | manual.js, parity | Win 11 | e4f9f96 |
 |   | #13 | Cycles 27 / 28 cylinder surface | | manual.js | | |
 |   | #14 | F AUTO from a cutting-data table (today: the TOOL CALL feed) | | manual.js | | |
 
