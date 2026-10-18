@@ -35,17 +35,24 @@ pub(super) fn def_q(st: &mut St, cy: &Cycle) {
     for (k, v) in &cy.params { if let Some(v) = v { let q = f64::from_bits(*k); if (1.0..=19.0).contains(&q) { st.q.set(q, *v); } } }
 }
 
-/// emit() while a contour subprogram is captured: record the move in program coordinates, nothing else
+/// emit() while a contour subprogram is captured: record the move, nothing else. Coordinates are those of the
+/// transformation active at the cycle call: a datum shift etc. programmed inside the subcontour moves only the
+/// contours from there on (p. 285), so the recorded move is converted machine-wise into the call's frame.
 pub(super) fn capture_move(st: &mut St, kind: MK, to: P3, feed: f64, bi: usize, arc: Option<&Arc>) {
     let from = st.pos;
-    let sw = if kind == MK::Arc { arc.map(|a| arc_sweep(from, to, a)) } else { None };
-    let rc = if st.rc == "RL" || st.rc == "RR" { Some(st.rc.clone()) } else { None };
+    let rec = |st: &St, p: P3| from_xf(&st.cap_xf, to_m(st, p));
+    let flip = st.xf.flip != st.cap_xf.flip;
+    let sw0 = if kind == MK::Arc { arc.map(|a| arc_sweep(from, to, a)) } else { None };
+    let sw = sw0.map(|s| if flip { -s } else { s });
+    let rc = match st.rc.as_str() { "RL" => Some(if flip { "RR" } else { "RL" }.to_string()), "RR" => Some(if flip { "RL" } else { "RR" }.to_string()), _ => None };
+    let c = arc.map(|a| rec(st, p3(a.cx, a.cy, from.z)));
+    let (f0, t0) = (rec(st, from), rec(st, to));
     st.moves.push(Item::M(Move {
-        kind, from, to, cx: arc.map(|a| a.cx), cy: arc.map(|a| a.cy), ccw: sw.map(|s| s > 0.0).unwrap_or(false), sweep: sw,
+        kind, from: f0, to: t0, cx: c.map(|c| c.x), cy: c.map(|c| c.y), ccw: sw.map(|s| s > 0.0).unwrap_or(false), sweep: sw,
         feed, tool: st.tool.t, tool_r: st.tool.r, tool_dr: 0.0, tool_l: J::Absent, stick: J::Absent, tool_name: J::Absent, spindle: 0.0, s_rpm: J::Absent,
-        coolant: false, block: bi as f64, cycle: None, rc, rc_act: false, seq: J::Absent, rot0: None, rot1: None, dur: None, len: dist3(from, to), probe: false, touch: false,
+        coolant: false, block: bi as f64, cycle: None, rc, rc_act: false, seq: J::Absent, rot0: None, rot1: None, dur: None, len: dist3(f0, t0), probe: false, touch: false,
     }));
-    if let (MK::Arc, Some(a), Some(s)) = (kind, arc, sw) {
+    if let (MK::Arc, Some(a), Some(s)) = (kind, arc, sw0) {
         let ea = js::atan2(to.y - a.cy, to.x - a.cx); let d = if s > 0.0 { 1.0 } else { -1.0 };
         st.last_tan = Some((-js::sin(ea) * d, js::cos(ea) * d));
     } else {
@@ -92,6 +99,10 @@ fn capture(st: &mut St, bi: usize, lbl: f64, close: bool) -> Option<Sub> {
     let island = match side.as_str() { "RL" => area < 0.0, "RR" => area > 0.0, _ => false };
     Some(Sub { prims, side, start, poly, island })
 }
+
+/// transformations programmed inside the subcontours "need not be reset after the cycle call" (p. 285)
+fn begin_capture(st: &mut St) { st.cap_xf = st.xf.clone(); }
+fn end_capture(st: &mut St) { st.xf = st.cap_xf.clone(); st.pos = from_m(st, st.mpos); }
 
 fn poly_of(prims: &[Prim]) -> Vec<P2> {
     let mut v = vec![];
@@ -156,8 +167,10 @@ impl Field {
 /// Missing 14 / 20 or an empty subcontour: CYCL DEF INCOMPLETE (the control's message is not in the manual).
 fn field(st: &mut St, bi: usize) -> Option<Field> {
     let labels = match st.sl_labels.clone() { Some(l) if !l.is_empty() => l, _ => { fail(st, bi, "CYCL DEF INCOMPLETE"); return None; } };
-    let mut subs = vec![];
-    for l in labels.iter().take(12) { subs.push(capture(st, bi, *l, true)?); }
+    begin_capture(st);
+    let subs: Option<Vec<Sub>> = labels.iter().take(12).map(|l| capture(st, bi, *l, true)).collect();
+    end_capture(st);
+    let subs = subs?;
     if subs.iter().all(|s| s.island) { fail(st, bi, "SL CONTOUR WITHOUT POCKET NOT SIMULATED"); return None; } // SL2
     let s0 = subs[0].start;
     let ops = subs.iter().enumerate().map(|(i, s)| if i == 0 { 0 } else if s.island { 3 } else if sd(s, s0.0, s0.1) > 0.0 { 2 } else { 1 }).collect();
@@ -514,7 +527,10 @@ fn train(st: &mut St, cy: &Cycle, bi: usize) {
     let (q3, q5) = (qp(cy, 3.0, 0.0), qp(cy, 5.0, 0.0)); let q7 = qp(cy, 7.0, js::max(st.pos.z, q5 + 2.0));
     let q10 = qp(cy, 10.0, 0.0).abs(); let f_pl = js::or(qp(cy, 11.0, st.feed), st.feed); let f_mill = js::or(qp(cy, 12.0, st.feed), st.feed);
     let q15 = js::round(qp(cy, 15.0, 1.0));
-    let sub = match capture(st, bi, lbl, false) { Some(s) => s, None => return };
+    begin_capture(st);
+    let sub = capture(st, bi, lbl, false);
+    end_capture(st);
+    let sub = match sub { Some(s) => s, None => return };
     let zs = depths(q5, q1.abs(), q10); // SL6: sign ignored
     let side = sub.side.clone();
     // climb milling with M3 = RL (tool left of the material); "remains effective when the contours are mirrored" (p. 295).

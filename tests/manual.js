@@ -733,6 +733,22 @@ console.log('SL cycles 14, 20-25 (8.6, p. 284-307): contour geometry from subpro
     let r; try { r = TNC.run(sl('1', '', 'LBL 1\nL X+20 Y+20 RR\nL Y+60 ' + m + '\nL X+80\nL Y+20\nL X+20\nLBL 0\n')); } catch (e) { r = { errors: [{ msg: e.message }], moves: [] }; }
     ok(!r.errors.length && box(r) === '25.003..74.997', m + ' in a contour subprogram is ignored (p. 285 "ignores ... M"): ' + (r.errors[0] ? r.errors[0].msg : box(r)));
   }
+  /* p. 285: transformations inside a subcontour act on the following subprograms, need not be reset after the call */
+  const pocket = 'LBL 1\nL X+20 Y+20 RR\nL Y+60\nL X+80\nL Y+20\nL X+20\nLBL 0\n';
+  const shift2 = 'LBL 2\nCYCL DEF 7.0 DATUM SHIFT\nCYCL DEF 7.1 X+10\nCYCL DEF 7.2 Y+0\nL X+40 Y+30 RL\nL Y+40\nL X+50\nL Y+30\nL X+40\nLBL 0\n';
+  let r = TNC.run(sl('1 /2', 'L X+5 Y+5 R0 FMAX\n', pocket + shift2));
+  const at = r.moves.filter(m => m.cycle && m.kind === 'feed' && near(m.from.z, -5) && near(m.to.z, -5));
+  const dseg = (m, x, y) => { const dx = m.to.x - m.from.x, dy = m.to.y - m.from.y, l2 = dx * dx + dy * dy; let u = l2 ? ((x - m.from.x) * dx + (y - m.from.y) * dy) / l2 : 0; u = Math.max(0, Math.min(1, u)); return Math.hypot(m.from.x + dx * u - x, m.from.y + dy * u - y); };
+  const drect = p => Math.hypot(Math.max(50 - p.x, 0, p.x - 60), Math.max(30 - p.y, 0, p.y - 40));
+  const isl = at.some(m => [m.from, m.to].some(p => drect(p) < 5 - 0.01)), hole = at.some(m => dseg(m, 40, 35) < 1);
+  ok(!r.errors.length && box(r) === '25.003..74.997' && !isl && hole, 'a datum shift in LBL 2 moves only the island (50..60), not the pocket LBL 1 before it');
+  const after = r.moves.find(m => !m.cycle && near(m.to.z, 50) && near(m.to.y, 5));
+  ok(after && near(after.to.x, 5), 'after the cycle the shift from the subcontour is gone: L X+5 Y+5 goes to X ' + (after && after.to.x));
+  r = TNC.run(sl('1', 'L X+50 Y+0 R0 FMAX\n', 'LBL 1\nCYCL DEF 10.0 ROTATION\nCYCL DEF 10.1 ROT+90\nL X+20 Y+20 RR\nL Y+60\nL X+80\nL Y+20\nL X+20\nLBL 0\n'));
+  const rot = r.moves.find(m => !m.cycle && near(m.to.z, 50) && near(m.to.x, 50));
+  ok(!r.errors.length && rot && near(rot.to.y, 0) && box(r) === '-54.997..-25.003', 'ROT+90 in the subcontour turns the pocket (x -55..-25) and is gone after the call');
+  r = TNC.run(sl('1', '', 'LBL 1\nCYCL DEF 8.0 MIRROR IMAGE\nCYCL DEF 8.1 X\nL X+20 Y+20 RR\nL Y+60\nL X+80\nL Y+20\nL X+20\nLBL 0\n'));
+  ok(!r.errors.length && box(r) === '-74.997..-25.003', 'MIRROR X in the subcontour: still a pocket, mirrored to x -75..-25: ' + (r.errors[0] ? r.errors[0].msg : box(r)));
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nALL MANUAL EXAMPLES PASS');

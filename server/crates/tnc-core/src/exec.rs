@@ -167,6 +167,8 @@ pub struct St<'a> {
     labels: HashMap<String, usize>, comment_tools: HashMap<String, f64>, auto_feed: f64,
     /// SL cycles: capturing a contour subprogram (emit records program coordinates only); cycle 14 labels; cycle 20 data
     cap: bool, sl_labels: Option<Vec<f64>>, sl_data: Option<Cycle>,
+    /// SL: the transformation active when the cycle started; captured moves are recorded in its coordinates
+    cap_xf: Xf,
 }
 
 fn fail(st: &mut St, bi: usize, msg: &str) {
@@ -186,8 +188,9 @@ fn to_m(st: &St, p: P3) -> P3 {
     if let Some(t) = f.tilt { let x2 = t[0] * xx + t[1] * yy + t[2] * z; let y2 = t[3] * xx + t[4] * yy + t[5] * z; let z2 = t[6] * xx + t[7] * yy + t[8] * z; xx = x2; yy = y2; z = z2; }
     p3(xx + f.dx + f.px, yy + f.dy + f.py, z + f.dz + f.pz)
 }
-fn from_m(st: &St, p: P3) -> P3 {
-    let f = &st.xf; if !f.on { return p; }
+fn from_m(st: &St, p: P3) -> P3 { from_xf(&st.xf, p) }
+fn from_xf(f: &Xf, p: P3) -> P3 {
+    if !f.on { return p; }
     let mut x = p.x - f.dx - f.px; let mut y = p.y - f.dy - f.py; let mut z = p.z - f.dz - f.pz;
     if let Some(t) = f.tilt { let x2 = t[0] * x + t[3] * y + t[6] * z; let y2 = t[1] * x + t[4] * y + t[7] * z; let z2 = t[2] * x + t[5] * y + t[8] * z; x = x2; y = y2; z = z2; }
     let c = js::cos(f.rot * PI / 180.0); let sn = js::sin(f.rot * PI / 180.0);
@@ -2043,7 +2046,7 @@ pub fn compile(blocks: &mut Vec<Block>, opts: &Opts) -> Compiled {
         abort: false, done: false, tool_order: vec![], tool_stat: HashMap::new(),
         tool_table: opts.tools.clone().unwrap_or(builtin), mach: opts.mach.clone(), arc_tol: js::or(opts.mach.arc_tol, ARC_TOL), holder: opts.holder_a, auto_tools: opts.auto_tools,
         labels: HashMap::new(), comment_tools: HashMap::new(), auto_feed: f64::NAN,
-        cap: false, sl_labels: None, sl_data: None,
+        cap: false, sl_labels: None, sl_data: None, cap_xf: Xf { s: 1.0, ..Default::default() },
     };
     for i in 0..st.blocks.len() {
         if st.blocks[i].kind == Kind::Lbl {
