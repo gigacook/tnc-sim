@@ -25,7 +25,7 @@ macro_rules! re {
     };
 }
 
-fn implemented(n: f64) -> bool { [1., 2., 4., 17., 18., 21., 22., 23., 24., 25., 200., 201., 202., 203., 204., 205., 206., 207., 208., 209., 210., 211., 212., 213., 214., 215., 230., 231., 262., 263., 264., 265., 267.].contains(&n) }
+fn implemented(n: f64) -> bool { [1., 2., 3., 4., 5., 17., 18., 21., 22., 23., 24., 25., 200., 201., 202., 203., 204., 205., 206., 207., 208., 209., 210., 211., 212., 213., 214., 215., 230., 231., 262., 263., 264., 265., 267.].contains(&n) }
 fn pattern_cycle(n: f64) -> bool { n == 220.0 || n == 221.0 }
 fn nomotion(n: f64) -> bool { [7., 8., 9., 10., 11., 14., 19., 20., 32., 247.].contains(&n) }
 fn probe_cycle(n: f64) -> bool { [408., 409., 410., 411., 412., 413., 417., 419.].contains(&n) }
@@ -522,6 +522,64 @@ fn cycle_pocket(st: &mut St, cy: &Cycle, bi: usize) {
     emit(st, MK::Rapid, p3(cxp, cyp, surf + clr), RAPID_RATE, bi, Some(&lab), None);
 }
 
+/// cycle 3 SLOT MILLING, p. 270: start = one slot end, offset by R into the slot; rough back and forth, finish the contour at the floor
+fn cycle_slot3(st: &mut St, cy: &Cycle, bi: usize) {
+    let clr = sub(cy, 1.0, 0, 2.0).abs(); let dep = sub(cy, 2.0, 0, 0.0).abs(); let peck = sub(cy, 3.0, 0, 0.0).abs();
+    let fpl = js::or(sub(cy, 3.0, 1, st.feed), st.feed); let len = sub(cy, 4.0, 0, 0.0); let w = sub(cy, 5.0, 0, 0.0).abs(); let f = js::or(sub(cy, 6.0, 0, st.feed), st.feed);
+    if dep <= EPS { return; } // p. 270: DEPTH = 0, the cycle is not executed
+    if len.abs() <= EPS || w <= EPS { fail(st, bi, "CYCL DEF INCOMPLETE"); return; }
+    let r = st.tool.r; let lab = cy.label.clone();
+    if 2.0 * r > w + EPS { fail(st, bi, "TOOL TOO LARGE"); return; }
+    if 2.0 * r < w / 2.0 - EPS { fail(st, bi, "SLOT WIDTH TOO LARGE"); return; } // placeholder C3a: message not in the manual (taken from 210)
+    let along_y = body(cy, 4.0).map(|b| b.trim_start().starts_with('Y')).unwrap_or(false);
+    let (x0, y0, z0) = (st.pos.x, st.pos.y, st.pos.z); let surf = z0 - clr;
+    let run = len.signum() * js::max(len.abs() - 2.0 * r, 0.0);
+    let end = if along_y { (x0, y0 + run) } else { (x0 + run, y0) };
+    let l = levels(surf, dep, peck); let mut at_end = false; let mut i = 0;
+    // placeholder C3b: roughing on the slot centre line (manual "inward by the allowance" read as already there)
+    while i < l.len() && !st.abort {
+        let p = st.pos; emit(st, MK::Feed, p3(p.x, p.y, l[i]), fpl, bi, Some(&lab), None);
+        let to = if at_end { (x0, y0) } else { end }; emit(st, MK::Feed, p3(to.0, to.1, l[i]), f, bi, Some(&lab), None);
+        at_end = !at_end; i += 1;
+    }
+    if st.abort { return; }
+    let (cx, cyy) = ((x0 + end.0) / 2.0, (y0 + end.1) / 2.0); let a = run.abs() / 2.0; let b = w / 2.0 - r;
+    let (hx, hy) = if along_y { (b, a) } else { (a, b) };
+    let zb = surf - dep;
+    // placeholder C3c: straight feed to the wall at +X (manual: tangential arc); one ccw lap = climb with M3
+    emit(st, MK::Feed, p3(cx + hx, cyy, zb), f, bi, Some(&lab), None);
+    run_path(st, &rrect_path(cx, cyy, hx, hy, 0.0, true), zb, f, bi, &lab);
+    let p = st.pos; emit(st, MK::Rapid, p3(p.x, p.y, z0), RAPID_RATE, bi, Some(&lab), None);
+    if l.len() % 2 == 1 { emit(st, MK::Rapid, p3(x0, y0, z0), RAPID_RATE, bi, Some(&lab), None); }
+}
+
+/// cycle 5 CIRCULAR POCKET, p. 264: plunge at the centre, spiral out at step k x R (cycle 4), back to the start position
+fn cycle_circ5(st: &mut St, cy: &Cycle, bi: usize) {
+    let clr = sub(cy, 1.0, 0, 2.0).abs(); let dep = sub(cy, 2.0, 0, 0.0).abs(); let peck = sub(cy, 3.0, 0, 0.0).abs();
+    let fpl = js::or(sub(cy, 3.0, 1, st.feed), st.feed); let rad = sub(cy, 4.0, 0, 0.0).abs(); let f = js::or(sub(cy, 5.0, 0, st.feed), st.feed);
+    if dep <= EPS { return; } // p. 264: DEPTH = 0, the cycle is not executed
+    if rad <= EPS { fail(st, bi, "CYCL DEF INCOMPLETE"); return; }
+    let r = st.tool.r; let lab = cy.label.clone();
+    if r > rad + EPS { fail(st, bi, "TOOL TOO LARGE"); return; }
+    let (x0, y0, z0) = (st.pos.x, st.pos.y, st.pos.z); let surf = z0 - clr; let ccw = cy.dr != "-";
+    let mut so = js::or(st.mach.pocket_k, 0.7) * r; if !(so > EPS) { so = 1.0; }
+    let rmax = js::max(rad - r, 0.0); let mut rings = vec![]; let mut ri = 0.0; let mut g = 0;
+    while ri < rmax - 1e-6 && { g += 1; g < 500 } { ri = js::min(ri + so, rmax); rings.push(ri); }
+    let sw = if ccw { 2.0 * PI } else { -2.0 * PI };
+    let l = levels(surf, dep, peck); let mut i = 0;
+    // placeholder C5: "spiral" = concentric full circles joined by radial feeds in +X
+    while i < l.len() && !st.abort {
+        emit(st, MK::Feed, p3(x0, y0, l[i]), fpl, bi, Some(&lab), None);
+        for &q in &rings {
+            emit(st, MK::Feed, p3(x0 + q, y0, l[i]), f, bi, Some(&lab), None);
+            emit(st, MK::Arc, p3(x0 + q, y0, l[i]), f, bi, Some(&lab), Some(&Arc { cx: x0, cy: y0, ccw, sweep: Some(sw) }));
+        }
+        if !rings.is_empty() { emit(st, MK::Feed, p3(x0, y0, l[i]), f, bi, Some(&lab), None); }
+        i += 1;
+    }
+    let p = st.pos; emit(st, MK::Rapid, p3(p.x, p.y, z0), RAPID_RATE, bi, Some(&lab), None);
+}
+
 fn spin(st: &mut St, dir: f64) { st.spin_dir = dir; st.spindle = st.s_rpm * st.spin_dir; }
 
 fn cycle_bore(st: &mut St, cy: &Cycle, bi: usize) {
@@ -949,6 +1007,8 @@ fn exec_cycle(st: &mut St, cy: &Cycle, bi: usize, at: Option<(f64, f64)>) {
     else if n == 203.0 { cycle_drill(st, cy, bi, true); }
     else if n == 201.0 { cycle_ream(st, cy, bi); }
     else if n == 4.0 { cycle_pocket(st, cy, bi); }
+    else if n == 3.0 { cycle_slot3(st, cy, bi); }
+    else if n == 5.0 { cycle_circ5(st, cy, bi); }
     else if n == 202.0 { cycle_bore(st, cy, bi); }
     else if n == 204.0 { cycle_back_bore(st, cy, bi); }
     else if n == 205.0 { cycle_peck205(st, cy, bi); }

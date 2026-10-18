@@ -370,6 +370,22 @@ console.log('CYCLES — 202 205 206 207 208 209 and old 1 / 2 / 17 against the m
   ok(!r.errors.length && near(zmin(r), -12) && r.moves.some(m => m.cycle && m.feed === 500), 'cycle 17: F = S x pitch = 500');
 }
 
+console.log('CYCLES — 3 slot milling, 5 circular pocket');
+{ const hdr = 'BEGIN PGM C MM\nBLK FORM 0.1 Z X+0 Y+0 Z-40\nBLK FORM 0.2 X+100 Y+100 Z+0\nTOOL DEF 1 L+0 R+6\nTOOL CALL 1 Z S1500\nL Z+100 R0 FMAX\n';
+  let r = TNC.run(hdr + 'CYCL DEF 3.0 SLOT MILLING\nCYCL DEF 3.1 SET UP 2\nCYCL DEF 3.2 DEPTH -15\nCYCL DEF 3.3 PLNGNG 5 F80\nCYCL DEF 3.4 X50\nCYCL DEF 3.5 Y15\nCYCL DEF 3.6 F120\nL X+16 Y+25 R0 FMAX M3\nL Z+2 M99\nEND PGM C MM');
+  let c = r.moves.filter(m => m.cycle);
+  ok(!r.errors.length && near(Math.min(...c.map(m => m.to.z)), -15), 'cycle 3: manual example p. 271 runs to Z-15 ' + JSON.stringify(r.errors));
+  ok(near(Math.max(...c.map(m => m.to.x)), 54) && near(Math.min(...c.map(m => m.to.x)), 16) && near(Math.max(...c.map(m => m.to.y)), 26.5) && near(Math.min(...c.map(m => m.to.y)), 23.5), 'cycle 3: slot X10..60 W15 -> tool centre X16..54, Y23.5..26.5');
+  ok(c.filter(m => m.feed === 80).length === 3 && near(c[c.length - 1].to.x, 16) && near(c[c.length - 1].to.z, 2), 'cycle 3: 3 infeeds at F80, odd -> back to start at set-up clearance');
+  r = TNC.run(hdr + 'CYCL DEF 3.0 SLOT MILLING\nCYCL DEF 3.1 SET UP 2\nCYCL DEF 3.2 DEPTH -5\nCYCL DEF 3.3 PLNGNG 5 F80\nCYCL DEF 3.4 X50\nCYCL DEF 3.5 Y40\nCYCL DEF 3.6 F120\nL X+16 Y+25 R0 FMAX M3\nL Z+2 M99\nEND PGM C MM');
+  ok(r.errors.length > 0, 'cycle 3: cutter smaller than half the slot width is an error');
+  r = TNC.run(hdr + 'CYCL DEF 5.0 CIRCULAR POCKET\nCYCL DEF 5.1 SET UP 2\nCYCL DEF 5.2 DEPTH -12\nCYCL DEF 5.3 PLNGNG 6 F80\nCYCL DEF 5.4 RADIUS 35\nCYCL DEF 5.5 F100 DR+\nL X+60 Y+50 FMAX M3\nL Z+2 FMAX M99\nEND PGM C MM');
+  c = r.moves.filter(m => m.cycle); const arcs = c.filter(m => m.kind === 'arc');
+  ok(!r.errors.length && near(Math.min(...c.map(m => m.to.z)), -12) && c.filter(m => m.feed === 80).length === 2, 'cycle 5: manual example p. 265, 2 infeeds of 6 to Z-12 ' + JSON.stringify(r.errors));
+  ok(arcs.length && arcs.every(m => m.sweep > 0) && near(Math.max(...arcs.map(m => Math.hypot(m.from.x - 60, m.from.y - 50))), 29), 'cycle 5: DR+ ccw circles out to R35 - 6 = 29');
+  ok(near(c[c.length - 1].to.x, 60) && near(c[c.length - 1].to.z, 2), 'cycle 5: ends at the start position');
+}
+
 console.log('CYCLES — 212/213/214/215 finishing, 210/211 slots, 220/221 patterns, 230/231 surfaces');
 { const hdr = 'BEGIN PGM C MM\nBLK FORM 0.1 Z X+0 Y+0 Z-40\nBLK FORM 0.2 X+100 Y+100 Z+0\nTOOL DEF 1 L+0 R+3\nTOOL CALL 1 Z S3000\nL Z+50 R0 FMAX M3\n';
   const R = s => TNC.run(hdr + s + '\nEND PGM C MM');

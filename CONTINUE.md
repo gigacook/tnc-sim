@@ -18,8 +18,8 @@ verified, where it ran, and the commit (pushed to main).
 | x | #5 | SL 25: tool too big for an inside corner leaves the corner, no error, no gouge (p. 295) | 10-18 | manual.js, parity | Win 11 | 02ca566 |
 | x | #6 | TOOL CALL X / Y: stops with TOOL AXIS n NOT SIMULATED instead of milling as Z (p. 205). Full X / Y spindle support moved to Later: all 3,564 corpus TOOL CALLs are Z | 10-18 | manual.js, parity | Win 11 | f35bd8c |
 | x | #7 | FK blocks report FK NOT SIMULATED (was BLOCK FORMAT INCORRECT). Full FK solver moved to Later: 0 of 2,806 corpus programs use FK, CAM never emits it, FSELECT order not in the manual | 10-18 | manual.js, parity | Win 11 | 182f80f |
-|   | #8 | Cycle 3 slot milling | | manual.js | | |
-|   | #9 | Cycle 5 circular pocket | | manual.js | | |
+| x | #8 | Cycle 3 slot milling (p. 270) | 10-18 | manual.js, parity | Win 11 | HASH |
+| x | #9 | Cycle 5 circular pocket (p. 264) | 10-18 | manual.js, parity | Win 11 | HASH |
 |   | #10 | Cycle 12 PGM CALL | | manual.js | | |
 |   | #11 | Cycle 13 oriented spindle stop | | manual.js | | |
 |   | #12 | Cycle 26 axis-specific scaling | | manual.js | | |
@@ -58,6 +58,8 @@ FK solver · horizontal spindle (TOOL CALL X / Y) · programs to the machine (US
 ## Open placeholders — NOT facts (each is marked in code; #20 settles them)
 | id | where | placeholder |
 |---|---|---|
+| C3 | exec.rs cycle_slot3 | roughing on the slot centre line; straight feed to the +X wall (manual: tangential arc); cutter < half the slot width = SLOT WIDTH TOO LARGE (message not in the manual) |
+| C5 | exec.rs cycle_circ5 | "spiral" = concentric full circles at k x R joined by radial feeds in +X |
 | T-thread | exec.rs cycle_thread | 262–267: helix whole turns from +X; approach semicircle +½ pitch; 267 start R + pitch; 263 countersink circle not simulated; 264 countersink feed Q206; no M4 / spindle-off error |
 | T6 / SL6 | exec.rs, sl.rs | a positive depth's sign is ignored (manual: it reverses the direction) |
 | SL1 | sl.rs capture | a subcontour with R0 counts as a pocket |
