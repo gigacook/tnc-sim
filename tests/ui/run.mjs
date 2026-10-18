@@ -963,7 +963,7 @@ async function regressionChecks(browser, tag) {
     await ctx.close();
   }
 
-  /* B17-adjacent: a swipe that starts on the Status run list (#runkv) switches workspace */
+  /* phone swipe (CONTINUE.md #17): a swipe that starts on the Status run list (#runkv) switches workspace */
   {
     const { ctx, page } = await simPage(browser, { width: 390, height: 844 });
     const L = `[${tag}] phone`;

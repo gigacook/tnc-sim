@@ -9,7 +9,7 @@
 //! Q15 = climb / up-cut / alternate, DEPTH 0 = not executed.
 //!
 //! The manual does not draw the tool paths of 21-24. Everything below marked `SL<n>` is the simulator's own choice,
-//! listed in CONTINUE.md -> OPEN, until the programming station (B5) settles it.
+//! listed in CONTINUE.md -> Open placeholders, until the programming station (#20) settles it.
 //!
 //! Geometry: each subcontour gives an exact signed distance (lines + arcs, + inside). The combined contour is the
 //! min/max combination of those, whose level set at R is exactly "combine compensated contours" (MP 7420 bit 2 = 0).
