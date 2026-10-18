@@ -368,6 +368,9 @@ console.log('CYCLES — 202 205 206 207 208 209 and old 1 / 2 / 17 against the m
   ok(!r.errors.length && near(zmin(r), -15) && r.moves.filter(m => m.cycle && m.feed === 80).length === 3, 'cycle 1: 3 pecks of 5 to Z-15 at F80');
   r = TNC.run(hdr + 'L X+50 Y+50 R0 FMAX\nL Z+2 R0 FMAX\nCYCL DEF 17.0 RIGID TAPPING\nCYCL DEF 17.1 SET UP 2\nCYCL DEF 17.2 DEPTH -12\nCYCL DEF 17.3 PITCH +1\nCYCL CALL\nEND PGM C MM');
   ok(!r.errors.length && near(zmin(r), -12) && r.moves.some(m => m.cycle && m.feed === 500), 'cycle 17: F = S x pitch = 500');
+  /* p. 338 cycle 13 ORIENTATION: accepted, does not replace the active cycle */
+  r = TNC.run(hdr + 'L X+50 Y+50 R0 FMAX\nL Z+2 R0 FMAX\nCYCL DEF 17.0 RIGID TAPPING\nCYCL DEF 17.1 SET UP 2\nCYCL DEF 17.2 DEPTH -12\nCYCL DEF 17.3 PITCH +1\nCYCL DEF 13.0 ORIENTATION\nCYCL DEF 13.1 ANGLE 180\nCYCL CALL\nEND PGM C MM');
+  ok(!r.errors.length && near(zmin(r), -12), 'cycle 13 ORIENTATION runs, active cycle 17 still called ' + r.errors.map(e => e.msg));
 }
 
 console.log('CYCLES — 212/213/214/215 finishing, 210/211 slots, 220/221 patterns, 230/231 surfaces');
