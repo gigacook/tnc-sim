@@ -749,6 +749,15 @@ console.log('SL cycles 14, 20-25 (8.6, p. 284-307): contour geometry from subpro
   ok(!r.errors.length && rot && near(rot.to.y, 0) && box(r) === '-54.997..-25.003', 'ROT+90 in the subcontour turns the pocket (x -55..-25) and is gone after the call');
   r = TNC.run(sl('1', '', 'LBL 1\nCYCL DEF 8.0 MIRROR IMAGE\nCYCL DEF 8.1 X\nL X+20 Y+20 RR\nL Y+60\nL X+80\nL Y+20\nL X+20\nLBL 0\n'));
   ok(!r.errors.length && box(r) === '-74.997..-25.003', 'MIRROR X in the subcontour: still a pocket, mirrored to x -75..-25: ' + (r.errors[0] ? r.errors[0].msg : box(r)));
+  /* p. 211: cycle 1 re-approaches to the last depth minus t = 0.6 mm (depth <= 30), depth / 50 beyond (max 7); cycle 21 the same (p. 291) */
+  for (const [dep, t] of [[20, 0.6], [60, 1.2]]) {
+    r = TNC.run(hd + 'CYCL DEF 1.0 PECKING\nCYCL DEF 1.1 SET UP 2\nCYCL DEF 1.2 DEPTH -' + dep + '\nCYCL DEF 1.3 PECKG 5\nCYCL DEF 1.4 DWELL 0\nCYCL DEF 1.5 F100\nL X+50 Y+50 Z+2 R0 FMAX\nCYCL CALL M3\nL Z+60 R0 FMAX M2\nEND PGM X MM');
+    const back = r.moves.filter(m => m.cycle && m.kind === 'rapid' && m.to.z < m.from.z).map(m => +m.to.z.toFixed(3));
+    ok(!r.errors.length && back.length && back.every((z, i) => near(z, -5 * (i + 1) + t)), `cycle 1, depth ${dep}: advanced stop distance ${t} mm: ${back.slice(0, 3).join(' ')}`);
+  }
+  r = TNC.run(sl('1', '', pocket).replace(/CYCL DEF 22\.0 ROUGH-OUT[^]*?Q19=150\n/, 'CYCL DEF 21.0 PILOT DRILLING\n Q10=4\n Q11=100\n Q13=1\n'));
+  const b21 = r.moves.filter(m => m.cycle && m.kind === 'rapid' && m.to.z < m.from.z && m.to.z < 0).map(m => +m.to.z.toFixed(3));
+  ok(!r.errors.length && b21.length && b21.every(z => [-3.4, -7.4].includes(z)), 'cycle 21 (Q1 -10, Q10 4) pecks like cycle 1 with t = 0.6: ' + [...new Set(b21)].join(' '));
   /* p. 285 "the cutter traverses around islands": a strip just wider than the tool between an island and the wall is cut */
   for (const [size, w] of [[100, 10.2], [300, 11]]) {
     const top = size === 100 ? 60 : 300, x1 = size === 100 ? 80 : 300, x0 = size === 100 ? 20 : 0; const xi = (x0 < 10 ? "" : "+") + (x0 - 10);

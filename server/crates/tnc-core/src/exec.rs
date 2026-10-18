@@ -705,6 +705,9 @@ fn cycle_thread(st: &mut St, cy: &Cycle, bi: usize) {
     let p = st.pos; emit(st, MK::Rapid, p3(p.x, p.y, surf + clr2), RAPID_RATE, bi, Some(&lab), None);
 }
 
+/// cycle 1 (and 21): advanced stop distance t, p. 211: 0.6 mm up to 30 mm total depth, beyond that depth / 50, at most 7 mm
+pub(super) fn stop_t(depth: f64) -> f64 { if depth <= 30.0 { 0.6 } else { js::min(depth / 50.0, 7.0) } }
+
 fn cycle_old(st: &mut St, cy: &Cycle, bi: usize) {
     let (x, y, z0) = (st.pos.x, st.pos.y, st.pos.z); let lab = cy.label.as_str(); let mut keep = js::or(st.spin_dir, 1.0); let n = cy.num;
     if n == 18.0 {
@@ -721,7 +724,7 @@ fn cycle_old(st: &mut St, cy: &Cycle, bi: usize) {
             d = js::min(d + peck, dep.abs());
             emit(st, MK::Feed, p3(x, y, surf - d), f1, bi, Some(lab), None);
             emit(st, MK::Rapid, p3(x, y, z0), RAPID_RATE, bi, Some(lab), None);
-            if d < dep.abs() - 1e-6 { emit(st, MK::Rapid, p3(x, y, surf - d + 0.2), RAPID_RATE, bi, Some(lab), None); }
+            if d < dep.abs() - 1e-6 { emit(st, MK::Rapid, p3(x, y, surf - d + stop_t(dep.abs())), RAPID_RATE, bi, Some(lab), None); }
         }
         return;
     }

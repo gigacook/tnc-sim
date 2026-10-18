@@ -489,7 +489,7 @@ pub(super) fn run(st: &mut St, cy: &Cycle, bi: usize) {
                 dd = js::min(dd + peck, bottom);
                 out(st, &mut c, MK::Feed, p3(q.0, q.1, q5 - dd), f, None);
                 out(st, &mut c, MK::Rapid, p3(q.0, q.1, q5 + q6), RAPID_RATE, None);
-                if dd < bottom - 1e-6 { out(st, &mut c, MK::Rapid, p3(q.0, q.1, q5 - dd + 0.2), RAPID_RATE, None); }
+                if dd < bottom - 1e-6 { out(st, &mut c, MK::Rapid, p3(q.0, q.1, q5 - dd + stop_t(bottom)), RAPID_RATE, None); }
             }
         }
     }
