@@ -1442,6 +1442,9 @@ fn do_tool_call(st: &mut St, bi: usize) {
     let t = match a.get("t") { None | Some(V::Null) => Some(st.tool.t), Some(v) => resolve(v.as_nq(), &st.q) };
     let t = match t { None => 0.0, Some(t) => js::round(t) };
     if !a.truthy("axis") { fail(st, bi, "TOOL AXIS MISSING"); }
+    // p. 205: infeed is in the TOOL CALL axis. The engine, the height-field stock and the 3-D view are built for Z only
+    // (all 3,564 TOOL CALLs in the corpus are Z), so X / Y stops the run instead of milling as if it were Z.
+    if let Some(ax) = a.str("axis") { if !ax.eq_ignore_ascii_case("Z") { fail(st, bi, &format!("TOOL AXIS {} NOT SIMULATED", ax.to_uppercase())); st.abort = true; return; } }
     if st.tool.t != t { st.spin_dir = 0.0; }
     if let Some(s) = a.get("s") { if !matches!(s, V::Null) { if let Some(s) = resolve(s.as_nq(), &st.q) { st.s_rpm = s.abs(); } } }
     st.spindle = st.s_rpm * st.spin_dir;

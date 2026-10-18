@@ -758,6 +758,9 @@ console.log('SL cycles 14, 20-25 (8.6, p. 284-307): contour geometry from subpro
   r = TNC.run(sl('1', '', pocket).replace(/CYCL DEF 22\.0 ROUGH-OUT[^]*?Q19=150\n/, 'CYCL DEF 21.0 PILOT DRILLING\n Q10=4\n Q11=100\n Q13=1\n'));
   const b21 = r.moves.filter(m => m.cycle && m.kind === 'rapid' && m.to.z < m.from.z && m.to.z < 0).map(m => +m.to.z.toFixed(3));
   ok(!r.errors.length && b21.length && b21.every(z => [-3.4, -7.4].includes(z)), 'cycle 21 (Q1 -10, Q10 4) pecks like cycle 1 with t = 0.6: ' + [...new Set(b21)].join(' '));
+  /* p. 205: infeed in the TOOL CALL axis; only Z is simulated, X / Y say so and stop instead of milling as Z */
+  r = TNC.run(hd.replace('TOOL CALL 1 Z', 'TOOL CALL 1 Y') + 'L X+10 Y+10 R0 FMAX\nEND PGM X MM');
+  ok(r.errors.some(e => e.msg === 'TOOL AXIS Y NOT SIMULATED') && !r.moves.some(m => near(m.to.x, 10)), 'TOOL CALL 1 Y: TOOL AXIS Y NOT SIMULATED, the run stops: ' + r.errors.map(e => e.msg));
   /* p. 295: cycle 25 prevents undercuts; where the tool is too big the corner is left for rework (no error, no gouge) */
   const c25 = (contour) => hd.replace('R+5', 'R+10') + 'CYCL DEF 14.0 CONTOUR GEOMETRY\nCYCL DEF 14.1 CONTOUR LABEL 1\nCYCL DEF 25.0 CONTOUR TRAIN\n Q1=-5\n Q3=+0\n Q5=+0\n Q7=+50\n Q10=5\n Q11=100\n Q12=200\n Q15=+1\nCYCL CALL M3\nL Z+60 R0 FMAX M2\nLBL 1\n' + contour + 'LBL 0\nEND PGM X MM';
   for (const [name, contour, segs, span] of [
