@@ -1003,6 +1003,7 @@ async function regressionChecks(browser, tag) {
     const st = await page.textContent('#run-state');
     const ev = await page.evaluate(() => TNC_UI.state.events.filter((e) => e.sev === 'crash' || e.sev === 'error').map((e) => e.code || e.msg));
     ok(/PROGRAM END/.test(st) && !ev.length, `${L}: TEST runs to the end without an error or crash`, st + ' ' + ev.join(','));
+    await until(page, () => { const dt = [...document.querySelectorAll('#runkv dt')].find((d) => /Removed/i.test(d.textContent)); return dt && parseFloat(dt.nextElementSibling.textContent) > 0; }); // the pane refreshes every 250 ms
     const removed = await page.evaluate(() => { const dt = [...document.querySelectorAll('#runkv dt')].find((d) => /Removed/i.test(d.textContent)); return dt ? parseFloat(dt.nextElementSibling.textContent) : NaN; });
     // the 3-D view's height field: the pocket floor reaches Q1 = -6 somewhere, the island (Ø20 at X50 Y40) and the blank outside stay at Z 0
     const hf = await page.evaluate(() => { let lo = 0; for (let x = 22; x <= 78; x += 2) for (let y = 22; y <= 58; y += 2) lo = Math.min(lo, TNC_UI.surfaceAt(x, y));
