@@ -21,13 +21,15 @@ verified, where it ran, and the commit (pushed to main).
 | x | #8 | Cycle 3 slot milling (p. 270) | 10-18 | manual.js, parity | Win 11 | 33e39f0 |
 | x | #9 | Cycle 5 circular pocket (p. 264) | 10-18 | manual.js, parity | Win 11 | 33e39f0 |
 |   | #10 | Cycle 12 PGM CALL | | manual.js | | |
-| x | #11 | Cycle 13 oriented spindle stop: accepted, angle not modelled (placeholder O13) | 10-18 | manual.js, parity | Win 11 | |
+| x | #11 | Cycle 13 oriented spindle stop: accepted, angle not modelled (placeholder O13) | 10-18 | manual.js, parity | Win 11 | 2dbdeed |
 |   | #12 | Cycle 26 axis-specific scaling | | manual.js | | |
 |   | #13 | Cycles 27 / 28 cylinder surface | | manual.js | | |
 |   | #14 | F AUTO from a cutting-data table (today: the TOOL CALL feed) | | manual.js | | |
 
-| ✓ | #22 | TCH PROBE 400 / 403 (basic rotation): the operator's CAM post emits them for angle probing; placeholder from the iTNC 530 manual (see Open placeholders) | 10-18 | tests/post.js, parity re-recorded (only 400/403 errors gone) | Win 11 | this branch |
-| ✓ | #23 | Acceptance: every block type the operator's post (Hermle C800U, TNC 430: `search-heidenhain/clones/postprocessors/`) can write runs without error, as `tests/post.js`; still OPEN there: CYCL DEF 241, CYCL DEF 252, TCH PROBE 415 | 10-18 | node tests/post.js | Win 11 | this branch |
+| x | #22 | TCH PROBE 400 / 403 (basic rotation): the operator's CAM post emits them for angle probing; placeholder from the iTNC 530 manual (see Open placeholders) | 10-18 | tests/post.js, parity re-recorded (only 400/403 errors gone) | Win 11 | 8a0337e |
+| x | #23 | Acceptance: every block type the operator's post (Hermle C800U, TNC 430: `search-heidenhain/clones/postprocessors/`) can write runs without error, as `tests/post.js`; still OPEN there: CYCL DEF 241, CYCL DEF 252, TCH PROBE 415 | 10-18 | node tests/post.js | Win 11 | 8a0337e |
+
+|   | #25 | The operator's post also writes cycles 241, 252 and TCH PROBE 415, still NOT IMPLEMENTED (tests/post.js lists them OPEN) | | tests/post.js | | |
 
 ### 2. Shipping
 | ✓ | id | task | date | verified via | tested on | commit |
