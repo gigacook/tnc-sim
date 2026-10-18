@@ -57,7 +57,10 @@ var TNC_VIZ = (function () {
       var v = root ? root.localToWorld(new THREE.Vector3(p.x, p.y, p.z)) : new THREE.Vector3(p.x, p.y, p.z);
       v.project(camera); var w = renderer.domElement.clientWidth, h = renderer.domElement.clientHeight;
       if (v.z > 1 || v.z < -1) { el.hidden = true; return; }
-      el.hidden = false; el.style.left = ((v.x + 1) / 2 * w) + 'px'; el.style.top = ((1 - v.y) / 2 * h) + 'px';
+      // the label is centred above its point (translate -50%,-120%): keep the whole box inside the view
+      el.hidden = false; var lw = el.offsetWidth, lh = el.offsetHeight;
+      el.style.left = Math.max(lw / 2 + 2, Math.min(w - lw / 2 - 2, (v.x + 1) / 2 * w)) + 'px';
+      el.style.top = Math.max(lh * 1.2 + 2, Math.min(h - 2 + lh * .2, (1 - v.y) / 2 * h)) + 'px';
     }
     var f3 = function (v) { return (v >= 0 ? '+' : '') + v.toFixed(3); };
     function arcPts(l, c, r, axis, deg) {

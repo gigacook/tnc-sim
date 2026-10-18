@@ -264,5 +264,12 @@ table.grid { width: 100%; border-collapse: collapse; }
   .sim-page .toolbar { padding: 6px 12px; }
   .main-col .toolbar form { flex-wrap: wrap; min-width: 0; }
   .main-col .toolbar form input.grow { flex: 1 1 100%; min-width: 0; }
-  .sim-page .simframe { min-height: calc(100dvh - 120px); }
+  /* the simulator gets every pixel under one slim bar: the hint ellipsises (and gives way to a save result), the frame fills the rest */
+  .sim-page .simframe { min-height: 0; }
+  .sim-page .toolbar { flex-wrap: nowrap; gap: 8px; padding: 4px 12px; }
+  .sim-page .toolbar > .muted { flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 12.5px; }
+  .sim-page .toolbar:has(.ok-text, .error) > .muted { display: none; }
+  .sim-page .toolbar > .row { flex: 0 0 auto; max-width: 100%; min-width: 0; font-size: 12.5px; }
+  .sim-page .toolbar > .row > span { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .sim-page .toolbar button.primary { flex: none; white-space: nowrap; }
 }

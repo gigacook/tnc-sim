@@ -527,6 +527,9 @@ h1.ttlbox{margin:0;font:inherit}
 .hdr-err.warn{color:#ffe2b0;border-color:var(--amber);background:#3a2604}
 .hdr-stat{min-width:0;flex:1 1 0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-family:var(--mono);font-size:13px;color:var(--ink-dim)}
 .hdr-stat b{color:var(--cyan);font-weight:500}
+/* the program name wins: the state text gives way (and ellipsises) first */
+.hdr-stat>b,.hdr-stat>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hdr-stat>b{flex:0 1 auto}.hdr-stat>span{flex:0 1000 auto}
 /* keyboard focus must always show, also on the dark CRT and on pressed keys */
 .sk:focus-visible,.mode:focus-visible,.hbtn:focus-visible,.chb:focus-visible,.mtabs button:focus-visible,.stabs button:focus-visible,
 .tb:focus-visible,.spd button:focus-visible,.skpager button:focus-visible{outline:3px solid var(--amber);outline-offset:-3px}
@@ -553,7 +556,7 @@ h1.ttlbox{margin:0;font:inherit}
   .logo,.bar .sub-ttl{display:none}
   .bar .ttlbox{order:1;margin:0;opacity:1;align-items:flex-start}
   .bar .ttlbox .ttl{font-size:17px}
-  .hdr-stat{display:block;order:2}
+  .hdr-stat{display:flex;align-items:baseline;order:2}
   .hdr-err{display:inline-flex;order:3}
   .hdr-menu{display:inline-flex;align-items:center;gap:6px;order:4;letter-spacing:.1em;padding:0 12px;min-height:44px}
   .bar .modes{order:9;width:100%;margin:0!important;flex-wrap:nowrap}
@@ -620,11 +623,19 @@ h1.ttlbox{margin:0;font:inherit}
 @media (max-width:900px) and (max-height:500px){       /* short landscape: smaller header, the tab bar stays */
   .bar{padding-top:calc(3px + env(safe-area-inset-top,0px));padding-bottom:3px}
   .mode{min-height:40px}
-  .gfx{height:max(180px,calc(100svh - var(--dock-h,60px) - var(--tabs-h,44px) - 8px))}
+  .gfx{height:max(180px,calc(100svh - var(--dock-h,60px) - var(--tabs-h,44px) - var(--bar-h,50px) - 2px))}   /* whole view above the soft keys on first sight */
   .mtabs button{min-height:44px}
   .dock .sks{grid-template-columns:repeat(8,minmax(0,1fr))}
   .dock .sk{min-height:44px;font-size:11.5px}
   .col-gfx>.ch{display:none}
+}
+/* phones: the 3-D view's text stays small so the blank and tool keep most of the view; nothing is dropped */
+@media (max-width:900px){
+  .col-gfx .ovl{font-size:12px;line-height:1.45}
+  .ovl-tl{top:5px;left:6px}.ovl-tr{top:5px;right:6px}
+  .ovl-dro{left:6px;bottom:24px;max-width:calc(100% - 12px);gap:2px 8px;padding:3px 6px}
+  .ovl-dro .drow{font-size:12.5px;gap:3px;padding:0 0 0 4px;background:none}
+  .lgd{bottom:4px;left:6px;font-size:11px}
 }
 @media (prefers-reduced-motion:reduce){ .hmore{transition:none!important} }
 </style>
@@ -648,7 +659,7 @@ h1.ttlbox{margin:0;font:inherit}
      <button class="hbtn dclose" id="hmore-x" type="button" data-i18n="btn.close">Close</button></div>
    <button class="hbtn devbtn" id="b-dev" title="Feature log, version history, release plan" data-i18n="btn.dev">DEV</button>
    <button class="hbtn new" id="b-new" title="New program: manual or AI" aria-haspopup="menu">+ New ▾</button>
-   <button class="hbtn lessons" id="b-lessons" title="Lessons and BREAK IT" aria-haspopup="menu">Lessons ▾</button>
+   <button class="hbtn lessons" id="b-lessons" title="Lessons and BREAK IT" aria-haspopup="menu" data-i18n="btn.lessons">Lessons ▾</button>
    <button class="hbtn aibtn" id="b-ai" title="AI: change this program or write a new one" aria-haspopup="menu">AI ▾</button>
    <button class="hbtn" id="b-help" title="Lessons, pitfalls, manual, AI setup (H)" data-i18n="btn.help">Help</button>
    <button class="hbtn" id="b-focus" aria-pressed="false" title="Focus view (F)" data-i18n="btn.focus">Focus</button>
@@ -685,7 +696,7 @@ h1.ttlbox{margin:0;font:inherit}
      <div class="dlg">
        <span class="pr" id="dlg-pr">BLOCK</span>
        <input id="dlg-in" spellcheck="false" autocomplete="off" disabled aria-label="Block entry">
-       <span class="hint" id="dlg-hint">E edit &middot; I insert &middot; D delete</span>
+       <span class="hint" id="dlg-hint" data-i18n="dlg.hint">E edit &middot; I insert &middot; D delete</span>
      </div>
      <div class="skpath" id="skpath" hidden></div>
      <div class="sks" id="sks" role="group" aria-label="Soft keys"></div>
@@ -714,9 +725,9 @@ h1.ttlbox{margin:0;font:inherit}
            <button class="cbtn" id="coach-back">Back</button><button class="cbtn pri" id="coach-next">Next</button></div>
        </div>
        <div class="lgd">
-         <span><i style="background:var(--amber)"></i>RAPID</span>
-         <span><i style="background:var(--cyan)"></i>FEED</span>
-         <span class="hint">DRAG ORBIT &middot; WHEEL ZOOM</span>
+         <span><i style="background:var(--amber)"></i><span data-i18n="lgd.rapid">RAPID</span></span>
+         <span><i style="background:var(--cyan)"></i><span data-i18n="lgd.feed">FEED</span></span>
+         <span class="hint" data-i18n="lgd.hint">DRAG ORBIT &middot; WHEEL ZOOM</span>
        </div>
      </div>
      <div class="tp">

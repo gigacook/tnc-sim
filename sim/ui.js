@@ -9,6 +9,8 @@
 
 /* ================= basics ================= */
 const $=id=>document.getElementById(id);
+const T=k=>window.TNC_I18N?TNC_I18N.t(k):k;           // shell text (i18n.js SHELL)
+const TR=m=>window.TNC_I18N?TNC_I18N.tr(m):m;         // UPPERCASE control text (i18n.js TR_SV)
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -111,7 +113,7 @@ const S={
   cursor:0, editing:false, raw:false, mgt:false, mgtSel:0, flowView:!!P.flow,
   fx:P.fx!==undefined?!!P.fx:!REDUCED, fxCool:P.cool!==undefined?!!P.cool:true, fxFire:!!P.fire,
   labels:P.labels!==undefined?!!P.labels:true, vice:P.vice!==undefined?!!P.vice:true, sound:P.sound!==undefined?!!P.sound:true,
-  ref:null, pos:null, seg:null, shake:0, lesson:null, focus:null, focusView:!!P.focus, sideTab:P.side||'diag', ref:P.ref||'keys', pickPath:null, execB:-1, wiz:null, pick:null, tt:false
+  cmpRef:null, pos:null, seg:null, shake:0, lesson:null, focus:null, focusView:!!P.focus, sideTab:P.side||'diag', ref:P.ref||'keys', pickPath:null, execB:-1, wiz:null, pick:null, tt:false
 };
 const TEMP='LESSON.H';
 const pg=()=>S.pgms[S.machine]||(S.pgms[S.machine]={});
@@ -444,13 +446,62 @@ function traceTick(dt){
 
 /* ---------- views ---------- */
 function fitView(){ setView(S.view); }
-function setView(v){
-  const st=ST, d=Math.max(st.x1-st.x0,st.y1-st.y0,40);
-  const cx=(st.x0+st.x1)/2, cy=(st.y0+st.y1)/2, cz=(st.z0+st.z1)/2;
-  const Pv={'3D':[cx+d*.95,cy-d*1.05,cz+d*.85],'TOP':[cx,cy-0.001,cz+d*1.9],'FRONT':[cx,cy-d*1.9,cz+d*.05],'SIDE':[cx+d*1.9,cy,cz+d*.05]}[v]||[cx+d,cy-d,cz+d];
-  camera.position.set(Pv[0],Pv[1],Pv[2]); controls.target.set(cx,cy,cz);
-  S.view=v; $('gfx-rt').textContent=v==='3D'?'3-D VIEW':'PLAN VIEW '+v; writePrefs();
+function setView(v){ S.view=v; fitCamera(); viewLabel(); writePrefs(); }
+/* the blank's corners and the tool's (holder included) bounding box, world coordinates */
+function framePoints(){
+  const st=ST, P=[];
+  for(const x of [st.x0,st.x1]) for(const y of [st.y0,st.y1]) for(const z of [st.z0,st.z1]) P.push(new THREE.Vector3(x,y,z));
+  const tool=new THREE.Box3(); if(toolRoot){ toolRoot.updateMatrixWorld(true); tool.setFromObject(toolRoot); }
+  return {blank:P, tool:tool.isEmpty()?[]:[0,1,2,3,4,5,6,7].map(i=>new THREE.Vector3(i&1?tool.max.x:tool.min.x,i&2?tool.max.y:tool.min.y,i&4?tool.max.z:tool.min.z))};
 }
+/* the part of the 3-D view not covered by its text overlays (top lines, coordinate box), in px from the canvas edges */
+function freeInsets(){ const g=gfxEl.getBoundingClientRect(), m=8;
+  const r=id=>{ const e=$(id); if(!e||!e.offsetParent||!e.textContent) return null; const b=e.getBoundingClientRect(); return {l:b.left-g.left,r:g.right-b.right,t:b.top-g.top,b:g.bottom-b.bottom,w:b.width,h:b.height}; };
+  const L=r('ovl-l'), Rt=r('ovl-r'), D=r('dro');
+  const top=Math.max(L?L.t+L.h:0,Rt?Rt.t+Rt.h:0), bot=D?D.b+D.h:0;
+  // two ways round the text: bands above and below it (narrow views), or margins left and right of it (wide, short views)
+  return {w:g.width,h:g.height,cands:[{top:top+m,bot:bot+m,left:m,right:m},
+    {top:m,bot:m,left:Math.max(L?L.l+L.w:0,D?D.l+D.w:0)+m,right:(Rt?Rt.r+Rt.w:0)+m}]}; }
+/* default / reset view: the view's direction, then the closest camera (and a sideways shift of the pivot) that keeps the
+   whole blank and the tool inside the part of the canvas the text overlays leave free, whatever its aspect ratio */
+let viewFitted=false;
+function fitCamera(){
+  if(!ST) return;
+  const st=ST, cx=(st.x0+st.x1)/2, cy=(st.y0+st.y1)/2, cz=(st.z0+st.z1)/2;
+  const D0={'3D':[.95,-1.05,.85],'TOP':[0,-0.0005,1],'FRONT':[0,-1,.026],'SIDE':[1,0,.026]}[S.view]||[1,-1,1];
+  const dir=new THREE.Vector3(...D0).normalize(), c=new THREE.Vector3(cx,cy,cz);
+  renderDro(0);                                         // puts the tool where the run stands (now=0: no DRO repaint)
+  camera.position.copy(c).add(dir); camera.lookAt(c); camera.updateMatrixWorld();
+  const e=camera.matrixWorld.elements, rt=new THREE.Vector3(e[0],e[1],e[2]), up=new THREE.Vector3(e[4],e[5],e[6]);
+  const fp=framePoints(), pts=fp.blank.concat(fp.tool).map(p=>{ const q=p.clone().sub(c); return [q.dot(rt),q.dot(up),q.dot(dir)]; });
+  const f=freeInsets(), tv=Math.tan(camera.fov*Math.PI/360), th=tv*(f.w/Math.max(1,f.h));
+  // shift s along an axis fits at distance D when max(p-(D-z)·t·hi) <= min(p-(D-z)·t·lo); wider as D grows -> bisect
+  const span=(D,k,t,lo,hi)=>{ let a=-Infinity,b=Infinity; for(const p of pts){ const r=(D-p[2])*t; a=Math.max(a,p[k]-r*hi); b=Math.min(b,p[k]-r*lo); } return [a,b]; };
+  const ok=([a,b])=>a<=b, d0=Math.max(st.x1-st.x0,st.y1-st.y0,40);
+  let best=null;
+  for(const q of f.cands){
+    const xl=-1+2*q.left/f.w, xr=1-2*q.right/f.w, yt=1-2*q.top/f.h, yb=-1+2*q.bot/f.h;
+    if(!(xr-xl>0.4&&yt-yb>0.4)) continue;               // not laid out yet, or no room this way
+    const fits=D=>pts.every(p=>D-p[2]>camera.near*2)&&ok(span(D,0,th,xl,xr))&&ok(span(D,1,tv,yb,yt));
+    let lo=0, hi=d0; for(let i=0;i<40&&!fits(hi);i++) hi*=2; for(let i=0;i<40;i++){ const m=(lo+hi)/2; if(fits(m)) hi=m; else lo=m; }
+    if(!best||hi<best.D) best={D:hi,q,xl,xr,yt,yb};
+  }
+  const mid=([a,b])=>isFinite(a)&&isFinite(b)?(a+b)/2:0;
+  const D=best?best.D:d0*2.5;                           // canvas not laid out yet: a safe distance; resize() refits
+  const tgt=best?c.clone().addScaledVector(rt,mid(span(D,0,th,best.xl,best.xr))).addScaledVector(up,mid(span(D,1,tv,best.yb,best.yt))):c;
+  camera.position.copy(tgt).addScaledVector(dir,D); controls.target.copy(tgt); camera.lookAt(tgt);
+  if(CO) try{ CO.setPad(f.cands[0].top-8,f.cands[0].bot-8); }catch(e){}
+  viewFitted=true;
+}
+controls.addEventListener('start',()=>{ viewFitted=false; });   // the operator moved the view: a resize keeps it
+/* test hook (read-only): where the blank, the tool and the visible 3-D view are, in client px */
+UIAPI.framing=()=>{ const g=gfxEl.getBoundingClientRect(), fp=framePoints(), dock=isPhone()?$('dock').getBoundingClientRect().top:innerHeight;
+  const rect=P=>{ if(!P.length) return null; let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+    P.forEach(p=>{ const v=p.clone().project(camera), x=g.left+(v.x+1)/2*g.width, y=g.top+(1-v.y)/2*g.height;
+      x0=Math.min(x0,x); x1=Math.max(x1,x); y0=Math.min(y0,y); y1=Math.max(y1,y); }); return {x0,y0,x1,y1}; };
+  return {view:{x0:Math.max(0,g.left),y0:Math.max(0,g.top),x1:Math.min(innerWidth,g.right),y1:Math.min(dock,g.bottom)},
+    blank:rect(fp.blank),tool:rect(fp.tool),fitted:viewFitted}; };
+function viewLabel(){ $('gfx-rt').textContent=S.view==='3D'?T('gfx.3d'):T('gfx.plan')+' '+S.view; }
 
 /* ================= effects (fx.js) ================= */
 let FXO=null;
@@ -541,7 +592,7 @@ function stepBlock(){                                   // NC START in SINGLE-BL
   S.k=k+1; S.cursor=S.k<E.length?E[S.k]:Math.max(0,S.res.blocks.length-1); S.execB=S.cursor; markRows(true); flowHighlight(); traceFor(S.cursor);
   setState(S.k>=E.length?'PROGRAM END':'SINGLE BLOCK');
 }
-function setState(s){ $('run-state').textContent=s; if(s!==setState.last){ setState.last=s; hdrStat(); announce(s); } }
+function setState(s){ $('run-state').textContent=TR(s); if(s!==setState.last){ setState.last=s; hdrStat(); announce(s); } }
 
 /* ================= alarms ================= */
 const alarmEl=$('alarm'); let alarmT=0;
@@ -614,43 +665,46 @@ plist.addEventListener('dblclick',e=>{ if(e.target.closest('.blk')) beginEdit();
 function fmtT(s){ const m=Math.floor(s/60); return (m<10?'0':'')+m+':'+(s%60<10?'0':'')+(s%60).toFixed(1); }
 function renderKV(){
   const st=S.res.stats||{}, s=S.seg;
-  const rows=[['Elapsed / total',fmtT(S.t)+' / '+fmtT(S.total)],['Blocks',(S.res.blocks.filter(b=>b.n!=null&&!b.indent).pop()||{n:0}).n+1],
-    ['Moves',S.segs.length],['Feed path',(st.pathFeed||0).toFixed(0)+' mm'],['Rapid path',(st.pathRapid||0).toFixed(0)+' mm'],
-    ['Min Z',(st.minZ!=null?(+st.minZ).toFixed(3):'--')+' mm'],['Removed',(removedNow()/1000).toFixed(1)+' cm³'],
-    ['Active cycle',s&&s.cycle?s.cycle:'—'],['Override',S.ovr+' %'],['Machine',M().label]];
-  $('runkv').innerHTML=rows.map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}</dd>`).join('');
+  const rows=[['kv.elapsed',fmtT(S.t)+' / '+fmtT(S.total)],['kv.blocks',(S.res.blocks.filter(b=>b.n!=null&&!b.indent).pop()||{n:0}).n+1],
+    ['kv.moves',S.segs.length],['kv.feed',(st.pathFeed||0).toFixed(0)+' mm'],['kv.rapid',(st.pathRapid||0).toFixed(0)+' mm'],
+    ['kv.minz',(st.minZ!=null?(+st.minZ).toFixed(3):'--')+' mm'],['kv.removed',(removedNow()/1000).toFixed(1)+' cm³'],
+    ['kv.cycle',s&&s.cycle?s.cycle:'—'],['kv.ovr',S.ovr+' %'],['kv.machine',M().label]];
+  // runs every 250 ms: rewrite only changed text, never the nodes (a swipe that starts on a <dt> must keep its target)
+  const kv=$('runkv');
+  if(kv.children.length!==rows.length*2) kv.innerHTML='<dt></dt><dd></dd>'.repeat(rows.length);
+  rows.forEach(([k,v],i)=>{ const d=kv.children[i*2], e=d.nextElementSibling; k=T(k); v=String(v);
+    if(d.textContent!==k) d.textContent=k; if(e.textContent!==v) e.textContent=v; });
 }
 function renderChecks(){
   const errs=S.res.errors||[], ev=S.events;
   const items=[...errs.map(e=>({cls:'',t:null,block:e.block,msg:e.msg})),
                ...ev.map(e=>({cls:e.sev==='crash'?'':e.sev,t:e.t,block:e.block,msg:e.msg}))];
   const nCrash=ev.filter(e=>e.sev==='crash').length, nWarn=ev.filter(e=>e.sev==='warn').length;
-  $('errc').textContent=errs.length+nCrash+nWarn?`${errs.length} err · ${nCrash} crash · ${nWarn} warn`:'all clear';
+  $('errc').textContent=errs.length+nCrash+nWarn?`${errs.length} ${T('chk.err')} · ${nCrash} ${T('chk.crash')} · ${nWarn} ${T('chk.warn')}`:T('chk.clear');
   checksBadge(errs.length,nCrash,nWarn);
-  const tr=m=>window.TNC_I18N?TNC_I18N.tr(m):m;
-  $('elist').innerHTML=items.length?items.map((x,i)=>`<div class="${x.cls}" data-k="${i}">BLOCK ${nOf(x.block)} &nbsp;${esc(tr(x.msg))}</div>`).join('')
-    :'<div class="ok">PROGRAM CHECKED · NO ERRORS · NO CRASHES</div>';
+  $('elist').innerHTML=items.length?items.map((x,i)=>`<div class="${x.cls}" data-k="${i}">${T('chk.block')} ${nOf(x.block)} &nbsp;${esc(TR(x.msg))}</div>`).join('')
+    :`<div class="ok">${T('chk.ok')}</div>`;
   $('elist').onclick=e=>{ const d=e.target.closest('[data-k]'); if(!d) return; const x=items[+d.dataset.k];
     moveCursor(x.block); if(x.t!=null){ S.running=false; seek(Math.max(0,x.t-1e-3),false); } };
 }
-const CMPF=[['cycleTime','Cycle time'],['pathFeed','Feed path'],['pathRapid','Rapid path'],['moveCount','Moves'],['minZ','Min Z'],['removedVolume','Removed']];
+const CMPF=[['cycleTime','kv.cycletime'],['pathFeed','kv.feed'],['pathRapid','kv.rapid'],['moveCount','kv.moves'],['minZ','kv.minz'],['removedVolume','kv.removed']];
 function statsNow(){ return Object.assign({},S.res.stats||{},{removedVolume:removedNow()}); }
 function renderCompare(){
-  const b=statsNow(), a=S.ref?S.ref.stats:null;
-  $('cmp-t').textContent=S.ref?'A: '+S.ref.name:'no reference';
+  const b=statsNow(), a=S.cmpRef?S.cmpRef.stats:null;
+  $('cmp-t').textContent=S.cmpRef?'A: '+S.cmpRef.name:T('cmp.none');
   const f=v=>v==null||isNaN(v)?'--':(Math.abs(v)>=100?(+v).toFixed(0):(+v).toFixed(2));
-  let h='<span class="h">Metric</span><span class="h">A ref</span><span class="h">B now</span><span class="h">Δ</span>';
+  let h=`<span class="h">${T('cmp.metric')}</span><span class="h">${T('cmp.aref')}</span><span class="h">${T('cmp.bnow')}</span><span class="h">Δ</span>`;
   for(const [k,l] of CMPF){ const bv=b[k], av=a?a[k]:null; let d='--',dc='eq';
     if(a&&av!=null&&bv!=null){ const dv=bv-av; d=(dv>0?'+':'')+f(dv); dc=Math.abs(dv)<1e-6?'eq':(k==='removedVolume'?(dv>0?'dn':'up'):(dv>0?'up':'dn')); }
-    h+=`<span class="l">${l}</span><span class="v">${f(av)}</span><span class="v">${f(bv)}</span><span class="d ${dc}">${d}</span>`; }
+    h+=`<span class="l">${T(l)}</span><span class="v">${f(av)}</span><span class="v">${f(bv)}</span><span class="d ${dc}">${d}</span>`; }
   $('cmp').innerHTML=h;
 }
 $('b-snap').onclick=()=>{ S.running=false; seek(S.total,false);
-  S.ref={stats:statsNow(),text:S.text,pgm:S.pgm,machine:S.machine,name:S.pgm+' @'+new Date().toTimeString().slice(0,5)};
+  S.cmpRef={stats:statsNow(),text:S.text,pgm:S.pgm,machine:S.machine,name:S.pgm+' @'+new Date().toTimeString().slice(0,5)};
   renderCompare(); say('REFERENCE STORED — CHANGE THE PROGRAM, RUN, COMPARE'); };
-$('b-restore').onclick=()=>{ if(!S.ref){ say('NO REFERENCE STORED'); return; }
-  if(S.ref.machine!==S.machine) setMachine(S.ref.machine);
-  if(pg()[S.ref.pgm]==null) pg()[S.ref.pgm]=S.ref.text; openPgm(S.ref.pgm); say('REFERENCE PROGRAM OPEN: '+S.ref.pgm); };
+$('b-restore').onclick=()=>{ if(!S.cmpRef){ say('NO REFERENCE STORED'); return; }
+  if(S.cmpRef.machine!==S.machine) setMachine(S.cmpRef.machine);
+  if(pg()[S.cmpRef.pgm]==null) pg()[S.cmpRef.pgm]=S.cmpRef.text; openPgm(S.cmpRef.pgm); say('REFERENCE PROGRAM OPEN: '+S.cmpRef.pgm); };
 
 let droT=0;
 function renderDro(now){
@@ -806,7 +860,7 @@ function endEdit(accept){
   if(!S.editing) return;
   const val=dlgIn.value, pend=S.insertPending; S.insertPending=false; S.editing=false; dlgIn.disabled=true; dlgIn.value=''; ghostShow('');
   if(pend&&(!accept||!val.trim())){ const ls=lines(), i=srcLine(S.cursor); if(!(ls[i]||'').trim()){ ls.splice(i,1); setText(ls.join('\n')); moveCursor(i-1); } accept=false; }
-  dlgPr.textContent='BLOCK'; dlgHint.textContent='E edit · I insert · D delete';
+  dlgPr.textContent='BLOCK'; dlgHint.textContent=T('dlg.hint');
   if(accept){ const ls=lines(), i=srcLine(S.cursor), ind=(ls[i].match(/^\s*/)||[''])[0];
     ls[i]=(S.res.blocks[S.cursor]&&S.res.blocks[S.cursor].indent?ind:'')+val.trim(); edit(ls.join('\n'),S.cursor,'BLOCK '+nOf(S.cursor)+' STORED'); }
   document.activeElement&&document.activeElement.blur();
@@ -1465,7 +1519,7 @@ $('b-dev').onclick=()=>{ openModal('m-dev'); renderDev(); };
 /* ================= PROFILE: name, autosave, export / import, tool table ================= */
 function profChip(saved){
   const b=$('b-prof'); if(!b) return;
-  b.textContent=(PROF&&PROF.name)?PROF.name:'Who are you?';
+  b.textContent=(PROF&&PROF.name)?PROF.name:T('prof.who');
   const t=PSTORE.lastSaved; b.title=(PROF&&PROF.name?PROF.name+' · ':'')+(t?'autosaved '+t.toLocaleTimeString():'not saved yet')+(saved===false?' · STORAGE BLOCKED — EXPORT TO KEEP YOUR WORK':'');
   b.classList.toggle('warn',saved===false);
   if(openModalEl===$('m-prof')) { const st=$('prof-saved'); if(st) st.textContent=t?'Autosaved '+t.toLocaleTimeString()+' — in this browser':'Not saved yet'; }
@@ -1493,7 +1547,7 @@ function renderProfile(){
   $('prof-export').onclick=exportProfile;
   $('prof-dldir').onclick=pickDlDir;
   const pl=$('prof-lang'); if(pl){ pl.value=(window.TNC_I18N&&TNC_I18N.lang)||'en'; pl.disabled=!window.TNC_I18N;
-    pl.onchange=()=>{ try{ TNC_I18N.set(pl.value); }catch(e){} renderSK(); renderChecks(); setMode(S.mode); say(pl.value==='sv'?'SPRÅK: SVENSKA':'LANGUAGE: ENGLISH'); }; }
+    pl.onchange=()=>{ try{ TNC_I18N.set(pl.value); }catch(e){} renderSK(); renderChecks(); renderCompare(); renderUserPrograms(); viewLabel(); profChip(); setMode(S.mode); say(pl.value==='sv'?'SPRÅK: SVENSKA':'LANGUAGE: ENGLISH'); }; }
   $('prof-import').onclick=loadFromDisk;
   $('prof-new').onclick=newProfile;
   if(!(PROF&&PROF.name)) setTimeout(()=>nm.focus(),30);
@@ -1687,7 +1741,7 @@ function wizEnd(){
   }
   if(S.wiz) wizFinish();
 }
-function wizDone(){ S.wiz=null; dlgIn.value=''; dlgIn.placeholder=''; dlgIn.disabled=true; dlgPr.textContent='BLOCK'; dlgHint.textContent='E edit · I insert · D delete'; renderSK(); }
+function wizDone(){ S.wiz=null; dlgIn.value=''; dlgIn.placeholder=''; dlgIn.disabled=true; dlgPr.textContent='BLOCK'; dlgHint.textContent=T('dlg.hint'); renderSK(); }
 function wizCancel(){ if(!S.wiz) return; wizDone(); say('DIALOG CANCELLED'); }
 function wizFinish(){
   const txt=S.wiz.spec.build(S.wiz.v), add=txt.split('\n'), ls=lines();
@@ -1751,11 +1805,11 @@ function renderUserPrograms(){
   for(const id in S.pgms) for(const n in S.pgms[id]){ if(n===TEMP) continue; const mine=S.orig[id][n]==null||S.pgms[id][n]!==S.orig[id][n]; if(!mine) continue;
     const m=(S.meta[id]||{})[n]||{}; rows.push({id,n,m}); }
   rows.sort((a,b)=>String(b.m.m||'').localeCompare(String(a.m.m||'')));
-  const tab=$('tab-progs'); if(tab) tab.textContent=(who==='My'?'My':who+"'s")+' programs';
-  $('up-t').textContent=(who==='My'?'My':who+"'s")+' programs'; $('up-n').textContent=rows.length;
+  const lbl=who==='My'?T('progs.my'):T('progs.of').replace('{name}',who), tab=$('tab-progs'); if(tab) tab.textContent=lbl;
+  $('up-t').textContent=lbl; $('up-n').textContent=rows.length;
   $('uplist').innerHTML=rows.length?'<table><tr><th>PROGRAM</th><th>MACHINE</th><th>CREATED</th><th>EDITED</th><th>V</th></tr>'+
     rows.map(r=>`<tr class="pg${r.id===S.machine&&r.n===S.pgm?' cur':''}" data-m="${r.id}" data-n="${esc(r.n)}"><td>${esc(r.n)}</td><td>${esc((MACHINES[r.id]||{}).label||r.id)}</td><td>${fmtD(r.m.c)}</td><td>${fmtD(r.m.m)}</td><td>${r.m.v||'—'}</td></tr>`).join('')+'</table>'
-    :'<p class="note" style="padding:0 12px 10px">Nothing yet. Every program you create, change, upload or save shows up here by itself.</p>';
+    :`<p class="note" style="padding:0 12px 10px">${T('progs.none')}</p>`;
   const pn=$('proj-t'); if(pn) pn.textContent=S.projects.length;
 }
 $('uplist').addEventListener('click',e=>{ const r=e.target.closest('tr.pg'); if(!r) return; if(r.dataset.m!==S.machine) setMachine(r.dataset.m); openPgm(r.dataset.n); renderUserPrograms(); });
@@ -1927,8 +1981,8 @@ function rove(list){ const tabs=[...list.querySelectorAll('[role=tab]')]; if(!ta
 document.querySelectorAll('[role=tablist]').forEach(l=>{ rove(l); new MutationObserver(()=>rove(l)).observe(l,{subtree:true,attributes:true,attributeFilter:['aria-selected']}); });
 
 /* header: program · state, and the check count as a button that opens the checks */
-function hdrStat(){ const el=$('hdr-stat'); if(!el) return; const t=S.pgm+'|'+setState.last; if(el.dataset.t===t) return; el.dataset.t=t;
-  el.innerHTML=`<b>${esc(S.pgm)}</b> · ${esc(setState.last||'')}`; }
+function hdrStat(){ const el=$('hdr-stat'); if(!el) return; const st=TR(setState.last||''), t=S.pgm+'|'+st; if(el.dataset.t===t) return; el.dataset.t=t;
+  el.innerHTML=`<b>${esc(S.pgm)}</b><span>&nbsp;· ${esc(st)}</span>`; }
 var lastChecks=null;
 function checksBadge(nErr,nCrash,nWarn){
   const bad=nErr+nCrash, n=bad+nWarn, tt=x=>window.TNC_I18N?TNC_I18N.t(x):x;
@@ -2008,6 +2062,7 @@ function layout(){ const phone=isPhone(), dock=$('dock'), act=document.activeEle
 /* CSS sizes: dock height, tab-bar height, and how much of the screen the software keyboard covers */
 function measure(){ const r=document.documentElement.style, d=$('dock'), tb=$('mtabs');
   r.setProperty('--dock-h',(isPhone()?d.offsetHeight:0)+'px'); r.setProperty('--tabs-h',(isPhone()?tb.offsetHeight:0)+'px');
+  r.setProperty('--bar-h',(isPhone()?document.querySelector('.bar').offsetHeight:0)+'px');
   const vv=window.visualViewport; if(vv){ r.setProperty('--vvh',vv.height+'px'); r.setProperty('--vvt',vv.offsetTop+'px');
     r.setProperty('--kb',Math.max(0,Math.round(innerHeight-vv.height-vv.offsetTop))+'px'); } }
 new ResizeObserver(measure).observe($('dock'));
@@ -2028,12 +2083,13 @@ function resize(){
   renderer.setSize(r.width,r.height,false); camera.aspect=r.width/r.height; camera.updateProjectionMatrix();
   if(FXO) try{ FXO.resize(r.height,camera.fov,renderer.getPixelRatio()); }catch(e){}
   if(CO) try{ CO.resize(r.width,r.height); }catch(e){}
+  if(viewFitted) fitCamera();                           // still the default view: refit to the new shape
   emit('resize',{w:r.width,h:r.height});
 }
 new ResizeObserver(resize).observe(gfxEl);
 addEventListener('resize',resize);
 
-let last=performance.now(), kvT=0, paintAcc=0;
+let last=performance.now(), kvT=0, paintAcc=0, ovlPainted=false;
 function tick(now){
   const dt=Math.min(.1,(now-last)/1000); last=now;
   if(S.running&&S.speed>0){ const nt=S.t+dt*S.speed*(S.ovr/100);
@@ -2054,7 +2110,8 @@ function tick(now){
     $('ovl-l').innerHTML=`PGM <b style="color:var(--cyan)">${esc(S.pgm)}</b><br>BLOCK <b>${b&&b.n!=null?b.n:'--'}</b> / ${(S.res.blocks.filter(x=>x.n!=null).pop()||{n:0}).n}<br>`+
       `BLANK <b>${fmt(ST.x1-ST.x0)}×${fmt(ST.y1-ST.y0)}×${fmt(ST.z1-ST.z0)}</b> mm`;
     hdrStat();
-    $('ovl-r').innerHTML=`${S.view} · ${S.speed?S.speed+'×':'MAX'}<br>${fmtT(S.t)} / ${fmtT(S.total)}<br>OVR <b style="color:var(--amber)">${S.ovr}%</b>`; }
+    $('ovl-r').innerHTML=`${S.view} · ${S.speed?S.speed+'×':'MAX'}<br>${fmtT(S.t)} / ${fmtT(S.total)}<br>OVR <b style="color:var(--amber)">${S.ovr}%</b>`;
+    if(!ovlPainted){ ovlPainted=true; if(viewFitted) fitCamera(); } }   // the first fit ran before the overlays had text
   controls.update();
   if(CO) try{ CO.update(); }catch(e){}
   const draw=()=>{ if(UIAPI.render) try{ UIAPI.render(scene,camera); return; }catch(e){ UIAPI.render=null; } renderer.render(scene,camera); };

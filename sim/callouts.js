@@ -45,11 +45,12 @@ var TNC_CALLOUTS = (function () {
     var order = [];       // insertion order, for stable z-stacking
     var w = canvas.clientWidth || 1, h = canvas.clientHeight || 1;
     var globalVisible = true;
+    var pad = { top: 0, bottom: 0 };   // canvas bands covered by other overlays (setPad); labels stay out of them
     var v3 = new THREE.Vector3();
 
     function labelStyle(color) {
       return 'position:absolute;left:0;top:0;transform:translate(-99999px,-99999px);' +
-        'max-width:220px;background:rgba(22,29,41,0.92);border-left:3px solid ' + color + ';' +
+        'max-width:calc(100% - 4px);overflow:hidden;text-overflow:ellipsis;background:rgba(22,29,41,0.92);border-left:3px solid ' + color + ';' +
         'color:#f2f6fb;font:600 11px/1.35 "IBM Plex Sans",-apple-system,sans-serif;' +
         'letter-spacing:.02em;padding:3px 8px;border-radius:2px;white-space:nowrap;' +
         'box-shadow:0 1px 6px rgba(0,0,0,.55);pointer-events:none;will-change:transform;';
@@ -115,6 +116,8 @@ var TNC_CALLOUTS = (function () {
       wrap.style.display = globalVisible ? '' : 'none';
     }
 
+    function setPad(top, bottom) { pad.top = top || 0; pad.bottom = bottom || 0; }
+
     function resize(ww, hh) {
       w = ww || w; h = hh || h;
     }
@@ -131,6 +134,7 @@ var TNC_CALLOUTS = (function () {
       var cw = canvas.clientWidth, ch = canvas.clientHeight;
       if (cw) w = cw; if (ch) h = ch;
 
+      var placed = [];   // label boxes already laid out this frame: a later label moves off them
       for (var i = 0; i < order.length; i++) {
         var it = items[order[i]];
         if (!it || !it.visible) { if (it) hideEl(it); continue; }
@@ -147,16 +151,32 @@ var TNC_CALLOUTS = (function () {
 
         var ax = (v3.x * 0.5 + 0.5) * w;
         var ay = (-v3.y * 0.5 + 0.5) * h;
+        if (ax < 0 || ax > w || ay < 0 || ay > h) { hideEl(it); continue; }   // anchor off the canvas
         var lx = ax + it.offset[0];
         var ly = ay + it.offset[1];
 
         // Measure label to anchor the leader line on its near edge, never
         // crossing the text: line lands on the left or right edge of the
         // box (whichever faces the anchor), vertically centred on the box.
+        // The box is kept inside the canvas (narrow phones: never cut off).
         var lw = it.label.offsetWidth || 0, lh = it.label.offsetHeight || 0;
         var boxLeft = lx, boxTop = ly - lh / 2;
         if (it.offset[0] < 0) boxLeft = lx - lw;
-        var edgeX = (it.offset[0] >= 0) ? boxLeft : boxLeft + lw;
+        boxLeft = Math.max(2, Math.min(boxLeft, w - lw - 2));
+        var yMin = Math.min(pad.top, h / 2) + 2, yMax = Math.max(yMin, h - Math.min(pad.bottom, h / 2) - lh - 2);
+        boxTop = Math.max(yMin, Math.min(boxTop, yMax));
+        for (var k = 0, moved = true; moved && k < 8; k++) {
+          moved = false;
+          for (var j = 0; j < placed.length; j++) {
+            var q = placed[j];
+            if (boxLeft < q.x + q.w && boxLeft + lw > q.x && boxTop < q.y + q.h && boxTop + lh > q.y) {
+              boxTop = (q.y + q.h + 2 <= yMax) ? q.y + q.h + 2 : q.y - lh - 2;   // below it, else above it
+              moved = true;
+            }
+          }
+        }
+        placed.push({ x: boxLeft, y: boxTop, w: lw, h: lh });
+        var edgeX = (ax < boxLeft + lw / 2) ? boxLeft : boxLeft + lw;
         var edgeY = boxTop + lh / 2;
 
         it.label.style.transform = 'translate(' + Math.round(boxLeft) + 'px,' + Math.round(boxTop) + 'px)';
@@ -175,7 +195,7 @@ var TNC_CALLOUTS = (function () {
 
     return {
       add: add, set: set, remove: remove,
-      setVisible: setVisible, update: update, resize: resize, dispose: dispose
+      setVisible: setVisible, update: update, resize: resize, setPad: setPad, dispose: dispose
     };
   }
 
