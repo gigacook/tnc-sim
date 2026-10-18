@@ -59,7 +59,7 @@ impl Args {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Kind {
-    Unknown, Comment, Blank, Begin, End, Blk1, Blk2, ToolDef, ToolCall, TchProbe, CyclParm, CyclDef, CyclCall, CallLbl, Lbl, LblEnd,
+    Unknown, Comment, Blank, Begin, End, Blk1, Blk2, ToolDef, ToolCall, TchProbe, CyclParm, CyclDef, CyclCall, CallLbl, CallPgm, Lbl, LblEnd,
     Jump, FnErr, Fn, FnNop, Stop, Appr, Dep, Rnd, Chf, Lp, Cp, Ctp, Ct, Cc, Cr, C, L, QAssign, Formula,
 }
 impl Kind {
@@ -68,7 +68,7 @@ impl Kind {
         match self {
             Unknown => "UNKNOWN", Comment => "COMMENT", Blank => "BLANK", Begin => "BEGIN", End => "END", Blk1 => "BLK1", Blk2 => "BLK2",
             ToolDef => "TOOLDEF", ToolCall => "TOOLCALL", TchProbe => "TCHPROBE", CyclParm => "CYCLPARM", CyclDef => "CYCLDEF",
-            CyclCall => "CYCLCALL", CallLbl => "CALLLBL", Lbl => "LBL", LblEnd => "LBLEND", Jump => "JUMP", FnErr => "FNERR", Fn => "FN",
+            CyclCall => "CYCLCALL", CallLbl => "CALLLBL", CallPgm => "CALLPGM", Lbl => "LBL", LblEnd => "LBLEND", Jump => "JUMP", FnErr => "FNERR", Fn => "FN",
             FnNop => "FNNOP", Stop => "STOP", Appr => "APPR", Dep => "DEP", Rnd => "RND", Chf => "CHF", Lp => "LP", Cp => "CP", Ctp => "CTP",
             Ct => "CT", Cc => "CC", Cr => "CR", C => "C", L => "L", QAssign => "QASSIGN", Formula => "FORMULA",
         }

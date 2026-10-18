@@ -251,6 +251,7 @@ re!(re_dr_any, r"DR([+-])");
 re!(re_cycl, r"^CYCL\s+DEF\s+(\d+)\s*(.*)$");
 re!(re_cyclcall, r"^CYCL\s+CALL(?:\s+M(\d+))?$");
 re!(re_m99, r"^M99$");
+re!(re_callpgm, r"^CALL\s+PGM\s+(\S+)$");
 re!(re_calllbl, r#"^CALL\s+LBL\s*("?[A-Z0-9_]+"?)\s*(?:REP\s*(Q\d+|\d+)(?:\s*/\s*(\d+))?)?$"#);
 re!(re_lbl, r#"^LBL\s*("?[A-Z0-9_]+"?)$"#);
 re!(re_fn, r"^FN\s*(\d+)\s*:\s*(.*)$");
@@ -430,6 +431,8 @@ pub fn parse_line(raw: &str, idx: usize) -> Block {
     }
     if re_m99().is_match(&u) { b.kind = Kind::CyclCall; return b; }
 
+    // 9.4: CALL PGM name runs another program as a subprogram
+    if let Some(m) = re_callpgm().captures(&u) { b.kind = Kind::CallPgm; b.args.set("pgm", V::Str(m[1].to_string())); return b; }
     if let Some(m) = re_calllbl().captures(&u) {
         b.kind = Kind::CallLbl;
         b.args.set("lbl", lbl_key(&m[1]).to_v());

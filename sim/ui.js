@@ -87,14 +87,14 @@ const prefsNow=()=>({speed:S.speed, ovr:S.ovr, view:S.view, mode:S.mode, fx:S.fx
 /* ================= machines ================= */
 const MACHINES={
   '426':{ id:'426', label:'TNC 426', axes:['X','Y','Z'], tools:TNC.TOOLS,
-    run:t=>TNC.run(t,{tools:mtools('426'),holder:holderOpt('426')}), expand:r=>TNC_SIM.expand(r),
+    run:t=>TNC.run(t,{tools:mtools('426'),holder:holderOpt('426'),programs:S.pgms['426']}), expand:r=>TNC_SIM.expand(r),
     analyse:(r,ex)=>TNC_SIM.analyse(r,ex,TNC_SIM.grid(r.stock,ex.segs)),
     programs:window.TNC_PROGRAMS||{}, lessons:window.TNC_LESSONS||null }
 };
 /* TNC 430: the operator's machine parameters live in machines.js (shared with the server's engine). */
 const MACHINE_430=(window.TNC_MACHINE_CONFIGS||{})['430']||{};
 MACHINES['430']={ id:'430', label:'TNC 430', axes:['X','Y','Z','B','A'], tools:TNC.TOOLS, machine:MACHINE_430,
-  run:t=>TNC.run(t,{tools:mtools('430'),machine:MACHINE_430,holder:holderOpt('430')}), expand:r=>TNC_SIM.expand(r),
+  run:t=>TNC.run(t,{tools:mtools('430'),machine:MACHINE_430,holder:holderOpt('430'),programs:S.pgms['430']}), expand:r=>TNC_SIM.expand(r),
   analyse:(r,ex)=>TNC_SIM.analyse(r,ex,TNC_SIM.grid(r.stock,ex.segs)),
   programs:window.TNC_PROGRAMS||{}, lessons:window.TNC_LESSONS||null };
 Object.keys(window.TNC_MACHINES||{}).forEach(k=>{ MACHINES[k]=window.TNC_MACHINES[k]; });

@@ -20,7 +20,7 @@ verified, where it ran, and the commit (pushed to main).
 | x | #7 | FK blocks report FK NOT SIMULATED (was BLOCK FORMAT INCORRECT). Full FK solver moved to Later: 0 of 2,806 corpus programs use FK, CAM never emits it, FSELECT order not in the manual | 10-18 | manual.js, parity | Win 11 | 182f80f |
 | x | #8 | Cycle 3 slot milling (p. 270) | 10-18 | manual.js, parity | Win 11 | 33e39f0 |
 | x | #9 | Cycle 5 circular pocket (p. 264) | 10-18 | manual.js, parity | Win 11 | 33e39f0 |
-|   | #10 | Cycle 12 PGM CALL | | manual.js | | |
+| x | #10 | CALL PGM and cycle 12 PGM CALL: the called program runs from the profile's programs (p. 337, 345) | 10-18 | manual.js, parity | Win 11 | PCCOMMIT |
 | x | #11 | Cycle 13 oriented spindle stop: accepted, angle not modelled (placeholder O13) | 10-18 | manual.js, parity | Win 11 | 2dbdeed |
 |   | #12 | Cycle 26 axis-specific scaling | | manual.js | | |
 |   | #13 | Cycles 27 / 28 cylinder surface | | manual.js | | |
@@ -80,6 +80,7 @@ FK solver · horizontal spindle (TOOL CALL X / Y) · programs to the machine (US
 | SL13 | sl.rs run | 24: down to Q1 (Q4 not kept); p. 294 check Q14 + R < Q3 + rough-out R not made |
 | SL14 | sl.rs field | 3+ subcontours each tested against the first one's start point; missing 14/20 = CYCL DEF INCOMPLETE |
 | P1–P7 | exec.rs run_probe | MP 6140 = 2 mm; stylus placement; datum tables not simulated; presets translation-only; touch order from the figures |
+| PC1 | exec.rs call_pgm | CALL PGM: "PGM n NOT FOUND" (message not in the manual); M2 / M30 in the called program end the whole run; moves of the called program show on the call block |
 | V1 | stock.rs | vice: jaws on Y, 160 × 25 mm, grips 6 mm (a guess, not the operator's vice) |
 | V2 | stock.rs HEAD_LEN | tilted head = 300 mm cylinder |
 | K1 | ui.js, dialogs.js | keypad details not in the manual (END takes the entry, I and −/+ toggles, CE twice, PC-keyboard bindings) |

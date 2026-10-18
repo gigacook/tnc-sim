@@ -777,6 +777,19 @@ console.log('SL cycles 14, 20-25 (8.6, p. 284-307): contour geometry from subpro
   r = TNC.run(sl('1', '', pocket).replace(/CYCL DEF 22\.0 ROUGH-OUT[^]*?Q19=150\n/, 'CYCL DEF 21.0 PILOT DRILLING\n Q10=4\n Q11=100\n Q13=1\n'));
   const b21 = r.moves.filter(m => m.cycle && m.kind === 'rapid' && m.to.z < m.from.z && m.to.z < 0).map(m => +m.to.z.toFixed(3));
   ok(!r.errors.length && b21.length && b21.every(z => [-3.4, -7.4].includes(z)), 'cycle 21 (Q1 -10, Q10 4) pecks like cycle 1 with t = 0.6: ' + [...new Set(b21)].join(' '));
+  /* 9.4 CALL PGM and cycle 12 (p. 337, 345): the other program runs start to end, then the caller goes on */
+  const B = 'BEGIN PGM B MM\nL X+30 Y+40 R0 FMAX\nFN 0: Q5 = +7\nEND PGM B MM';
+  r = TNC.run(hd + 'L X+10 Y+10 R0 FMAX\nCALL PGM B\nL X+Q5 R0 FMAX\nEND PGM X MM', { programs: { 'B.H': B } });
+  const cb = r.blocks.findIndex(x => x.kind === 'CALLPGM'), mB = r.moves.find(m => near(m.to.x, 30) && near(m.to.y, 40));
+  ok(!r.errors.length && mB && mB.block === cb && near(r.moves[r.moves.length - 1].to.x, 7), 'CALL PGM B: B runs (X30 Y40, shown on the call block), Q5 = 7 set in B is seen after the call');
+  r = TNC.run(hd + 'CYCL DEF 12.0 PGM CALL\nCYCL DEF 12.1 PGM TNC:\\KLAR35\\FK1\\B.H\nL X+10 Y+10 R0 FMAX M99\nEND PGM X MM', { programs: { 'B.H': B } });
+  ok(!r.errors.length && r.moves.some(m => near(m.to.x, 30) && near(m.to.y, 40)), 'cycle 12 PGM CALL with a full path, called by M99: ' + r.errors.map(e => e.msg));
+  r = TNC.run(hd + 'CALL PGM NOPE\nEND PGM X MM');
+  ok(r.errors.some(e => e.msg === 'PGM NOPE.H NOT FOUND'), 'CALL PGM of a program that is not there: PGM NOPE.H NOT FOUND');
+  r = TNC.run(hd + 'CALL PGM B\nEND PGM X MM', { programs: { 'B.H': 'BEGIN PGM B MM\nTOOL CALL 77 Z S100\nEND PGM B MM' } });
+  ok(r.errors.some(e => e.msg === 'B.H: TOOL 77 NOT DEFINED'), 'an error in the called program names it: ' + r.errors.map(e => e.msg));
+  r = TNC.run(hd + 'CALL PGM X\nEND PGM X MM', { programs: { 'X.H': hd + 'CALL PGM X\nEND PGM X MM' } });
+  ok(r.errors.some(e => /EXCESSIVE SUBPROGRAM NESTING/.test(e.msg)), 'a program that calls itself stops at the nesting limit (main programs 4 deep, p. 345)');
   /* 6.6 FK free contour programming is not simulated: every FK block says so (manual example FK2, p. 170) */
   r = TNC.run(hd + 'L X+30 Y+30 R0 FMAX\nFPOL X+30 Y+30\nFC DR- R30 CCX+30 CCY+30\nFL AN+60 PDX+30 PDY+30 D10\nFSELECT 3\nFLT\nFCT DR- R15\nEND PGM X MM');
   ok(r.errors.filter(e => e.msg === 'FK NOT SIMULATED').length === 6 && !r.errors.some(e => e.msg === 'BLOCK FORMAT INCORRECT'), 'FK blocks report FK NOT SIMULATED: ' + r.errors.map(e => e.msg).join(','));

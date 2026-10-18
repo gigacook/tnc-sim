@@ -40,7 +40,8 @@ var TNC_ENGINE = (function () {
       tools: opts.tools ? opts.tools.map(function (t) { return { t: t.t, name: t.name, l: t.l, r: t.r }; }) : null,
       machine: opts.machine || null,
       holder_a: opts.holder && opts.holder.stack ? opts.holder.stack(3) : null,
-      auto_tools: !!opts.autoTools
+      auto_tools: !!opts.autoTools,
+      programs: opts.programs || null   // CALL PGM / cycle 12: {NAME.H: text}
     };
     var r = call('tnc_run', [String(text === undefined || text === null ? '' : text), JSON.stringify(o)]);
     var res = { blocks: hideParseErrors(r.blocks), moves: r.moves, stock: r.stock, stats: r.stats, machine: opts.machine || {}, exec: r.exec, errors: r.errors };

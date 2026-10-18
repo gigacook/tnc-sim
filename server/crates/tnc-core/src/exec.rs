@@ -25,7 +25,7 @@ macro_rules! re {
     };
 }
 
-fn implemented(n: f64) -> bool { [1., 2., 3., 4., 5., 17., 18., 21., 22., 23., 24., 25., 200., 201., 202., 203., 204., 205., 206., 207., 208., 209., 210., 211., 212., 213., 214., 215., 230., 231., 262., 263., 264., 265., 267.].contains(&n) }
+fn implemented(n: f64) -> bool { [1., 2., 3., 4., 5., 12., 17., 18., 21., 22., 23., 24., 25., 200., 201., 202., 203., 204., 205., 206., 207., 208., 209., 210., 211., 212., 213., 214., 215., 230., 231., 262., 263., 264., 265., 267.].contains(&n) }
 fn pattern_cycle(n: f64) -> bool { n == 220.0 || n == 221.0 }
 fn nomotion(n: f64) -> bool { [7., 8., 9., 10., 11., 14., 19., 20., 32., 247.].contains(&n) }
 fn probe_cycle(n: f64) -> bool { [400., 403., 408., 409., 410., 411., 412., 413., 417., 419.].contains(&n) }
@@ -84,7 +84,7 @@ pub struct Mach {
 }
 
 #[derive(Clone, Debug)]
-pub struct Opts { pub tools: Option<Vec<ToolEntry>>, pub mach: Mach, pub holder_a: Option<f64>, pub auto_tools: bool }
+pub struct Opts { pub tools: Option<Vec<ToolEntry>>, pub mach: Mach, pub holder_a: Option<f64>, pub auto_tools: bool, pub programs: HashMap<String, String> }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum MK { Rapid, Feed, Arc }
@@ -169,6 +169,8 @@ pub struct St<'a> {
     cap: bool, sl_labels: Option<Vec<f64>>, sl_data: Option<Cycle>,
     /// SL: the transformation active when the cycle started; captured moves are recorded in its coordinates
     cap_xf: Xf,
+    /// CALL PGM / cycle 12: the programs the caller passed (upper-case names), main-program nesting depth
+    programs: HashMap<String, String>, pgm_depth: usize,
 }
 
 fn fail(st: &mut St, bi: usize, msg: &str) {
@@ -1009,6 +1011,7 @@ fn exec_cycle(st: &mut St, cy: &Cycle, bi: usize, at: Option<(f64, f64)>) {
     else if n == 4.0 { cycle_pocket(st, cy, bi); }
     else if n == 3.0 { cycle_slot3(st, cy, bi); }
     else if n == 5.0 { cycle_circ5(st, cy, bi); }
+    else if n == 12.0 { let name = body(cy, 1.0).unwrap_or("").trim().trim_start_matches("PGM").trim().to_string(); call_pgm(st, bi, &name); }
     else if n == 202.0 { cycle_bore(st, cy, bi); }
     else if n == 204.0 { cycle_back_bore(st, cy, bi); }
     else if n == 205.0 { cycle_peck205(st, cy, bi); }
@@ -1563,6 +1566,33 @@ fn jump_taken(st: &mut St, bi: usize) -> bool {
     match op.as_str() { "EQU" => (av - bv).abs() < 1e-9, "NE" => (av - bv).abs() >= 1e-9, "GT" => av > bv, "LT" => av < bv, _ => false }
 }
 
+/// 9.4 / cycle 12: run another program from start to end, then go on after the call. Q parameters, tool, position and
+/// transformations carry over, as on the control. The called program's moves and steps show on the calling block, its
+/// errors as "NAME.H: message". Not in the manual (placeholder PC1): the not-found message, and M2 / M30 in the called
+/// program ("must not contain", p. 345) simply end the run.
+fn call_pgm(st: &mut St, bi: usize, raw: &str) {
+    let base = raw.rsplit(['\\', '/', ':']).next().unwrap_or("").trim_matches('"').to_uppercase();
+    let name = if base.contains('.') { base } else { format!("{base}.H") };
+    if st.pgm_depth >= 4 { fail(st, bi, "EXCESSIVE SUBPROGRAM NESTING"); st.abort = true; return; } // p. 345: main programs nest 4 deep
+    let text = match st.programs.get(&name) { Some(t) => t.clone(), None => { fail(st, bi, &format!("PGM {name} NOT FOUND")); return; } };
+    let p = parse::parse(&text);
+    let mut blocks = p.blocks;
+    let mut labels = HashMap::new();
+    for (i, b) in blocks.iter().enumerate() { if b.kind == Kind::Lbl { labels.entry(Lbl::from_v(b.args.get("lbl").unwrap_or(&V::Null)).key()).or_insert(i); } }
+    let (n_mv, n_ex, n_err) = (st.moves.len(), st.exec.len(), st.errors.len());
+    for (_, m) in &p.errors { st.errors.push((bi, m.clone())); }
+    std::mem::swap(&mut *st.blocks, &mut blocks); std::mem::swap(&mut st.labels, &mut labels);
+    st.pgm_depth += 1;
+    let last = st.blocks.len() as isize - 1;
+    exec_range(st, 0, last, 0);
+    st.pgm_depth -= 1;
+    std::mem::swap(&mut *st.blocks, &mut blocks); std::mem::swap(&mut st.labels, &mut labels);
+    for m in st.moves[n_mv..].iter_mut() { match m { Item::M(m) => m.block = bi as f64, Item::K(k) => k.block = bi as f64 } }
+    for e in st.exec[n_ex..].iter_mut() { *e = bi; }
+    let errs: Vec<String> = st.errors.drain(n_err..).map(|(_, m)| m).collect();
+    for m in errs { fail(st, bi, &format!("{name}: {m}")); }
+}
+
 fn exec_range(st: &mut St, from: usize, to: isize, depth: i32) {
     if depth > MAX_DEPTH { st.abort = true; fail(st, from, "EXCESSIVE SUBPROGRAM NESTING"); return; }
     let mut i = from as isize;
@@ -1631,6 +1661,7 @@ fn exec_range(st: &mut St, from: usize, to: isize, depth: i32) {
             Kind::CyclCall => { apply_m(st, m.as_ref(), true); run_cycle(st, iu); apply_m(st, m.as_ref(), false); }
             Kind::Lbl => {}
             Kind::LblEnd => { if depth > 0 { return; } }
+            Kind::CallPgm => { let name = st.blocks[iu].args.str("pgm").unwrap_or("").to_string(); call_pgm(st, iu, &name); }
             Kind::CallLbl => {
                 let a = st.blocks[iu].args.clone();
                 let lbl = Lbl::from_v(a.get("lbl").unwrap_or(&V::Null));
@@ -2124,7 +2155,7 @@ pub fn compile(blocks: &mut Vec<Block>, opts: &Opts) -> Compiled {
         abort: false, done: false, tool_order: vec![], tool_stat: HashMap::new(),
         tool_table: opts.tools.clone().unwrap_or(builtin), mach: opts.mach.clone(), arc_tol: js::or(opts.mach.arc_tol, ARC_TOL), holder: opts.holder_a, auto_tools: opts.auto_tools,
         labels: HashMap::new(), comment_tools: HashMap::new(), auto_feed: f64::NAN,
-        cap: false, sl_labels: None, sl_data: None, cap_xf: Xf { s: 1.0, ..Default::default() },
+        cap: false, sl_labels: None, sl_data: None, cap_xf: Xf { s: 1.0, ..Default::default() }, programs: opts.programs.clone(), pgm_depth: 0,
     };
     for i in 0..st.blocks.len() {
         if st.blocks[i].kind == Kind::Lbl {

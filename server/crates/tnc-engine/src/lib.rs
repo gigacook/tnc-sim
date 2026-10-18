@@ -136,7 +136,7 @@ pub fn check_now(text: &str, o: &Options) -> Report {
     let opts = tnc_core::exec::Opts {
         tools: Some(by), mach: tnc_core::machine(&o.machine),
         holder_a: Some(if o.holder.as_deref() == Some("SK40") { 70.0 } else { 100.0 }),   // tools3d.js HOLDERS[...].A
-        auto_tools: o.auto_tools,
+        auto_tools: o.auto_tools, programs: Default::default(),
     };
     let r = tnc_core::run(text, &opts);
     let c = &r.compiled;

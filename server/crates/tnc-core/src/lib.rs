@@ -31,14 +31,15 @@ pub fn tools() -> Vec<ToolEntry> { TOOLS.iter().map(|&(t, n, l, r)| ToolEntry { 
 
 fn f(v: Option<&Value>) -> f64 { v.and_then(|x| x.as_f64()).unwrap_or(f64::NAN) }
 
-/// Options as JSON: {tools: [{t, name, l, r}] | null, machine: {...} | null, holder_a: number | null, auto_tools: bool}
+/// Options as JSON: {tools: [{t, name, l, r}] | null, machine: {...} | null, holder_a: number | null, auto_tools: bool, programs: {NAME.H: text}}
 pub fn opts_from_json(s: &str) -> Opts {
     let v: Value = serde_json::from_str(s).unwrap_or(Value::Null);
     let tools = v.get("tools").and_then(|t| t.as_array()).map(|a| a.iter().map(|t| ToolEntry {
         t: f(t.get("t")), name: match t.get("name") { Some(Value::String(s)) => J::Val(s.clone()), Some(Value::Null) => J::Null, _ => J::Absent }, l: f(t.get("l")), r: f(t.get("r")),
     }).collect());
     let mach = mach_from(v.get("machine"));
-    Opts { tools, mach, holder_a: v.get("holder_a").and_then(|x| x.as_f64()), auto_tools: v.get("auto_tools").and_then(|x| x.as_bool()).unwrap_or(false) }
+    Opts { tools, mach, holder_a: v.get("holder_a").and_then(|x| x.as_f64()), auto_tools: v.get("auto_tools").and_then(|x| x.as_bool()).unwrap_or(false),
+        programs: v.get("programs").and_then(|p| p.as_object()).map(|o| o.iter().filter_map(|(k, t)| t.as_str().map(|t| (k.to_uppercase(), t.to_string()))).collect()).unwrap_or_default() }
 }
 
 /// machine parameters from a machines.js entry (null / missing = the 3-axis defaults)
