@@ -26,6 +26,9 @@ macro_rules! re {
 }
 
 fn implemented(n: f64) -> bool { [1., 2., 3., 4., 5., 12., 17., 18., 21., 22., 23., 24., 25., 200., 201., 202., 203., 204., 205., 206., 207., 208., 209., 210., 211., 212., 213., 214., 215., 230., 231., 262., 263., 264., 265., 267.].contains(&n) }
+/// the cycles the 426/430 manual (NC SW 280 476) describes; any other number is a newer control's cycle (placeholder NO1:
+/// the real control's message for an unknown cycle is not in the manual)
+fn in_manual(n: f64) -> bool { (1.0..=5.0).contains(&n) || (7.0..=14.0).contains(&n) || (17.0..=28.0).contains(&n) || n == 30.0 || n == 32.0 || (200.0..=215.0).contains(&n) || [220., 221., 230., 231., 247., 262., 263., 264., 265., 267.].contains(&n) }
 fn pattern_cycle(n: f64) -> bool { n == 220.0 || n == 221.0 }
 fn nomotion(n: f64) -> bool { [7., 8., 9., 10., 11., 26., 14., 19., 20., 32., 247.].contains(&n) }
 fn probe_cycle(n: f64) -> bool { [400., 403., 408., 409., 410., 411., 412., 413., 417., 419.].contains(&n) }
@@ -1677,7 +1680,7 @@ fn exec_range(st: &mut St, from: usize, to: isize, depth: i32) {
                     // placeholder O13: the angle only takes effect on M19/M20 (spindle angle not modelled), so cycle 13 is accepted and keeps the active machining cycle
                     if cn == 13.0 { i += 1; continue; }
                     st.cycle = Some(c);
-                    if !implemented(cn) && !nomotion(cn) { fail(st, iu, &format!("CYCLE {} NOT IMPLEMENTED IN SIMULATOR", js::num_str(cn))); }
+                    if !implemented(cn) && !nomotion(cn) { fail(st, iu, &format!("CYCLE {} {}", js::num_str(cn), if in_manual(cn) { "NOT IMPLEMENTED IN SIMULATOR" } else { "NOT ON TNC 426/430" })); }
                     if cn == 247.0 { let c = st.cycle.clone().unwrap(); activate_preset(st, &c); }
                     if cn == 7.0 || cn == 8.0 || cn == 10.0 || cn == 11.0 || cn == 19.0 || cn == 26.0 { let c = st.cycle.clone().unwrap(); apply_transform(st, &c, iu); st.cycle = None; }
                 }

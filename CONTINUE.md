@@ -29,7 +29,9 @@ verified, where it ran, and the commit (pushed to main).
 | x | #22 | TCH PROBE 400 / 403 (basic rotation): the operator's CAM post emits them for angle probing; placeholder from the iTNC 530 manual (see Open placeholders) | 10-18 | tests/post.js, parity re-recorded (only 400/403 errors gone) | Win 11 | 8a0337e |
 | x | #23 | Acceptance: every block type the operator's post (Hermle C800U, TNC 430: `search-heidenhain/clones/postprocessors/`) can write runs without error, as `tests/post.js`; still OPEN there: CYCL DEF 241, CYCL DEF 252, TCH PROBE 415 | 10-18 | node tests/post.js | Win 11 | 8a0337e |
 
-|   | #25 | The operator's post also writes cycles 241, 252 and TCH PROBE 415, still NOT IMPLEMENTED (tests/post.js lists them OPEN) | | tests/post.js | | |
+| x | #25 | Operator's post: cycles 241 / 252 are not 426/430 cycles, now refused as CYCLE n NOT ON TNC 426/430 (as the control would); probe 415 moved to #26 | 10-18 | post.js, parity re-recorded (19 programs: message only) | Win 11 | N430COMMIT |
+|   | #26 | TCH PROBE 415 (datum inside corner), written by the operator's post | | tests/post.js | | |
+| x | #27 | Preassigned Q108-Q114 (p. 386), ~ comment continuation, CALL PGM errors name the called block; the user's Plan.h via CALL PGM runs clean | 10-18 | manual.js, parity, corpus 2,807/2,829 | Win 11 | 3d07421 |
 
 ### 2. Shipping
 | ✓ | id | task | date | verified via | tested on | commit |
@@ -82,6 +84,7 @@ FK solver · horizontal spindle (TOOL CALL X / Y) · programs to the machine (US
 | P1–P7 | exec.rs run_probe | MP 6140 = 2 mm; stylus placement; datum tables not simulated; presets translation-only; touch order from the figures |
 | PC1 | exec.rs call_pgm | CALL PGM: "PGM n NOT FOUND" (message not in the manual); M2 / M30 in the called program end the whole run; moves of the called program show on the call block |
 | AS1 | exec.rs cycle 26 | message "ARC WITH UNEQUAL AXIS SCALING" is ours; order: mirror, then axis scaling, then cycle 11 scaling and rotation |
+| NO1 | exec.rs in_manual | an unknown cycle number gives CYCLE n NOT ON TNC 426/430 (the control's own message is not in the manual) |
 | V1 | stock.rs | vice: jaws on Y, 160 × 25 mm, grips 6 mm (a guess, not the operator's vice) |
 | V2 | stock.rs HEAD_LEN | tilted head = 300 mm cylinder |
 | K1 | ui.js, dialogs.js | keypad details not in the manual (END takes the entry, I and −/+ toggles, CE twice, PC-keyboard bindings) |

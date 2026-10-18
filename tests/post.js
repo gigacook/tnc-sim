@@ -56,15 +56,18 @@ const S = {
   'probe 417': probe('417 DATUM IN TS AXIS', 'Q263=+50 Q264=+50 Q294=+0 Q320=2 Q260=+20 Q305=0 Q333=0 Q303=1'),
   'probe 419': probe('419 DATUM IN ONE AXIS', 'Q263=+10 Q264=+50 Q261=-5 Q320=2 Q260=+20 Q272=1 Q267=+1 Q305=0 Q333=0 Q303=1'),
 };
-// shapes the post emits that the engine does not simulate yet (CONTINUE.md #23 follow-ups); reported, not failed
-const OPEN = new Set(['cycle 241', 'cycle 252', 'probe 415']);
+// shapes the post emits that the engine does not simulate yet (CONTINUE.md #25); reported, not failed
+const OPEN = new Set(['probe 415']);
+// the post can write these, but they are not TNC 426/430 cycles (not in its manual): the control rejects them, so must we
+const NOT_430 = new Set(['cycle 241', 'cycle 252']);
 const bad = [];
 for (const [name, body] of Object.entries(S)) {
   const r = TNC.run(pgm(body));
   const errs = r.errors.map(e => `block ${e.block}: ${e.msg}`);
+  if (NOT_430.has(name)) { ok(errs.length === 1 && /NOT ON TNC 426\/430/.test(errs[0]), name + ' is refused as NOT ON TNC 426/430: ' + errs.join('; ')); continue; }
   if (OPEN.has(name)) { console.log('  OPEN ' + name + (errs.length ? ': ' + errs.join('; ') : ' now runs: drop it from OPEN')); continue; }
   ok(!errs.length, name + ': ' + errs.join('; '));
   if (errs.length) bad.push(name);
 }
-console.log(fails ? `post: ${fails} FAILED (${bad.join(", ")})` : `post: ${Object.keys(S).length - OPEN.size} of ${Object.keys(S).length} post block shapes run without errors, ${OPEN.size} open (listed above)`);
+console.log(fails ? `post: ${fails} FAILED (${bad.join(", ")})` : `post: ${Object.keys(S).length - OPEN.size - NOT_430.size} of ${Object.keys(S).length} post block shapes run without errors, ${NOT_430.size} correctly refused (not 426/430 cycles), ${OPEN.size} open (listed above)`);
 process.exit(fails ? 1 : 0);
