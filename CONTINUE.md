@@ -18,8 +18,8 @@ verified, where it ran, and the commit (pushed to main).
 | x | #5 | SL 25: tool too big for an inside corner leaves the corner, no error, no gouge (p. 295) | 10-18 | manual.js, parity | Win 11 | 02ca566 |
 | x | #6 | TOOL CALL X / Y: stops with TOOL AXIS n NOT SIMULATED instead of milling as Z (p. 205). Full X / Y spindle support moved to Later: all 3,564 corpus TOOL CALLs are Z | 10-18 | manual.js, parity | Win 11 | f35bd8c |
 | x | #7 | FK blocks report FK NOT SIMULATED (was BLOCK FORMAT INCORRECT). Full FK solver moved to Later: 0 of 2,806 corpus programs use FK, CAM never emits it, FSELECT order not in the manual | 10-18 | manual.js, parity | Win 11 | 182f80f |
-| x | #8 | Cycle 3 slot milling (p. 270) | 10-18 | manual.js, parity | Win 11 | HASH |
-| x | #9 | Cycle 5 circular pocket (p. 264) | 10-18 | manual.js, parity | Win 11 | HASH |
+| x | #8 | Cycle 3 slot milling (p. 270) | 10-18 | manual.js, parity | Win 11 | 33e39f0 |
+| x | #9 | Cycle 5 circular pocket (p. 264) | 10-18 | manual.js, parity | Win 11 | 33e39f0 |
 |   | #10 | Cycle 12 PGM CALL | | manual.js | | |
 |   | #11 | Cycle 13 oriented spindle stop | | manual.js | | |
 |   | #12 | Cycle 26 axis-specific scaling | | manual.js | | |
