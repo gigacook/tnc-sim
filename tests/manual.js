@@ -758,6 +758,9 @@ console.log('SL cycles 14, 20-25 (8.6, p. 284-307): contour geometry from subpro
   r = TNC.run(sl('1', '', pocket).replace(/CYCL DEF 22\.0 ROUGH-OUT[^]*?Q19=150\n/, 'CYCL DEF 21.0 PILOT DRILLING\n Q10=4\n Q11=100\n Q13=1\n'));
   const b21 = r.moves.filter(m => m.cycle && m.kind === 'rapid' && m.to.z < m.from.z && m.to.z < 0).map(m => +m.to.z.toFixed(3));
   ok(!r.errors.length && b21.length && b21.every(z => [-3.4, -7.4].includes(z)), 'cycle 21 (Q1 -10, Q10 4) pecks like cycle 1 with t = 0.6: ' + [...new Set(b21)].join(' '));
+  /* 6.6 FK free contour programming is not simulated: every FK block says so (manual example FK2, p. 170) */
+  r = TNC.run(hd + 'L X+30 Y+30 R0 FMAX\nFPOL X+30 Y+30\nFC DR- R30 CCX+30 CCY+30\nFL AN+60 PDX+30 PDY+30 D10\nFSELECT 3\nFLT\nFCT DR- R15\nEND PGM X MM');
+  ok(r.errors.filter(e => e.msg === 'FK NOT SIMULATED').length === 6 && !r.errors.some(e => e.msg === 'BLOCK FORMAT INCORRECT'), 'FK blocks report FK NOT SIMULATED: ' + r.errors.map(e => e.msg).join(','));
   /* p. 205: infeed in the TOOL CALL axis; only Z is simulated, X / Y say so and stop instead of milling as Z */
   r = TNC.run(hd.replace('TOOL CALL 1 Z', 'TOOL CALL 1 Y') + 'L X+10 Y+10 R0 FMAX\nEND PGM X MM');
   ok(r.errors.some(e => e.msg === 'TOOL AXIS Y NOT SIMULATED') && !r.moves.some(m => near(m.to.x, 10)), 'TOOL CALL 1 Y: TOOL AXIS Y NOT SIMULATED, the run stops: ' + r.errors.map(e => e.msg));

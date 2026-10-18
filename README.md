@@ -75,7 +75,7 @@ Cycles: 1, 2, 4, 7–11, 14, 17, 18, 19, 20–25 (SL contour cycles), 32, 200–
 
 Not simulated:
 - Cycles 3, 5, 12, 13, 26, 27, 28 report `CYCLE n NOT IMPLEMENTED IN SIMULATOR`.
-- FK free contour programming: FK blocks (`FPOL`, `FL` …) report `BLOCK FORMAT INCORRECT`.
+- FK free contour programming: FK blocks (`FPOL`, `FL`, `FLT`, `FC`, `FCT`, `FSELECT`) report `FK NOT SIMULATED`.
 - Undercuts: material is a height field, so the tool only removes what it sweeps along its axis.
 - `F AUTO` uses the `TOOL CALL` feed. `INCH` programs are not converted; write in millimetres.
 - Cycle time leaves out dwell, tool changes and acceleration, so it reads short against a real machine.

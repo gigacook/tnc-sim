@@ -569,6 +569,8 @@ pub fn parse_line(raw: &str, idx: usize) -> Block {
         return b;
     }
 
+    // FK free contour programming (manual 6.6) is not simulated: say so instead of calling the block malformed
+    if js::words(&u).first().is_some_and(|w| ["FPOL", "FL", "FLT", "FC", "FCT", "FSELECT"].contains(w)) { mark_err(&mut b, "FK NOT SIMULATED"); return b; }
     mark_err(&mut b, "BLOCK FORMAT INCORRECT");
     b
 }
