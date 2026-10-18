@@ -44,13 +44,12 @@ verified, where it ran, and the commit (pushed to main).
 ### Later (not on the finish line)
 Programs to the machine (USB stick, LSV-2 Ethernet, RS-232) · graphics realism · touch-probe soft key · undercuts (voxel stock) · AI part ghost in 3-D · GPU material removal · Tauri mobile.
 
-## Decisions (don't re-litigate)
+## Decisions
 - Rust engine `tnc-core`, one copy: native in the server, WebAssembly in the browser. Behaviour frozen by `tests/parity.js`.
-- No C#. three.js r186, no new graphics engine. Tauri 2 desktop running the server in-process on 127.0.0.1.
+- One simulator everywhere: the desktop app (Tauri 2) shows the same `index.html` in the system WebView, with the server running inside the app on 127.0.0.1.
 - AI: OpenRouter only, DeepSeek V4.1 Flash recommended. Plan → write → check → measure → refine.
-- TCH PROBE implemented from the iTNC 530 manual (the 426/430 manual doesn't cover it), labelled in code.
-- Dropped for good: C rotary table, the single-block "line 19" report, new BREAK IT lessons.
-- Open, waiting for the user: keep React for the web app or replace it? How does the operator move programs, and does his 430 have Ethernet?
+- Open: graphics engine. Today three.js; do the realism work first, switch only if that isn't enough (a native engine would end the single offline HTML file).
+- Open, for the user: how does the operator move programs to the machine, and does his 430 have Ethernet?
 
 ## Open placeholders — NOT facts (each is marked in code; #20 settles them)
 | id | where | placeholder |
