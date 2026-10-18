@@ -749,6 +749,17 @@ console.log('SL cycles 14, 20-25 (8.6, p. 284-307): contour geometry from subpro
   ok(!r.errors.length && rot && near(rot.to.y, 0) && box(r) === '-54.997..-25.003', 'ROT+90 in the subcontour turns the pocket (x -55..-25) and is gone after the call');
   r = TNC.run(sl('1', '', 'LBL 1\nCYCL DEF 8.0 MIRROR IMAGE\nCYCL DEF 8.1 X\nL X+20 Y+20 RR\nL Y+60\nL X+80\nL Y+20\nL X+20\nLBL 0\n'));
   ok(!r.errors.length && box(r) === '-74.997..-25.003', 'MIRROR X in the subcontour: still a pocket, mirrored to x -75..-25: ' + (r.errors[0] ? r.errors[0].msg : box(r)));
+  /* p. 285 "the cutter traverses around islands": a strip just wider than the tool between an island and the wall is cut */
+  for (const [size, w] of [[100, 10.2], [300, 11]]) {
+    const top = size === 100 ? 60 : 300, x1 = size === 100 ? 80 : 300, x0 = size === 100 ? 20 : 0; const xi = (x0 < 10 ? "" : "+") + (x0 - 10);
+    const t = hd.replace('X+100 Y+100', 'X+' + size + ' Y+' + size) + 'CYCL DEF 14.0 CONTOUR GEOMETRY\nCYCL DEF 14.1 CONTOUR LABEL 1 /2\nCYCL DEF 20.0 CONTOUR DATA\n Q1=-5\n Q2=1\n Q3=+0\n Q4=+0\n Q5=+0\n Q6=2\n Q7=+20\n Q8=0\n Q9=+1\n' +
+      'CYCL DEF 22.0 ROUGH-OUT\n Q10=5\n Q11=100\n Q12=350\n Q18=0\n Q19=150\nCYCL CALL M3\nL Z+60 R0 FMAX M2\n' +
+      `LBL 1\nL X+${x0} Y+${x0} RR\nL Y+${top}\nL X+${x1}\nL Y+${x0}\nL X+${x0}\nLBL 0\nLBL 2\nL X${xi} Y+${x0 + w} RL\nL Y+${top - w}\nL X+${(x0 + x1) / 2}\nL Y+${x0 + w}\nL X${xi}\nLBL 0\nEND PGM X MM`;
+    const t0 = Date.now(); r = TNC.run(t); const ms = Date.now() - t0;
+    const cut = r.moves.filter(m => m.cycle && m.kind !== 'rapid' && m.to.z < 0), y = x0 + w / 2, x = (x0 + (x0 + x1) / 2) / 2;
+    const d = Math.min(...cut.map(m => dseg(m, x, y)));
+    ok(!r.errors.length && d <= (w - 10) / 2 + 0.01 && ms < 5000, `a ${w} mm strip (R5 tool) next to an island in a ${size} mm pocket is cut: nearest path ${d.toFixed(3)} mm from its centre line, ${ms} ms ${r.errors.map(e => e.msg)}`);
+  }
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nALL MANUAL EXAMPLES PASS');

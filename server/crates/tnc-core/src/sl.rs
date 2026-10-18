@@ -180,10 +180,32 @@ fn field(st: &mut St, bi: usize) -> Option<Field> {
 /* ------------------------------------------------------------------ level sets */
 
 struct Grid { x0: f64, y0: f64, h: f64, nx: usize, ny: usize, v: Vec<f64> }
-fn grid(fl: &Field) -> Grid {
+/// The grid for the tool-centre level lv: h = extent / 300, halved while a band of f >= lv lies between the nodes
+/// (a channel only a little wider than the tool), so such a channel is traced instead of silently left uncut.
+/// shortcut: bands narrower than about h / 8 at the 4M-node cap are still missed; upgrade to an adaptive grid if that matters.
+fn grid(fl: &Field, lv: f64) -> Grid {
     let (mut x0, mut y0, mut x1, mut y1) = (f64::INFINITY, f64::INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY);
     for s in fl.subs.iter().filter(|s| !s.island) { for p in &s.poly { x0 = x0.min(p.0); y0 = y0.min(p.1); x1 = x1.max(p.0); y1 = y1.max(p.1); } }
-    let h = js::max(js::max(x1 - x0, y1 - y0) / 300.0, 0.02);
+    let mut h = js::max(js::max(x1 - x0, y1 - y0) / 300.0, 0.02);
+    loop {
+        let g = grid_h(fl, (x0, y0, x1, y1), h);
+        if g.nx * g.ny * 4 > 4_000_000 || !hidden(&g, fl, lv + 0.003) { return g; }
+        h /= 2.0;
+    }
+}
+/// f is 1-Lipschitz: a cell whose corners are all below lv can only hold f >= lv if a corner is within h / sqrt 2 of lv
+fn hidden(g: &Grid, fl: &Field, lv: f64) -> bool {
+    let nx = g.nx;
+    for j in 0..g.ny - 1 { for i in 0..nx - 1 {
+        let c = [g.v[j * nx + i], g.v[j * nx + i + 1], g.v[(j + 1) * nx + i], g.v[(j + 1) * nx + i + 1]];
+        if c.iter().any(|&v| v >= lv) || c.iter().all(|&v| v < lv - g.h * 0.7072) { continue; }
+        for a in 1..8 { for b in 1..8 {
+            if fl.f(g.x0 + (i as f64 + a as f64 / 8.0) * g.h, g.y0 + (j as f64 + b as f64 / 8.0) * g.h) >= lv { return true; }
+        } }
+    } }
+    false
+}
+fn grid_h(fl: &Field, (x0, y0, x1, y1): (f64, f64, f64, f64), h: f64) -> Grid {
     let (gx, gy) = (x0 - 2.0 * h, y0 - 2.0 * h);
     let nx = ((x1 - x0) / h).ceil() as usize + 5; let ny = ((y1 - y0) / h).ceil() as usize + 5;
     let mut v = vec![0.0; nx * ny];
@@ -424,8 +446,8 @@ pub(super) fn run(st: &mut St, cy: &Cycle, bi: usize) {
     let mp = js::or(st.mach.mp7420, 0.0) as u32;
     let n = cy.num;
     let fl = match field(st, bi) { Some(f) => f, None => return };
-    let g = grid(&fl);
     let r = if n == 21.0 { match tool_r(st, bi, qp(cy, 13.0, 0.0)) { Some(r) => r, None => return } } else { st.tool.r + js::or(st.tool.dr, 0.0) };
+    let g = grid(&fl, r + if n == 24.0 { qp(cy, 14.0, 0.0) } else { q3 });
     let pre = st.pos;
     let mut c = Ctx { dry: false, pos: st.pos, plunges: vec![], lab: cy.label.clone(), bi, q7, zc: q5 + q6, f_pl: js::or(qp(cy, 11.0, st.feed), st.feed),
         f_mill: js::or(qp(cy, 12.0, st.feed), st.feed), fl: &fl, d0: 0.0, h: g.h, started: false };
