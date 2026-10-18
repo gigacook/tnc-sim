@@ -13,9 +13,9 @@ META
 |---|---|---|
 | interpreter manual tests | ALL PASS | `node tests/manual.js` |
 | real-program corpus | 2,767 / 2,806 clean on the Rust engine (2026-10-17). The 39 left are malformed programs a real TNC also rejects. None of the corpus uses SL cycles | `AUTOTOOLS=1 node tests/corpus.js` |
-| rust | 32 tests pass (tnc-core 3, tnc-engine 9, tnc-formats 6, tnc-server 14), 2026-10-17, Windows | `cd server && cargo test` |
+| rust | 32 tests pass (tnc-core 3, tnc-engine 9, tnc-formats 6, tnc-server 14), 2026-10-18, Windows. `cargo clippy --all-targets`: 0 warnings | `cd server && cargo test` |
 | engine parity | the Rust engine (native + WebAssembly) is identical to the record on 5,511 / 5,511 programs (both option sets, events, cut length, carved height field); it matched the retired JS engine live, in full | `node tests/parity.js` |
-| browser UI suite | 151 pass, 0 fail (3 runs in a row), Chromium 141 (Playwright 1.56.1), 2026-10-03. WebKit: not installed in the cloud box → SKIPPED, CI installs it (never run yet). The old untracked `.tools/qa/qa.mjs` (93/93) is not in git and was not restored | `node tests/ui/run.mjs` |
+| browser UI suite | 305 pass, 0 fail (2 full runs), 2026-10-18, Windows, system Chrome via `PW_CHROMIUM` (Playwright's own Chromium not installed here). Includes the ported qa.mjs sections (I/O, tool table, profiles, single block), the current AI flow, and regression checks for framing, labels, overlays, sv text, web 360 px. A missing Chromium now fails the run. WebKit: SKIPPED (not installed) | `node tests/ui/run.mjs` |
 | part spec / AI loop | pass (offline, mocked OpenRouter) | `node tests/part.js`, `node tests/ai/loop.js` |
 | AI | live bench, DeepSeek V4.1 Flash, 2026-10-03: see README "AI accuracy" (old pipeline vs plan + measure + refine) | `node tests/ai/bench.mjs` (needs a key) |
 | desktop | Linux: `cargo build` + `tauri build` (deb, rpm, AppImage) OK; debug binary launched under Xvfb: splash → server → one-time sign-in → web app signed in (server log + screenshot). macOS / Windows: CI job written, never run | `cd desktop && npx tauri build` |
@@ -53,11 +53,11 @@ META
 | B9 | todo | Wire `probeSpec` to a TOUCH PROBE soft key; `TCHPROBE` node in flow.js. | `sim/ui.js` soft keys, `sim/flow.js` | manual click-through |
 | B10 | todo | Live visual translation: `traceFor`/`traceTick` (ui.js) → `pathSVG` (flow.js). | `sim/ui.js`, `sim/flow.js` | — |
 | B11 | todo | TNC 430 remainder: dexel/voxel stock for undercuts (GPU candidate, B13), radius comp in a tilted plane. | `server/crates/tnc-core` (stock.rs, exec.rs) | — |
-| B12 | done | Superseded: `.tools/qa/` was never tracked; `tests/ui/run.mjs` is the tracked suite (phone + desktop + mocked AI + server CSP). It does not re-cover everything qa.mjs did (profile export/import, tool-table I/O details). | `tests/ui/` | 151 pass |
+| B12 | done | `.tools/qa/qa.mjs` was restored from a Mac copy and its sections 1–5, 7–10 ported into `tests/ui/run.mjs` (2026-10-18); its AI section was replaced by checks of the current plan → repair flow. GAGNING.H (an operator program) replaced by synthetic `tests/ui/fx/HOLES.H`. | `tests/ui/` | 305 pass |
 | B14 | todo | Physical-device check of the phone layout: iOS Safari + VoiceOver, Android Chrome + TalkBack, software keyboard over the dock and dialogs, notch / home indicator. Emulation only so far. | `sim/sim-shell.html`, `sim/ui.js` | user on a phone |
 | B15 | todo | AI: draw the planned part spec as a ghost in the 3-D view (the target the measurement uses), and let the operator edit the spec before the program is written. | `sim/ui.js`, `sim/part.js` | — |
 | B16 | todo | Tauri mobile (iOS / Android) targets — only if wanted; the browser covers phones today. | `desktop/` | — |
-| B17 | todo | Phone swipe Status → Graphics: the synthetic touch stops reaching `.main` after the first move (target replaced mid-swipe?), CI and sometimes locally, also before the merge. Find whether the Status pane re-renders under the finger; fix the app, not the test. | `sim/ui.js`, `tests/ui/run.mjs` | swipe checks pass 3 runs in a row in CI |
+| B17 | verify | FIXED 2026-10-18: `renderKV` rebuilt `#runkv` every 250 ms, replacing the touch target mid-swipe; it now updates text in place. Passes locally; CI 3-in-a-row not yet seen. Original note: Phone swipe Status → Graphics: the synthetic touch stops reaching `.main` after the first move (target replaced mid-swipe?), CI and sometimes locally, also before the merge. Find whether the Status pane re-renders under the finger; fix the app, not the test. | `sim/ui.js`, `tests/ui/run.mjs` | swipe checks pass 3 runs in a row in CI |
 | B13 | todo | GPU offload design: material removal and previews on the GPU (three.js WebGPURenderer + compute, WebGL2 fallback), thumbnails in an OffscreenCanvas worker. Checks stay CPU (must match the server's tnc-core run). No custom drivers. | design note first, then `sim/stock.js` render side | — |
 
 ## OPEN — placeholders, NOT facts (settle via B5 or the operator; each is marked in code)

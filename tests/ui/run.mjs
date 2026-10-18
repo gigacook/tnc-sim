@@ -537,11 +537,14 @@ async function serverChecks(browser, tag) {
     ok(fr && fr.height >= 400, `${L}: simulator iframe fills the phone`, JSON.stringify(fr));
     // every soft-key row of the simulator inside /simulator is fully on screen (page viewport and iframe)
     const sf = p2.frames().find((f) => /\/sim\//.test(f.url()));
-    if (sf) await sf.waitForFunction(() => document.querySelectorAll('.sk:not([hidden])').length > 0, null, { timeout: 15000 }).catch(() => {});
-    const cutKeys = sf ? await sf.evaluate(([top, h]) => [...document.querySelectorAll('.sk:not([hidden])')].filter((e) => e.offsetParent !== null).map((e) => {
-      const r = e.getBoundingClientRect(); return { t: e.textContent.trim().slice(0, 12), top: r.top, bottom: r.bottom }; })
-      .filter((k) => k.top < 0 || k.bottom > innerHeight + 0.5 || top + k.bottom > h + 0.5).map((k) => k.t + '@' + Math.round(k.bottom)), [fr ? fr.y : 0, 740]) : ['simulator frame not found'];
-    ok(cutKeys.length === 0, `${L}: web /simulator at 360×740 shows every soft-key row in full`, cutKeys.slice(0, 6).join(', '));
+    if (sf) await sf.waitForFunction(() => [...document.querySelectorAll('.sk:not([hidden])')].some((e) => e.offsetParent !== null), null, { timeout: 15000 }).catch(() => {});
+    // retake the shot now that the simulator has loaded (the loop above shoots 400 ms after navigation)
+    await p2.screenshot({ path: join(SHOTS, `${tag}-web-360_simulator.png`) });
+    const keys = sf ? await sf.evaluate(() => [...document.querySelectorAll('.sk:not([hidden])')].filter((e) => e.offsetParent !== null).map((e) => {
+      const r = e.getBoundingClientRect(); return { t: e.textContent.trim().slice(0, 12), top: r.top, bottom: r.bottom, ih: innerHeight }; })) : [];
+    ok(keys.length > 0, `${L}: web /simulator shows the simulator's soft keys`, sf ? 'no visible soft key' : 'simulator frame not found');
+    const cutKeys = keys.filter((k) => k.top < 0 || k.bottom > k.ih + 0.5 || (fr ? fr.y : 0) + k.bottom > 740 + 0.5).map((k) => k.t + '@' + Math.round(k.bottom));
+    ok(keys.length > 0 && cutKeys.length === 0, `${L}: web /simulator at 360×740 shows every soft-key row in full`, cutKeys.slice(0, 6).join(', '));
     ok(e2.length === 0, `${L}: web app errors`, e2.slice(0, 2).join(' | '));
     await c2.close();
   } finally { proc.kill(); try { rmSync(data, { recursive: true, force: true }); } catch {} }
