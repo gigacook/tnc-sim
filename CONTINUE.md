@@ -20,7 +20,7 @@ verified, where it ran, and the commit (pushed to main).
 | x | #7 | FK blocks report FK NOT SIMULATED (was BLOCK FORMAT INCORRECT). Full FK solver moved to Later: 0 of 2,806 corpus programs use FK, CAM never emits it, FSELECT order not in the manual | 10-18 | manual.js, parity | Win 11 | 182f80f |
 | x | #8 | Cycle 3 slot milling (p. 270) | 10-18 | manual.js, parity | Win 11 | 33e39f0 |
 | x | #9 | Cycle 5 circular pocket (p. 264) | 10-18 | manual.js, parity | Win 11 | 33e39f0 |
-| x | #10 | CALL PGM and cycle 12 PGM CALL: the called program runs from the profile's programs (p. 337, 345) | 10-18 | manual.js, parity | Win 11 | PCCOMMIT |
+| x | #10 | CALL PGM and cycle 12 PGM CALL: the called program runs from the profile's programs (p. 337, 345) | 10-18 | manual.js, parity | Win 11 | 7dc5e03 |
 | x | #11 | Cycle 13 oriented spindle stop: accepted, angle not modelled (placeholder O13) | 10-18 | manual.js, parity | Win 11 | 2dbdeed |
 |   | #12 | Cycle 26 axis-specific scaling | | manual.js | | |
 |   | #13 | Cycles 27 / 28 cylinder surface | | manual.js | | |
