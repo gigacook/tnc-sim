@@ -27,7 +27,7 @@ macro_rules! re {
 
 fn implemented(n: f64) -> bool { [1., 2., 3., 4., 5., 12., 17., 18., 21., 22., 23., 24., 25., 200., 201., 202., 203., 204., 205., 206., 207., 208., 209., 210., 211., 212., 213., 214., 215., 230., 231., 262., 263., 264., 265., 267.].contains(&n) }
 fn pattern_cycle(n: f64) -> bool { n == 220.0 || n == 221.0 }
-fn nomotion(n: f64) -> bool { [7., 8., 9., 10., 11., 14., 19., 20., 32., 247.].contains(&n) }
+fn nomotion(n: f64) -> bool { [7., 8., 9., 10., 11., 26., 14., 19., 20., 32., 247.].contains(&n) }
 fn probe_cycle(n: f64) -> bool { [400., 403., 408., 409., 410., 411., 412., 413., 417., 419.].contains(&n) }
 fn tt_cycle(n: f64) -> bool { [30., 31., 32., 33., 480., 481., 482., 483., 562.].contains(&n) }
 
@@ -119,7 +119,9 @@ impl Item {
 struct Arc { cx: f64, cy: f64, ccw: bool, sweep: Option<f64> }
 
 #[derive(Clone, Debug, Default)]
-struct Xf { on: bool, px: f64, py: f64, pz: f64, dx: f64, dy: f64, dz: f64, mx: bool, my: bool, mz: bool, rot: f64, s: f64, flip: bool, tilt: Option<[f64; 9]> }
+struct Xf { on: bool, px: f64, py: f64, pz: f64, dx: f64, dy: f64, dz: f64, mx: bool, my: bool, mz: bool, rot: f64, s: f64, flip: bool, tilt: Option<[f64; 9]>,
+    /// cycle 26: factors X Y Z and the centre X Y Z (None = all factors 1)
+    asc: Option<[f64; 6]> }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Plane { XY, ZX, YZ }
@@ -184,6 +186,7 @@ fn fail(st: &mut St, bi: usize, msg: &str) {
 fn to_m(st: &St, p: P3) -> P3 {
     let f = &st.xf; if !f.on { return p; }
     let mut x = if f.mx { -p.x } else { p.x }; let mut y = if f.my { -p.y } else { p.y }; let mut z = if f.mz { -p.z } else { p.z };
+    if let Some(a) = f.asc { x = a[3] + (x - a[3]) * a[0]; y = a[4] + (y - a[4]) * a[1]; z = a[5] + (z - a[5]) * a[2]; }
     x *= f.s; y *= f.s; z *= f.s;
     let c = js::cos(f.rot * PI / 180.0); let sn = js::sin(f.rot * PI / 180.0);
     let mut xx = x * c - y * sn; let mut yy = x * sn + y * c;
@@ -198,10 +201,11 @@ fn from_xf(f: &Xf, p: P3) -> P3 {
     let c = js::cos(f.rot * PI / 180.0); let sn = js::sin(f.rot * PI / 180.0);
     let mut xr = x * c + y * sn; let mut yr = -x * sn + y * c;
     xr /= f.s; yr /= f.s; z /= f.s;
+    if let Some(a) = f.asc { xr = a[3] + (xr - a[3]) / a[0]; yr = a[4] + (yr - a[4]) / a[1]; z = a[5] + (z - a[5]) / a[2]; }
     p3(if f.mx { -xr } else { xr }, if f.my { -yr } else { yr }, if f.mz { -z } else { z })
 }
 fn xf_on(f: &Xf) -> bool {
-    js::truthy(f.px) || js::truthy(f.py) || js::truthy(f.pz) || js::truthy(f.dx) || js::truthy(f.dy) || js::truthy(f.dz) || f.mx || f.my || f.mz || js::truthy(f.rot) || f.s != 1.0 || f.tilt.is_some()
+    js::truthy(f.px) || js::truthy(f.py) || js::truthy(f.pz) || js::truthy(f.dx) || js::truthy(f.dy) || js::truthy(f.dz) || f.mx || f.my || f.mz || js::truthy(f.rot) || f.s != 1.0 || f.tilt.is_some() || f.asc.is_some()
 }
 fn flip_rc(st: &St, rc: Option<&str>) -> Option<String> {
     match rc { Some("RL") if st.xf.flip => Some("RR".into()), Some("RR") if st.xf.flip => Some("RL".into()), r => r.map(|s| s.to_string()) }
@@ -214,6 +218,7 @@ re!(re_my, r"(^|\s)Y\b");
 re!(re_mz, r"(^|\s)Z\b");
 re!(re_rot10, r"(I)?ROT\s*([+-]?(?:Q\d+|\d+\.?\d*|\.\d+))");
 re!(re_abc, r"^([ABC])(\S+)$");
+re!(re_asc, r"(?:^|\s)(CC)?([XYZ])\s*([+-]?(?:Q\d+|\d+\.?\d*|\.\d+))");
 re!(re_scl, r"SCL\s*([+-]?(?:Q\d+|\d+\.?\d*|\.\d+))");
 
 fn apply_transform(st: &mut St, cy: &Cycle, bi: usize) {
@@ -264,6 +269,18 @@ fn apply_transform(st: &mut St, cy: &Cycle, bi: usize) {
             let p = st.pos;
             emit(st, MK::Rapid, p, RAPID_RATE, bi, None, None);
         }
+    } else if cy.num == 26.0 {
+        // p. 329: "X 1.4 Y 0.6 CCX+15 CCY+20"; factor 1 cancels that axis, the centre stays
+        let mut a = st.xf.asc.unwrap_or([1.0, 1.0, 1.0, 0.0, 0.0, 0.0]);
+        for m in re_asc().captures_iter(&all) {
+            let k = match &m[2] { "X" => 0, "Y" => 1, _ => 2 };
+            match resolve(num_or_q(&m[3]), &st.q) {
+                Some(v) if m.get(1).is_some() => a[k + 3] = v,
+                Some(v) if v > 0.0 && v < 100.0 => a[k] = v,
+                _ => fail(st, bi, "CYCL DEF INCOMPLETE"),
+            }
+        }
+        st.xf.asc = if a[0] == 1.0 && a[1] == 1.0 && a[2] == 1.0 { None } else { Some(a) };
     } else if cy.num == 11.0 {
         if let Some(m) = re_scl().captures(&all) {
             let v = resolve(num_or_q(&m[1]), &st.q);
@@ -296,6 +313,8 @@ fn stick_of(st: &St) -> Option<f64> {
 fn emit(st: &mut St, kind: MK, to: P3, feed: f64, bi: usize, cycle: Option<&str>, arc: Option<&Arc>) {
     if st.abort { return; }
     if st.cap { sl::capture_move(st, kind, to, feed, bi, arc); return; }
+    // p. 329: axes sharing an arc must have the same factor (placeholder AS1: the message is not in the manual)
+    if kind == MK::Arc { if let Some(a) = st.xf.asc { if a[0] != a[1] { fail(st, bi, "ARC WITH UNEQUAL AXIS SCALING"); } } }
     if kind == MK::Arc && st.xf.tilt.is_some() {
         let arc = arc.unwrap();
         let p0 = st.pos; let sw0 = arc_sweep(p0, to, arc); let r0_ = js::hypot2(p0.x - arc.cx, p0.y - arc.cy); let a00 = js::atan2(p0.y - arc.cy, p0.x - arc.cx);
@@ -1653,7 +1672,7 @@ fn exec_range(st: &mut St, from: usize, to: isize, depth: i32) {
                     st.cycle = Some(c);
                     if !implemented(cn) && !nomotion(cn) { fail(st, iu, &format!("CYCLE {} NOT IMPLEMENTED IN SIMULATOR", js::num_str(cn))); }
                     if cn == 247.0 { let c = st.cycle.clone().unwrap(); activate_preset(st, &c); }
-                    if cn == 7.0 || cn == 8.0 || cn == 10.0 || cn == 11.0 || cn == 19.0 { let c = st.cycle.clone().unwrap(); apply_transform(st, &c, iu); st.cycle = None; }
+                    if cn == 7.0 || cn == 8.0 || cn == 10.0 || cn == 11.0 || cn == 19.0 || cn == 26.0 { let c = st.cycle.clone().unwrap(); apply_transform(st, &c, iu); st.cycle = None; }
                 }
             }
             Kind::CyclParm => {}

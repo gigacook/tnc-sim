@@ -777,6 +777,12 @@ console.log('SL cycles 14, 20-25 (8.6, p. 284-307): contour geometry from subpro
   r = TNC.run(sl('1', '', pocket).replace(/CYCL DEF 22\.0 ROUGH-OUT[^]*?Q19=150\n/, 'CYCL DEF 21.0 PILOT DRILLING\n Q10=4\n Q11=100\n Q13=1\n'));
   const b21 = r.moves.filter(m => m.cycle && m.kind === 'rapid' && m.to.z < m.from.z && m.to.z < 0).map(m => +m.to.z.toFixed(3));
   ok(!r.errors.length && b21.length && b21.every(z => [-3.4, -7.4].includes(z)), 'cycle 21 (Q1 -10, Q10 4) pecks like cycle 1 with t = 0.6: ' + [...new Set(b21)].join(' '));
+  /* cycle 26 axis-specific scaling (p. 329): each axis its own factor about the centre CC; factor 1 cancels */
+  r = TNC.run(hd + 'CYCL DEF 26.0 AXIS-SPEC. SCALING\nCYCL DEF 26.1 X 1.4 Y 0.6 CCX+15 CCY+20\nL X+25 Y+30 R0 FMAX\nCYCL DEF 26.0 AXIS-SPEC. SCALING\nCYCL DEF 26.1 X 1 Y 1\nL X+25 Y+30 R0 FMAX\nEND PGM X MM');
+  const p26 = r.moves.filter(m => !m.cycle).slice(-2).map(m => [+m.to.x.toFixed(3), +m.to.y.toFixed(3)]);
+  ok(!r.errors.length && p26[0][0] === 29 && p26[0][1] === 26 && p26[1][0] === 25 && p26[1][1] === 30, 'cycle 26 X1.4 Y0.6 about CC 15/20: X25 Y30 goes to X29 Y26; factor 1 cancels: ' + JSON.stringify(p26));
+  r = TNC.run(hd + 'CYCL DEF 26.0 AXIS-SPEC. SCALING\nCYCL DEF 26.1 X 2 Y 1\nL X+10 Y+0 R0 FMAX\nCC X+0 Y+0\nC X+0 Y+10 DR+\nEND PGM X MM');
+  ok(r.errors.some(e => e.msg === 'ARC WITH UNEQUAL AXIS SCALING'), 'cycle 26: an arc in a plane with unequal factors is refused (p. 329 "must be enlarged or reduced by the same factor")');
   /* 9.4 CALL PGM and cycle 12 (p. 337, 345): the other program runs start to end, then the caller goes on */
   const B = 'BEGIN PGM B MM\nL X+30 Y+40 R0 FMAX\nFN 0: Q5 = +7\nEND PGM B MM';
   r = TNC.run(hd + 'L X+10 Y+10 R0 FMAX\nCALL PGM B\nL X+Q5 R0 FMAX\nEND PGM X MM', { programs: { 'B.H': B } });
