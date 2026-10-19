@@ -304,8 +304,8 @@ async function phoneFlows(browser, tag) {
   ok(await page.evaluate(() => document.getElementById('hdr-stat').textContent.includes('NAMEPLATE')), `${L}: header shows the program`);
   await page.click('.dock .sk[data-a="stop"]');
   await page.click('.dock .sk[data-a="reset"]');
-  await page.waitForFunction(() => (document.getElementById('sr-live').textContent || '').length > 0, null, { timeout: 3000 }).catch(() => {});
-  ok(await page.evaluate(() => (document.getElementById('sr-live').textContent || '').length > 0), `${L}: run state announced in the polite live region (debounced)`);
+  // the wait is the check: announce() empties the region and refills it a frame later, so a second read can land in the gap
+  ok(await page.waitForFunction(() => (document.getElementById('sr-live').textContent || '').length > 0, null, { timeout: 5000 }).then(() => true, () => false), `${L}: run state announced in the polite live region (debounced)`);
 
   // ---- PRG EDIT: soft-key rows page, a block is edited from the dock
   await page.click('.mode[data-m="edit"]');
@@ -354,10 +354,10 @@ async function desktopFlows(browser, tag) {
   await page.keyboard.press('Escape');
   ok((await active(page)) === 'b-help', `${L}: focus returns to the opener`, await active(page));
   // typing does not trigger shortcuts
-  await page.keyboard.press('Tab'); // raw editor toggles only when focus is not on a control; use the TAB key path explicitly
-  await page.evaluate(() => document.activeElement && document.activeElement.blur());
+  // TAB opens the raw editor and focuses it. A second browser TAB lands on a different control per engine; on Windows
+  // WebKit that is a button, where Backspace goes back in history and the page is gone (#24)
   await page.keyboard.press('Tab');
-  const rawOpen = await page.evaluate(() => !document.getElementById('raw').hidden);
+  const rawOpen = await page.evaluate(() => !document.getElementById('raw').hidden && document.activeElement.id === 'raw');
   if (rawOpen) {
     await page.keyboard.type('1');
     ok(await page.getAttribute('.mode[data-m="test"]', 'aria-pressed') === 'true', `${L}: typing "1" in the raw editor does not switch to PRG EDIT`);
