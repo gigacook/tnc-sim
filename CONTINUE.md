@@ -41,7 +41,7 @@ verified, where it ran, and the commit (pushed to main).
 |   | #17 | CI: phone swipe check passes 3 runs in a row (1 of 3: 9cd7d6d) | | CI | | |
 |   | #24 | Local WebKit on Windows freezes the page in the desktop checks (CI's Linux WebKit passes; Mac Safari is neither): find out or document | | `node tests/ui/run.mjs` | | |
 |   | #18 | GitHub Pages: site from `/docs` on main (today 404) | | the README link opens | | |
-|   | #19 | Desktop app opens on macOS and Windows (CI only builds them) | | launched by hand | | |
+|   | #19 | Desktop app opens on macOS and Windows (CI only builds them). Windows done 10-19: CI NSIS build of 091b9bb installed per-user, window + library show, in-app server on 127.0.0.1:8427 serves /sim/, port freed on close. macOS open: the Mac has no SSH, user launches the CI .dmg by hand | | launched by hand | Win 11 | |
 
 ### 3. Proof (needs the user)
 | ✓ | id | task | date | verified via | tested on | commit |
