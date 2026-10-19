@@ -6,7 +6,7 @@ errors the control would raise.
 
 It comes in three forms:
 - **The simulator file** `index.html`: one self-contained HTML file. Open it in a browser; it works offline and needs
-  no install.
+  no install. It is also online at https://gigacook.github.io/tnc-sim/.
 - **The desktop app** (Windows, macOS, Linux): the simulator plus a program library, in its own window.
 - **The server and web app**: the same library for several users over a network (optional).
 

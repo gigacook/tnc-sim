@@ -2,6 +2,7 @@
 """Bundle shell + libraries + modules into one standalone HTML. All files are UTF-8 (explicit: Windows defaults to cp1252).
 
   python3 build.py          -> index.html        (public, pushed; never contains a key)
+                            -> docs/index.html   (the same file, for GitHub Pages)
                             -> index.local.html  (only if private/.env has OPENROUTER_API_KEY; gitignored)
   python3 build.py --wasm   first rebuilds the engine (server/crates/tnc-core -> sim/engine/tnc_core.wasm; needs
                             cargo and `rustup target add wasm32-unknown-unknown`). Without it the committed module is used.
@@ -162,6 +163,7 @@ key = env_key()
 if key and key in doc:
     sys.exit('build: the OpenRouter key leaked into the public build — aborting')
 (d / 'index.html').write_text(doc, encoding='utf-8', newline='\n')
+(d / 'docs' / 'index.html').write_text(doc, encoding='utf-8', newline='\n')  # GitHub Pages serves main -> /docs
 print(f'built index.html  {len(doc):,} bytes  modules: {" ".join(included)}')
 
 if key:
