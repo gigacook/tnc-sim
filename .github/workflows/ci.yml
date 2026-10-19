@@ -44,13 +44,42 @@ jobs:
       - name: Web app typecheck + build
         working-directory: web
         run: npm ci && npm run build
-      - name: Browser UI regression (Chromium + WebKit, mocked AI)
+
+  ui:
+    # Split in 3 so it runs next to `core` instead of after it (~12 min on one machine: every page load is ~10 s on the CPU GPU)
+    name: Browser UI ${{ matrix.only }} (Chromium + WebKit, mocked AI)
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - only: io
+          - only: layout,phone,desktop,ai
+          - only: regress,axe,server
+            server: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: "package-lock.json\nweb/package-lock.json" }
+      - run: npm ci
+      - uses: dtolnay/rust-toolchain@stable
+        if: matrix.server
+      - uses: Swatinem/rust-cache@v2
+        if: matrix.server
+        with: { workspaces: server }
+      - name: Server + web app for the server checks
+        if: matrix.server
+        run: |
+          (cd server && cargo build --locked)
+          (cd web && npm ci && npm run build)
+      - name: Browser UI regression
+        env: { TNC_UI_ONLY: "${{ matrix.only }}" }
         run: |
           npx playwright install --with-deps chromium webkit
           node tests/ui/run.mjs
       - uses: actions/upload-artifact@v4
         if: always()
-        with: { name: ui-screenshots, path: local/ui-shots, if-no-files-found: ignore }
+        with: { name: "ui-screenshots-${{ strategy.job-index }}", path: local/ui-shots, if-no-files-found: ignore }
 
   desktop:
     # Unsigned build validation only. Code signing / notarisation / store distribution are NOT set up
