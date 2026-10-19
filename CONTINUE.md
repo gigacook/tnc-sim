@@ -38,9 +38,9 @@ verified, where it ran, and the commit (pushed to main).
 |---|---|---|---|---|---|---|
 | x | #15 | CI: index.html reproducible on Linux (zlib vs zlib-ng) | 10-18 | CI step green | ubuntu CI | bcebb94 |
 | x | #16 | CI: browser suite green on Linux (uploads waited for, WebKit touch events, SL volume read) | 10-18 | CI all jobs green | ubuntu CI: Chromium + WebKit | 9cd7d6d |
-|   | #17 | CI: phone swipe check passes 3 runs in a row (1 of 3: 9cd7d6d) | | CI | | |
+| x | #17 | CI: phone swipe check passes 3 runs in a row: browser suite green on every CI run from 9cd7d6d to 20ee69f (13 runs; the one red, 1a70509, was a rustup download in the Windows desktop job) | 10-19 | CI | ubuntu CI: Chromium + WebKit | 20ee69f |
 |   | #24 | Local WebKit on Windows freezes the page in the desktop checks (CI's Linux WebKit passes; Mac Safari is neither): find out or document | | `node tests/ui/run.mjs` | | |
-|   | #18 | GitHub Pages: site from `/docs` on main (today 404) | | the README link opens | | |
+| x | #18 | GitHub Pages: site from `/docs` on main; build.py writes docs/index.html next to index.html, CI checks both | 10-19 | https://gigacook.github.io/tnc-sim/ returns 200, 2 MB | Pages | 9f51b8d |
 |   | #19 | Desktop app opens on macOS and Windows (CI only builds them). Windows done 10-19: CI NSIS build of 091b9bb installed per-user, window + library show, in-app server on 127.0.0.1:8427 serves /sim/, port freed on close. macOS open: the Mac has no SSH, user launches the CI .dmg by hand | | launched by hand | Win 11 | |
 
 ### 3. Proof (needs the user)
