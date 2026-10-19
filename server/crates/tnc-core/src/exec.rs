@@ -1681,6 +1681,8 @@ fn exec_range(st: &mut St, from: usize, to: isize, depth: i32) {
                     // placeholder O13: the angle only takes effect on M19/M20 (spindle angle not modelled), so cycle 13 is accepted and keeps the active machining cycle
                     if cn == 13.0 { i += 1; continue; }
                     st.cycle = Some(c);
+                    // placeholder CS1: 27/28 need a rotary table the builder prepared (p. 297, 299); no profile has one (the 430's A/B is the swivel head), so they are refused; the message is ours
+                    if cn == 27.0 || cn == 28.0 { fail(st, iu, &format!("CYCLE {} NEEDS A ROTARY TABLE", js::num_str(cn))); i += 1; continue; }
                     if !implemented(cn) && !nomotion(cn) { fail(st, iu, &format!("CYCLE {} {}", js::num_str(cn), if in_manual(cn) { "NOT IMPLEMENTED IN SIMULATOR" } else { "NOT ON TNC 426/430" })); }
                     if cn == 247.0 { let c = st.cycle.clone().unwrap(); activate_preset(st, &c); }
                     if cn == 7.0 || cn == 8.0 || cn == 10.0 || cn == 11.0 || cn == 19.0 || cn == 26.0 { let c = st.cycle.clone().unwrap(); apply_transform(st, &c, iu); st.cycle = None; }

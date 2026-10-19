@@ -253,7 +253,8 @@ BUILD:
 
 IN PROGRESS - NOT YET DONE
 ==============================================================================
-  - Cycles 3, 5, 12, 13, 26, 27/28 not implemented. SL cycles 21-24 move
+  - Cycles 27/28 (cylinder surface) are refused with "CYCLE n NEEDS A
+    ROTARY TABLE": neither machine profile has one. SL cycles 21-24 move
     on the simulator's own paths until the programming station shows the
     real ones (CONTINUE.md OPEN SL1-SL14).
   - FK (free contour programming) not implemented.

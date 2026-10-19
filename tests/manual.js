@@ -809,6 +809,11 @@ console.log('SL cycles 14, 20-25 (8.6, p. 284-307): contour geometry from subpro
   /* p. 205: infeed in the TOOL CALL axis; only Z is simulated, X / Y say so and stop instead of milling as Z */
   r = TNC.run(hd.replace('TOOL CALL 1 Z', 'TOOL CALL 1 Y') + 'L X+10 Y+10 R0 FMAX\nEND PGM X MM');
   ok(r.errors.some(e => e.msg === 'TOOL AXIS Y NOT SIMULATED') && !r.moves.some(m => near(m.to.x, 10)), 'TOOL CALL 1 Y: TOOL AXIS Y NOT SIMULATED, the run stops: ' + r.errors.map(e => e.msg));
+  /* p. 297 / 299: cycles 27 / 28 need a rotary table the builder prepared; no profile has one, so both are refused (placeholder CS1) */
+  for (const n of [27, 28]) {
+    r = TNC.run(hd + 'CYCL DEF 14.0 CONTOUR GEOMETRY\nCYCL DEF 14.1 CONTOUR LABEL 1\nCYCL DEF ' + n + '.0 CYLINDER SURFACE\n Q1=-7\n Q3=+0\n Q6=2\n Q10=4\n Q11=100\n Q12=250\n Q16=25\n Q17=1\n' + (n === 28 ? ' Q20=12\n' : '') + 'CYCL CALL M3\nL Z+100 R0 FMAX M2\nLBL 1\nL X+40 Y+20 RL\nL X+50\nL Y+60\nL X+40\nL Y+20\nLBL 0\nEND PGM X MM');
+    ok(r.errors.length === 1 && r.errors[0].msg === 'CYCLE ' + n + ' NEEDS A ROTARY TABLE' && !r.moves.some(m => m.to.z < 0), 'cycle ' + n + ': CYCLE ' + n + ' NEEDS A ROTARY TABLE, nothing is cut: ' + r.errors.map(e => e.msg));
+  }
   /* p. 295: cycle 25 prevents undercuts; where the tool is too big the corner is left for rework (no error, no gouge) */
   const c25 = (contour) => hd.replace('R+5', 'R+10') + 'CYCL DEF 14.0 CONTOUR GEOMETRY\nCYCL DEF 14.1 CONTOUR LABEL 1\nCYCL DEF 25.0 CONTOUR TRAIN\n Q1=-5\n Q3=+0\n Q5=+0\n Q7=+50\n Q10=5\n Q11=100\n Q12=200\n Q15=+1\nCYCL CALL M3\nL Z+60 R0 FMAX M2\nLBL 1\n' + contour + 'LBL 0\nEND PGM X MM';
   for (const [name, contour, segs, span] of [

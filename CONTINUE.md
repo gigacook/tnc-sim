@@ -23,7 +23,7 @@ verified, where it ran, and the commit (pushed to main).
 | x | #10 | CALL PGM and cycle 12 PGM CALL: the called program runs from the profile's programs (p. 337, 345) | 10-18 | manual.js, parity | Win 11 | 7dc5e03 |
 | x | #11 | Cycle 13 oriented spindle stop: accepted, angle not modelled (placeholder O13) | 10-18 | manual.js, parity | Win 11 | 2dbdeed |
 | x | #12 | Cycle 26 axis-specific scaling about CC, factor 1 cancels, arcs with unequal factors refused (p. 329) | 10-18 | manual.js, parity | Win 11 | e4f9f96 |
-|   | #13 | Cycles 27 / 28 cylinder surface | | manual.js | | |
+| x | #13 | Cycles 27 / 28 cylinder surface: refused as CYCLE n NEEDS A ROTARY TABLE (placeholder CS1). They need a builder-prepared rotary table (p. 297, 299); the 426 profile has no rotary axis and the 430's A/B is the swivel head. Full simulation moved to Later | 10-19 | manual.js, parity (unchanged), cargo test | Win 11 | see git log |
 | x | #14 | F AUTO: kept as the TOOL CALL feed, marked placeholder FA1 (no operator cutting-data table; user decision 10-19) | 10-19 | manual.js | Win 11 | see git log |
 
 | x | #22 | TCH PROBE 400 / 403 (basic rotation): the operator's CAM post emits them for angle probing; placeholder from the iTNC 530 manual (see Open placeholders) | 10-18 | tests/post.js, parity re-recorded (only 400/403 errors gone) | Win 11 | 8a0337e |
@@ -50,7 +50,7 @@ verified, where it ran, and the commit (pushed to main).
 |   | #21 | Phone layout on a real iPhone and Android phone | | user | | |
 
 ### Later (not on the finish line)
-FK solver · horizontal spindle (TOOL CALL X / Y) · programs to the machine (USB stick, LSV-2 Ethernet, RS-232) · graphics realism · touch-probe soft key · undercuts (voxel stock) · AI part ghost in 3-D · GPU material removal · Tauri mobile.
+FK solver · horizontal spindle (TOOL CALL X / Y) · cylinder surface 27 / 28 (rotary table + cylindrical stock) · programs to the machine (USB stick, LSV-2 Ethernet, RS-232) · graphics realism · touch-probe soft key · undercuts (voxel stock) · AI part ghost in 3-D · GPU material removal · Tauri mobile.
 
 ## Decisions
 - Rust engine `tnc-core`, one copy: native in the server, WebAssembly in the browser. Behaviour frozen by `tests/parity.js`.
@@ -69,6 +69,7 @@ FK solver · horizontal spindle (TOOL CALL X / Y) · programs to the machine (US
 | T6 / SL6 | exec.rs, sl.rs | a positive depth's sign is ignored (manual: it reverses the direction) |
 | SL1 | sl.rs capture | a subcontour with R0 counts as a pocket |
 | FA1 | exec.rs feed_of | F AUTO = the TOOL CALL F; the control computes it from the cutting-data table (p. 131), which we do not have |
+| CS1 | exec.rs CyclDef | cycles 27 / 28 refused for want of a rotary table; the message is ours, and whether the control refuses at CYCL DEF or CYCL CALL is not in the manual |
 | O13 | exec.rs CyclDef | cycle 13 is accepted but its angle is not stored (M19/M20 spindle orientation not modelled); it does not replace the active machining cycle |
 | SL2 | sl.rs field | only islands: "SL CONTOUR WITHOUT POCKET NOT SIMULATED" |
 | SL3 | sl.rs plan/centre | rough-out plunge = the point farthest from the walls; loops join at the nearest vertex |
