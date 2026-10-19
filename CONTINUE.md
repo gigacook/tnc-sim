@@ -30,7 +30,7 @@ verified, where it ran, and the commit (pushed to main).
 | x | #23 | Acceptance: every block type the operator's post (Hermle C800U, TNC 430: `search-heidenhain/clones/postprocessors/`) can write runs without error, as `tests/post.js`; still OPEN there: CYCL DEF 241, CYCL DEF 252, TCH PROBE 415 | 10-18 | node tests/post.js | Win 11 | 8a0337e |
 
 | x | #25 | Operator's post: cycles 241 / 252 are not 426/430 cycles, now refused as CYCLE n NOT ON TNC 426/430 (as the control would); probe 415 moved to #26 | 10-18 | post.js, parity re-recorded (19 programs: message only) | Win 11 | 12174ba |
-|   | #26 | TCH PROBE 415 (datum inside corner), written by the operator's post | | tests/post.js | | |
+|   | #26 | TCH PROBE 415 (datum inside corner), written by the operator's post. Blocked: where the 4 touch points and both walls lie relative to Q263/Q264 is only in a figure of the iTNC 530 manual, not its text; needs the figure or #20 | | tests/post.js | | |
 | x | #27 | Preassigned Q108-Q114 (p. 386), ~ comment continuation, CALL PGM errors name the called block; the user's Plan.h via CALL PGM runs clean | 10-18 | manual.js, parity, corpus 2,807/2,829 | Win 11 | 3d07421 |
 
 ### 2. Shipping
