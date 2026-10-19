@@ -24,7 +24,7 @@ verified, where it ran, and the commit (pushed to main).
 | x | #11 | Cycle 13 oriented spindle stop: accepted, angle not modelled (placeholder O13) | 10-18 | manual.js, parity | Win 11 | 2dbdeed |
 | x | #12 | Cycle 26 axis-specific scaling about CC, factor 1 cancels, arcs with unequal factors refused (p. 329) | 10-18 | manual.js, parity | Win 11 | e4f9f96 |
 |   | #13 | Cycles 27 / 28 cylinder surface | | manual.js | | |
-|   | #14 | F AUTO from a cutting-data table (today: the TOOL CALL feed) | | manual.js | | |
+| x | #14 | F AUTO: kept as the TOOL CALL feed, marked placeholder FA1 (no operator cutting-data table; user decision 10-19) | 10-19 | manual.js | Win 11 | see git log |
 
 | x | #22 | TCH PROBE 400 / 403 (basic rotation): the operator's CAM post emits them for angle probing; placeholder from the iTNC 530 manual (see Open placeholders) | 10-18 | tests/post.js, parity re-recorded (only 400/403 errors gone) | Win 11 | 8a0337e |
 | x | #23 | Acceptance: every block type the operator's post (Hermle C800U, TNC 430: `search-heidenhain/clones/postprocessors/`) can write runs without error, as `tests/post.js`; still OPEN there: CYCL DEF 241, CYCL DEF 252, TCH PROBE 415 | 10-18 | node tests/post.js | Win 11 | 8a0337e |
@@ -68,6 +68,7 @@ FK solver · horizontal spindle (TOOL CALL X / Y) · programs to the machine (US
 | P400 / P403 | exec.rs run_probe | two touches along Q272 from Q263/Q264, Q265/Q266, direction Q267 (iTNC 530 manual); ideal part so Q150 = 0, no basic rotation / rotary-axis correction applied; Q307/Q312/Q337/Q380 ignored |
 | T6 / SL6 | exec.rs, sl.rs | a positive depth's sign is ignored (manual: it reverses the direction) |
 | SL1 | sl.rs capture | a subcontour with R0 counts as a pocket |
+| FA1 | exec.rs feed_of | F AUTO = the TOOL CALL F; the control computes it from the cutting-data table (p. 131), which we do not have |
 | O13 | exec.rs CyclDef | cycle 13 is accepted but its angle is not stored (M19/M20 spindle orientation not modelled); it does not replace the active machining cycle |
 | SL2 | sl.rs field | only islands: "SL CONTOUR WITHOUT POCKET NOT SIMULATED" |
 | SL3 | sl.rs plan/centre | rough-out plunge = the point farthest from the walls; loops join at the nearest vertex |

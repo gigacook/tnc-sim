@@ -1246,6 +1246,7 @@ fn set_rc(st: &mut St, bi: usize) -> bool {
 fn feed_of(st: &mut St, bi: usize) -> bool {
     let a = &st.blocks[bi].args;
     if a.truthy("fauto") {
+        // placeholder FA1: the control takes F AUTO from the cutting-data table (p. 131); we have no operator table, so the TOOL CALL feed is used
         if st.auto_feed > 0.0 { st.feed = st.auto_feed; }
         if st.feed > 0.0 { return true; }
         fail(st, bi, "FEED RATE MISSING"); return false;
