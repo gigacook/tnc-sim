@@ -30,7 +30,7 @@ verified, where it ran, and the commit (pushed to main).
 | x | #23 | Acceptance: every block type the operator's post (Hermle C800U, TNC 430: `search-heidenhain/clones/postprocessors/`) can write runs without error, as `tests/post.js`; still OPEN there: CYCL DEF 241, CYCL DEF 252, TCH PROBE 415 | 10-18 | node tests/post.js | Win 11 | 8a0337e |
 
 | x | #25 | Operator's post: cycles 241 / 252 are not 426/430 cycles, now refused as CYCLE n NOT ON TNC 426/430 (as the control would); probe 415 moved to #26 | 10-18 | post.js, parity re-recorded (19 programs: message only) | Win 11 | 12174ba |
-|   | #26 | TCH PROBE 415 (datum inside corner), written by the operator's post. Blocked: where the 4 touch points and both walls lie relative to Q263/Q264 is only in a figure of the iTNC 530 manual, not its text; needs the figure or #20 | | tests/post.js | | |
+| x | #26 | TCH PROBE 415 (datum inside corner), written by the operator's post: touch points and directions read off the iTNC 530 manual's figures (p. 361-362); wall distance placeholder P415 | 10-20 | manual.js, post.js 0 open, parity unchanged | Win 11 | see git log |
 | x | #27 | Preassigned Q108-Q114 (p. 386), ~ comment continuation, CALL PGM errors name the called block; the user's Plan.h via CALL PGM runs clean | 10-18 | manual.js, parity, corpus 2,807/2,829 | Win 11 | 3d07421 |
 
 ### 2. Shipping
@@ -65,6 +65,7 @@ FK solver · horizontal spindle (TOOL CALL X / Y) · cylinder surface 27 / 28 (r
 | C3 | exec.rs cycle_slot3 | roughing on the slot centre line; straight feed to the +X wall (manual: tangential arc); cutter < half the slot width = SLOT WIDTH TOO LARGE (message not in the manual) |
 | C5 | exec.rs cycle_circ5 | "spiral" = concentric full circles at k x R joined by radial feeds in +X |
 | T-thread | exec.rs cycle_thread | 262–267: helix whole turns from +X; approach semicircle +½ pitch; 267 start R + pitch; 263 countersink circle not simulated; 264 countersink feed Q206; no M4 / spindle-off error |
+| P415 | exec.rs run_probe | ideal part: each wall MP6140 + Q320 past its touch point (the figure's dimension); Q304 basic rotation not applied |
 | P400 / P403 | exec.rs run_probe | two touches along Q272 from Q263/Q264, Q265/Q266, direction Q267 (iTNC 530 manual); ideal part so Q150 = 0, no basic rotation / rotary-axis correction applied; Q307/Q312/Q337/Q380 ignored |
 | T6 / SL6 | exec.rs, sl.rs | a positive depth's sign is ignored (manual: it reverses the direction) |
 | SL1 | sl.rs capture | a subcontour with R0 counts as a pocket |

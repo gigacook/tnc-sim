@@ -31,7 +31,7 @@ fn implemented(n: f64) -> bool { [1., 2., 3., 4., 5., 12., 17., 18., 21., 22., 2
 fn in_manual(n: f64) -> bool { (1.0..=5.0).contains(&n) || (7.0..=14.0).contains(&n) || (17.0..=28.0).contains(&n) || n == 30.0 || n == 32.0 || (200.0..=215.0).contains(&n) || [220., 221., 230., 231., 247., 262., 263., 264., 265., 267.].contains(&n) }
 fn pattern_cycle(n: f64) -> bool { n == 220.0 || n == 221.0 }
 fn nomotion(n: f64) -> bool { [7., 8., 9., 10., 11., 26., 14., 19., 20., 32., 247.].contains(&n) }
-fn probe_cycle(n: f64) -> bool { [400., 403., 408., 409., 410., 411., 412., 413., 417., 419.].contains(&n) }
+fn probe_cycle(n: f64) -> bool { [400., 403., 408., 409., 410., 411., 412., 413., 415., 417., 419.].contains(&n) }
 fn tt_cycle(n: f64) -> bool { [30., 31., 32., 33., 480., 481., 482., 483., 562.].contains(&n) }
 
 /* ------------------------------------------------------------------ small types */
@@ -1180,6 +1180,18 @@ fn run_probe(st: &mut St, cy: &Cycle, bi: usize) {
         probe_pts(st, &p, z, h, via, bi, &lab, if sr > 0.0 { Some(&circ) } else { None });
         meas = vec![('x', cx), ('y', cyy)]; tgt = vec![('x', qp(cy, 331.0, 0.0)), ('y', qp(cy, 332.0, 0.0))];
         st.q.set(151.0, cx); st.q.set(152.0, cyy); st.q.set(153.0, 2.0 * rr);
+    } else if n == 415.0 {
+        // iTNC 530 manual p. 361-362 (figures): 1 and 2 at Y = Q264 (X = Q263, Q263 + Q326) probe the minor axis first, then 3 and 4 at X = Q263 (Y = Q264, Q264 + Q327);
+        // "the probing direction is derived from the number by which you identify the corner" Q308 (1 lower left, 2 lower right, 3 upper right, 4 upper left)
+        // PLACEHOLDER P415: ideal part, each wall MP6140 + Q320 past its point (the figure's dimension); Q304 basic rotation not applied
+        let k = js::round(qp(cy, 308.0, 1.0)); let dx = if k == 2.0 || k == 3.0 { 1.0 } else { -1.0 }; let dy = if k >= 3.0 { 1.0 } else { -1.0 };
+        let (x0, y0) = (qp(cy, 263.0, 0.0), qp(cy, 264.0, 0.0)); let (x1, y1) = (x0 + qp(cy, 326.0, 0.0).abs(), y0 + qp(cy, 327.0, 0.0).abs());
+        for (x, y) in [(x0, y0), (x1, y0)] { p.push(PPt { s: (x, y), e: (x, y + dy * sc), c: None }); }
+        for (x, y) in [(x0, y0), (x0, y1)] { p.push(PPt { s: (x, y), e: (x + dx * sc, y), c: None }); }
+        probe_pts(st, &p, z, h, via, bi, &lab, None);
+        let (ux, uy) = (x0 + dx * (sc + r), y0 + dy * (sc + r));
+        meas = vec![('x', ux), ('y', uy)]; tgt = vec![('x', qp(cy, 331.0, 0.0)), ('y', qp(cy, 332.0, 0.0))];
+        st.q.set(151.0, ux); st.q.set(152.0, uy);
     } else if n == 417.0 {
         probe_z(st, qp(cy, 263.0, 0.0), qp(cy, 264.0, 0.0), qp(cy, 294.0, 0.0), sc, h, bi, &lab);
         meas = vec![('z', qp(cy, 294.0, 0.0))]; tgt = vec![('z', qp(cy, 333.0, 0.0))]; st.q.set(160.0, qp(cy, 294.0, 0.0));

@@ -51,7 +51,7 @@ INTERPRETER:
     within 0.003 mm of the exact offset on the free side, as short lines.
     Placeholders SL1-SL14 in CONTINUE.md; Q8, Q18, Q19 not simulated.
   - Touch probe: TCH PROBE blocks parse (both forms). Datum-setting cycles
-    408-413, 417 and 419 move and write nominal results. Tool-measuring
+    408-413, 415, 417 and 419 move and write nominal results. Tool-measuring
     cycles 30-33, 480-483 and 562 are recognized with no motion. Any other
     cycle number reports "TCH PROBE n NOT IMPLEMENTED IN SIMULATOR".
   - M3/M4/M5/M8/M9/M2/M30, M99 blockwise cycle call, correct block-start vs

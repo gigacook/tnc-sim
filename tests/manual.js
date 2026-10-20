@@ -540,8 +540,15 @@ console.log('Touch probe cycles (iTNC 530 manual ch. 13/15/19; results Q150-Q162
   ok(!r.errors.length && !r.moves.some(m => m.probe) && near(last(r).to.x, 1) && near(last(r).to.y, 0) && near(last(r).to.z, 0), 'TT 31 (dotted) / 481 / 562: no motion; status Q5 / Q199 = 0 (in tolerance), deviation Q115 = 0');
   const pb = TNC.parse('TCH PROBE 31.0 TOOL LENGTH\nTCH PROBE 31.1 CHECK: 0\nTCH PROBE 412 DATUM INSIDE CIRCLE ~\n Q321=+50 ;CENTER ~\n Q322=+50\nL X+0').blocks;
   ok(pb.map(b => b.kind + b.n).join() === 'TCHPROBE0,CYCLPARM1,TCHPROBE2,CYCLPARM2,CYCLPARM2,L3', 'numbering: dotted TCH PROBE lines are blocks; Q lines belong to their TCH PROBE');
-  r = R('TCH PROBE 415 DATUM INSIDE CORNER\n Q263=+10\n Q264=+3.5');
-  ok(r.errors.some(e => e.msg === 'TCH PROBE 415 NOT IMPLEMENTED IN SIMULATOR'), 'a probe cycle not simulated parses and says so');
+  const P415 = (k) => 'TCH PROBE 415 DATUM INSIDE CORNER ~\n Q263=+10 ~\n Q264=+10 ~\n Q326=20 ~\n Q327=30 ~\n Q308=' + k + ' ~\n Q261=-5 ~\n Q320=0 ~\n Q260=+20 ~\n Q301=0 ~\n Q304=0 ~\n Q305=7 ~\n Q331=+0 ~\n Q332=+0 ~\n Q303=+1 ~\n Q381=0\nL X+Q151 Y+Q152 R0 FMAX';
+  r = R(P415(1));
+  const t15 = r.moves.filter(m => m.touch).map(m => [m.from.x, m.from.y, m.to.x, m.to.y].join());
+  ok(!r.errors.length && t15.join(' ') === '10,10,10,8 30,10,30,8 10,10,8,10 10,40,8,40', '415 Q308 = 1 (p. 361 figure): 1 and 2 on Y = Q264 probe -Y first, then 3 and 4 on X = Q263 probe -X, each MP 6140 + Q320');
+  ok(near(last(r).to.x, 5) && near(last(r).to.y, 5), '415: Q151 / Q152 = the corner (wall = ball centre + R); Q303 = 1 writes the preset row only');
+  r = R(P415(3));
+  ok(!r.errors.length && r.moves.filter(m => m.touch).every(m => m.to.x >= m.from.x && m.to.y >= m.from.y) && near(last(r).to.x, 15) && near(last(r).to.y, 15), '415 Q308 = 3: same points, probed +Y / +X');
+  r = R('TCH PROBE 414 DATUM OUTSIDE CORNER\n Q263=+10\n Q264=+3.5');
+  ok(r.errors.some(e => e.msg === 'TCH PROBE 414 NOT IMPLEMENTED IN SIMULATOR'), 'a probe cycle not simulated parses and says so');
   const ps = TNC_DIALOGS.probeSpec(412), pv = {}; ps.steps.forEach(s => pv[s.k] = s.dflt);
   ok(/^TCH PROBE 412 DATUM INSIDE CIRCLE\n/.test(ps.build(pv)) && !R(ps.build(pv)).errors.length, 'dialog: TCH PROBE 412 from the manual\'s example values runs clean');
   ok(TNC_DIALOGS.probeList().every(c => { const s = TNC_DIALOGS.probeSpec(c.num), v = {}; s.steps.forEach(t => v[t.k] = t.dflt); return !R(s.build(v)).errors.length; }), 'dialog: every TCH PROBE spec with its example values runs clean');

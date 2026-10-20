@@ -57,7 +57,7 @@ const S = {
   'probe 419': probe('419 DATUM IN ONE AXIS', 'Q263=+10 Q264=+50 Q261=-5 Q320=2 Q260=+20 Q272=1 Q267=+1 Q305=0 Q333=0 Q303=1'),
 };
 // shapes the post emits that the engine does not simulate yet (CONTINUE.md #25); reported, not failed
-const OPEN = new Set(['probe 415']);
+const OPEN = new Set([]);
 // the post can write these, but they are not TNC 426/430 cycles (not in its manual): the control rejects them, so must we
 const NOT_430 = new Set(['cycle 241', 'cycle 252']);
 const bad = [];
