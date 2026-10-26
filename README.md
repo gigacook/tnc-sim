@@ -122,3 +122,7 @@ test: AI tests use a mocked OpenRouter. With `OPENROUTER_API_KEY=…` in `privat
 ## Licence
 MIT, see [LICENSE](LICENSE). Bundles three.js and three.quarks (MIT). "HEIDENHAIN" and "TNC" are trademarks of
 DR. JOHANNES HEIDENHAIN GmbH.
+
+---
+
+<sub>made by [gigacook](https://github.com/gigacook) — per libertatem claritas vincit</sub>
