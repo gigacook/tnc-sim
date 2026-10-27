@@ -2,7 +2,7 @@
 
 **Write HEIDENHAIN Klartext, press Start, watch the tool cut the blank, and get the errors the real control would raise.**
 
-[Open the simulator](https://gigacook.github.io/tnc-sim/) · [About page](https://gigacook.github.io/tnc-sim/about.html)
+[Open the simulator](https://gigacook.github.io/tnc-sim/)
 
 ![The demo program NAMEPLATE.H after a full run in the 3D view](docs/shots/run-3d.png)
 A finished run in the 3D view: the listing on the left, the cut part in the middle, cycle time and paths on the right.
