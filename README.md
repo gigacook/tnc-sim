@@ -1,8 +1,24 @@
 # TNC 426 / 430 Simulator
 
-A CNC simulator for HEIDENHAIN **Klartext**, the conversational programming language of the TNC 426 and 430
-controls. You write or load a program, run it, and watch the tool remove material from the blank. It catches the
-errors the control would raise.
+**Write HEIDENHAIN Klartext, press Start, watch the tool cut the blank, and get the errors the real control would raise.**
+
+[Open the simulator](https://gigacook.github.io/tnc-sim/) · [About page](https://gigacook.github.io/tnc-sim/about.html)
+
+![The demo program NAMEPLATE.H after a full run in the 3D view](docs/shots/run-3d.png)
+A finished run in the 3D view: the listing on the left, the cut part in the middle, cycle time and paths on the right.
+
+![The same part in plan view from the top](docs/shots/plan-view.png)
+Plan view (key `G`) shows the engraved text and the tool path from above.
+
+![PRG EDIT mode with its soft keys](docs/shots/prg-edit.png)
+PRG EDIT (key `1`): the soft keys build each block one question at a time, so you don't type raw Klartext.
+
+![The tool table with the demo tools](docs/shots/tool-table.png)
+The tool table (key `T`) holds each tool's length and radius, as `TOOL.T` does on the control.
+
+## What it is
+Klartext is the conversational programming language of the TNC 426 and 430 controls. You write or load a program,
+run it, and watch the tool remove material from the blank. The simulator catches the errors the control would raise.
 
 It comes in three forms:
 - **The simulator file** `index.html`: one self-contained HTML file. Open it in a browser; it works offline and needs
@@ -13,7 +29,7 @@ It comes in three forms:
 Not affiliated with HEIDENHAIN. An educational simulator, not a way to verify programs for real machines.
 
 ## Contents
-- [Key terms](#key-terms) · [Using the simulator](#using-the-simulator) · [Keys](#keys) · [AI programs](#ai-programs)
+- [What it is](#what-it-is) · [Key terms](#key-terms) · [Using the simulator](#using-the-simulator) · [Keys](#keys) · [AI programs](#ai-programs)
 - [What is and isn't simulated](#what-is-and-isnt-simulated) · [Desktop app](#desktop-app) · [For developers](#for-developers)
 
 ## Key terms
