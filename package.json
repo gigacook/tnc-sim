@@ -8,7 +8,9 @@
     "build:sim": "python3 build.py",
     "test:manual": "node tests/manual.js",
     "test:ui": "node tests/ui/run.mjs",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "lint:autosave": "node scripts/autosave-lint.mjs index.html docs/index.html sim",
+    "test:autosave": "node tests/ui/autosave.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",

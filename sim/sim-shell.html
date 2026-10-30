@@ -692,7 +692,7 @@ h1.ttlbox{margin:0;font:inherit}
        <div class="mgt scan" id="mgt" hidden></div>
        <div class="flowhost" id="flow" hidden></div>
      </div>
-     <textarea id="raw" hidden spellcheck="false" aria-label="Raw program text"></textarea>
+     <textarea id="raw" data-autosave-exempt="hidden mirror of the editor; the program itself is saved by the profile" hidden spellcheck="false" aria-label="Raw program text"></textarea>
      <div class="dlg">
        <span class="pr" id="dlg-pr">BLOCK</span>
        <input id="dlg-in" spellcheck="false" autocomplete="off" disabled aria-label="Block entry">
@@ -784,7 +784,7 @@ h1.ttlbox{margin:0;font:inherit}
          <div class="uplist" id="uplist"></div></details>
        <details class="pgroup" id="pj-box"><summary>Projects <span class="cnt" id="proj-t"></span></summary>
          <div class="in"><div class="proj" id="proj"></div>
-         <div class="pnew"><input id="proj-name" placeholder="New project name" maxlength="40" aria-label="New project name">
+         <div class="pnew"><input id="proj-name" data-autosave placeholder="New project name" maxlength="40" aria-label="New project name">
            <button id="b-proj-new">Create</button></div>
          <button class="mini" id="b-proj-add" data-i18n="btn.projadd">Add current program to active project</button>
          <p class="note">A project is a named folder of programs. New programs join the active project automatically; ZIP downloads the whole folder as .H files.</p></div></details>
@@ -826,17 +826,17 @@ h1.ttlbox{margin:0;font:inherit}
     <div id="new-scratch" hidden>
       <div class="prose"><h4>New program &mdash; name it, then write it block by block</h4></div>
       <div class="fgrid">
-        <label class="fld wide"><span>PROGRAM NAME (A&ndash;Z, 0&ndash;9, _ )</span><input id="ns-name" value="MY_PART" maxlength="16"></label>
+        <label class="fld wide"><span>PROGRAM NAME (A&ndash;Z, 0&ndash;9, _ )</span><input id="ns-name" data-autosave value="MY_PART" maxlength="16"></label>
         <label class="fld"><span>UNIT</span><select id="ns-unit"><option>MM</option><option disabled>INCH (not converted)</option></select></label>
         <label class="fld"><span>WORKING SPINDLE AXIS</span><select id="ns-axis"><option>Z</option></select></label>
         <label class="fld"><span>FIRST TOOL</span><select id="ns-tool"></select></label>
-        <label class="fld"><span>DEF BLK FORM: MIN-CORNER X</span><input id="ns-x0" value="0" inputmode="decimal"></label>
-        <label class="fld"><span>MIN-CORNER Y</span><input id="ns-y0" value="0" inputmode="decimal"></label>
-        <label class="fld"><span>MIN-CORNER Z</span><input id="ns-z0" value="-20" inputmode="decimal"></label>
-        <label class="fld"><span>DEF BLK FORM: MAX-CORNER X</span><input id="ns-x1" value="100" inputmode="decimal"></label>
-        <label class="fld"><span>MAX-CORNER Y</span><input id="ns-y1" value="80" inputmode="decimal"></label>
-        <label class="fld"><span>MAX-CORNER Z</span><input id="ns-z1" value="0" inputmode="decimal"></label>
-        <label class="fld"><span>SPINDLE SPEED S (RPM)</span><input id="ns-s" value="3000" inputmode="numeric"></label>
+        <label class="fld"><span>DEF BLK FORM: MIN-CORNER X</span><input id="ns-x0" data-autosave-exempt="hidden by code; the New dialog asks for the name only" value="0" inputmode="decimal"></label>
+        <label class="fld"><span>MIN-CORNER Y</span><input id="ns-y0" data-autosave-exempt="hidden by code; the New dialog asks for the name only" value="0" inputmode="decimal"></label>
+        <label class="fld"><span>MIN-CORNER Z</span><input id="ns-z0" data-autosave-exempt="hidden by code; the New dialog asks for the name only" value="-20" inputmode="decimal"></label>
+        <label class="fld"><span>DEF BLK FORM: MAX-CORNER X</span><input id="ns-x1" data-autosave-exempt="hidden by code; the New dialog asks for the name only" value="100" inputmode="decimal"></label>
+        <label class="fld"><span>MAX-CORNER Y</span><input id="ns-y1" data-autosave-exempt="hidden by code; the New dialog asks for the name only" value="80" inputmode="decimal"></label>
+        <label class="fld"><span>MAX-CORNER Z</span><input id="ns-z1" data-autosave-exempt="hidden by code; the New dialog asks for the name only" value="0" inputmode="decimal"></label>
+        <label class="fld"><span>SPINDLE SPEED S (RPM)</span><input id="ns-s" data-autosave-exempt="hidden by code; the New dialog asks for the name only" value="3000" inputmode="numeric"></label>
       </div>
       <div class="actrow"><button class="cbtn pri" id="ns-go">Create &amp; edit</button><button class="cbtn" data-back>Back</button></div>
     </div>
@@ -845,7 +845,7 @@ h1.ttlbox{margin:0;font:inherit}
       <div class="prose"><h4 id="ai-title">Describe the part</h4>
         <p id="ai-lead">Blank size, material, features, tools if you care. The AI writes Klartext for this simulator, the simulator runs every check on it, and anything that fails goes back to the AI once for a fix.</p></div>
       <label class="fld wide"><span>WHAT SHOULD THE PROGRAM MAKE?</span>
-        <textarea id="ai-prompt" placeholder="e.g. 120 x 80 x 15 aluminium plate. Face 0.5 mm. A 60 x 30 pocket 6 mm deep in the middle, 4 passes. Four M10 holes 10 mm from each corner, spot drill first."></textarea></label>
+        <textarea id="ai-prompt" data-autosave placeholder="e.g. 120 x 80 x 15 aluminium plate. Face 0.5 mm. A 60 x 30 pocket 6 mm deep in the middle, 4 passes. Four M10 holes 10 mm from each corner, spot drill first."></textarea></label>
       <div class="actrow">
         <button class="cbtn pri" id="ai-go">Generate</button>
         <span class="pill" id="ai-keypill">no key</span>

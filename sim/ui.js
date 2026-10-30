@@ -1025,7 +1025,7 @@ $('proj').addEventListener('click',e=>{
 });
 $('b-proj-new').onclick=()=>{ const inp=$('proj-name'), name=inp.value.trim()||('PROJECT '+(S.projects.length+1));
   const p={id:Date.now().toString(36),name:name.slice(0,40),created:new Date().toISOString(),pgms:[]};
-  S.projects.push(p); S.active=p.id; inp.value=''; persist(); renderProjects(); say('PROJECT "'+p.name+'" ACTIVE'); };
+  S.projects.push(p); S.active=p.id; inp.value=''; GCDraft.clear(inp); persist(); renderProjects(); say('PROJECT "'+p.name+'" ACTIVE'); };
 $('proj-name').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); $('b-proj-new').click(); } e.stopPropagation(); });
 $('b-proj-add').onclick=()=>addToProject(S.pgm);
 function addToProject(name){
@@ -1312,7 +1312,7 @@ For tilted machining use CYCL DEF 19.0 WORKING PLANE / CYCL DEF 19.1 A+.. B+.. C
                   :`<span class="bad">Checked: ${r.errs.length} error(s), ${r.crashes.length} crash(es):</span><pre style="margin:2px 0 0;white-space:pre-wrap">${esc(r.text)}</pre>`); } }});
   }catch(e){ aiLog('<span class="bad">'+esc(aiErr(e))+'</span>'); }
   delete pg()[AI_LIVE];
-  if(res){
+  if(res){ GCDraft.clear($('ai-prompt'));
     let nm;
     if(modify){ nm=beforePgm; S.pgm=beforePgm; S.text=before; raw.value=before; if(S.mode!=='edit') setMode('edit'); edit(res.src,0,'AI CHANGED '+nm+' — CTRL+Z UNDOES IT'); }
     else nm=addPgm((res.report.name||'AI_PART'),res.src,{open:true});
@@ -1387,7 +1387,7 @@ function mpMount(root){
   root.dataset.mp='1'; root.classList.add('mp');
   root.innerHTML=`<div class="mp-top"></div>
   <div class="mp-bar"><button type="button" class="mp-all" aria-expanded="false">All models <span class="mp-cnt"></span><span class="mp-car">▾</span></button>
-    <input class="mp-id" spellcheck="false" autocomplete="off" placeholder="…or type any OpenRouter id: provider/model" aria-label="Model id">
+    <input class="mp-id" data-autosave="model-id" spellcheck="false" autocomplete="off" placeholder="…or type any OpenRouter id: provider/model" aria-label="Model id">
     <button type="button" class="mp-use">Use id</button></div>
   <div class="mp-pal" hidden>
     <div class="mp-tools"><input class="mp-q" spellcheck="false" autocomplete="off" placeholder="Filter — name or provider" aria-label="Filter models">
@@ -1437,7 +1437,7 @@ function mpPick(root,id,close){
   local.set(MODEL_LS,id); say('MODEL '+id); mpTop(root);
   if(close) mpOpen(root,false); else if(!root.querySelector('.mp-pal').hidden) mpTable(root);
 }
-function mpUseId(root){ const f=root.querySelector('.mp-id'), v=f.value.trim(); if(!v){ f.focus(); return; } mpPick(root,v,true); if(MP_ID.test(v)) f.value=''; }
+function mpUseId(root){ const f=root.querySelector('.mp-id'), v=f.value.trim(); if(!v){ f.focus(); return; } mpPick(root,v,true); if(MP_ID.test(v)){ f.value=''; GCDraft.clear(f); } }
 function mpTop(root){ aiTokHint();
   const cat=MP.cat, cur=getModel(), L=cat?cat.models:[], find=id=>L.find(m=>m.id===id);
   const recId=AI?AI.DEFAULT_MODEL:'deepseek/deepseek-v4.1-flash', rec=find(recId)||(AI&&AI.RECOMMENDED)||{id:recId,name:recId};
@@ -1470,7 +1470,7 @@ function aiModelUI(){
   const mp=document.createElement('div'); mp.id='ai-mp'; mp.style.marginTop='16px';
   const box=document.createElement('div'); box.className='fgrid'; box.style.marginTop='12px';
   box.innerHTML=`<label class="fld"><span>THINKING (REASONING MODELS)</span><select id="ai-think"><option value="off">Off — fastest, cheapest</option><option value="low">Low (recommended)</option><option value="medium">Medium — slower</option><option value="high">High — slow, can cost more</option></select></label>
-    <label class="fld"><span>MAX ANSWER TOKENS PER REQUEST (THINKING COUNTS)</span><input id="ai-maxtok" inputmode="numeric" value="32000"><small id="ai-tokhint" style="opacity:.75"></small></label>
+    <label class="fld"><span>MAX ANSWER TOKENS PER REQUEST (THINKING COUNTS)</span><input id="ai-maxtok" data-autosave-exempt="saved to tnc426.aimaxtok on change" inputmode="numeric" value="32000"><small id="ai-tokhint" style="opacity:.75"></small></label>
     <label class="fld"><span>MEASURE &amp; REFINE ROUNDS</span><select id="ai-rounds"><option value="0">0 — first answer only</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4 (recommended)</option><option value="5">5</option><option value="6">6 — slow</option></select></label>
     <label class="fld chk wide"><input type="checkbox" id="ai-auto"> Auto-repair: run every round without asking</label>`;
   const ta=$('ai-prompt').closest('.fld'); ta.parentNode.insertBefore(box,ta.nextSibling); ta.parentNode.insertBefore(mp,box);
@@ -1502,7 +1502,7 @@ const sgn=v=>{ v=+v; return (v<0?'-':'+')+Math.abs(v); };
 $('ns-go').onclick=()=>{
   const name=($('ns-name').value.trim()||'MY_PART').toUpperCase().replace(/[^A-Z0-9_]/g,'_').slice(0,16);
   const txt=[`BEGIN PGM ${name} MM`,`END PGM ${name} MM`].join('\n');     // what the control creates: nothing else
-  closeModal(); addPgm(name,txt); setMode('edit'); moveCursor(0); showPane('pgm'); insertBlock();
+  GCDraft.clear($('ns-name')); closeModal(); addPgm(name,txt); setMode('edit'); moveCursor(0); showPane('pgm'); insertBlock();
   say('NEW PROGRAM — TYPE A BLOCK · TAB TAKES THE GREY SUGGESTION · ENT STORES · I INSERTS THE NEXT');
 };
 /* the New dialog asks for the name only; the rest is written block by block */
@@ -1531,7 +1531,7 @@ function renderProfile(){
   const c=profCounts(), t=PSTORE.lastSaved, tools=mtools();
   $('prof-body').innerHTML=`<div class="prose">${PROF&&PROF.name?'':'<h4>Welcome. What\'s your name?</h4><p>Everything you make — programs, projects, tools, settings — is kept under your name in this browser and saved automatically. Export it to move it to another computer.</p>'}</div>
 <div class="fgrid" style="max-width:760px">
- <label class="fld wide"><span>YOUR NAME</span><input id="prof-name" maxlength="40" autocomplete="name" spellcheck="false" value="${esc(PROF&&PROF.name||'')}" placeholder="your name"></label>
+ <label class="fld wide"><span>YOUR NAME</span><input id="prof-name" data-autosave-exempt="saved to the profile on every keystroke" maxlength="40" autocomplete="name" spellcheck="false" value="${esc(PROF&&PROF.name||'')}" placeholder="your name"></label>
 </div>
 <p class="note" id="prof-saved" style="margin:8px 0 0">${t?'Autosaved '+t.toLocaleTimeString()+' — in this browser':'Not saved yet'}</p>
 <p class="note" style="margin:4px 0 0">${c.programs} program(s) of yours · ${c.projects} project(s) · ${c.tools} tool(s) of yours · machines: ${Object.values(MACHINES).map(m=>esc(m.label)).join(', ')}</p>
@@ -1554,16 +1554,16 @@ function renderProfile(){
 }
 function toolTableHTML(){
   return `<div class="tblw"><table class="ttab"><thead><tr><th>T</th><th>NAME</th><th>L</th><th>R</th><th></th></tr></thead><tbody>${
-  mtools().map(x=>`<tr data-t="${x.t}"${x.mine?' class="mine"':''}${x.t===curToolT?' data-cur="1"':''}><td>${x.t}${x.mine?' *':''}</td><td><input data-k="name" value="${esc(x.name)}" maxlength="16" aria-label="T${x.t} name"></td>
-   <td><input data-k="l" inputmode="decimal" value="${(+x.l).toFixed(3)}" aria-label="T${x.t} length"></td><td><input data-k="r" inputmode="decimal" value="${(+x.r).toFixed(3)}" aria-label="T${x.t} radius"></td>
+  mtools().map(x=>`<tr data-t="${x.t}"${x.mine?' class="mine"':''}${x.t===curToolT?' data-cur="1"':''}><td>${x.t}${x.mine?' *':''}</td><td><input data-k="name" data-autosave-exempt="tool table cell, saved to the profile on change" value="${esc(x.name)}" maxlength="16" aria-label="T${x.t} name"></td>
+   <td><input data-k="l" data-autosave-exempt="tool table cell, saved to the profile on change" inputmode="decimal" value="${(+x.l).toFixed(3)}" aria-label="T${x.t} length"></td><td><input data-k="r" data-autosave-exempt="tool table cell, saved to the profile on change" inputmode="decimal" value="${(+x.r).toFixed(3)}" aria-label="T${x.t} radius"></td>
    <td>${x.mine?`<button data-del="${x.t}" title="Remove your entry" aria-label="Remove T${x.t}">×</button>`:''}</td></tr>`).join('')}</tbody></table></div>
-<div class="actrow"><label class="fld" style="flex-direction:row;align-items:center;gap:6px"><span>T</span><input data-tt="new" inputmode="numeric" style="width:70px" aria-label="New tool number"></label>
+<div class="actrow"><label class="fld" style="flex-direction:row;align-items:center;gap:6px"><span>T</span><input data-tt="new" data-autosave="new-tool" inputmode="numeric" style="width:70px" aria-label="New tool number"></label>
  <button class="cbtn" data-tt="add">Add tool</button><button class="cbtn" data-tt="missing">Add tools this program calls</button>
  <button class="cbtn" data-tt="import">Import TOOL.T</button><button class="cbtn" data-tt="export">Export TOOL.T</button></div>`;
 }
 function wireToolTable(root,rerender){
   root.querySelectorAll('[data-tt]').forEach(b=>{ const k=b.dataset.tt; if(k==='new') return; b.onclick=()=>{
-    if(k==='add'){ const t=parseInt(root.querySelector('[data-tt=new]').value,10); if(!(t>=0&&t<=32767)){ say('TOOL NUMBER 0–32767'); return; } mergeTools([{t,name:'T'+t,l:0,r:3}],true); }
+    if(k==='add'){ const t=parseInt(root.querySelector('[data-tt=new]').value,10); if(!(t>=0&&t<=32767)){ say('TOOL NUMBER 0–32767'); return; } mergeTools([{t,name:'T'+t,l:0,r:3}],true); GCDraft.clear(root.querySelector('[data-tt=new]')); }
     else if(k==='missing') addMissingTools();
     else if(k==='import') loadFromDisk();
     else if(k==='export'&&window.TNC_PROFILE) download('TOOL_TNC'+S.machine+'.T',new Blob([TNC_PROFILE.toolT(mtools())],{type:'text/plain'}),'TOOL-TABLES'); }; });

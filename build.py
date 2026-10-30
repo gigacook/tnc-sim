@@ -69,6 +69,7 @@ MODULES = [
     ('viz.js',       'View aids: axis vectors, click to pick'),
     ('dialogs.js',   'Programming dialogs: path functions, CYCL DEF, TOOL CALL'),
     ('i18n.js',      'i18n: language strings (en/sv)'),
+    ('autosave.js',  'Autosave drafts for text boxes (data-autosave)'),
     ('ui.js',        'Simulator UI'),
 ]
 
