@@ -63,6 +63,14 @@ for (const bt of (process.env.BROWSERS || 'chromium').split(',')) {
   await page.evaluate(() => { Object.getPrototypeOf(window.localStorage).setItem = function () { throw new DOMException('full', 'QuotaExceededError'); }; });
   await page.fill('#ai-prompt', 'abc def ghi jkl mno');
   check(await page.inputValue('#ai-prompt') === 'abc def ghi jkl mno' && /storage is full or off/.test(await page.locator('#ai-prompt + .gc-draft-note[role=status]').innerText().catch(() => '')), `${bt}: storage full keeps the text and shows a note`);
+
+  // D338-7: writes start failing after the first keystroke, then Create: the first-keystroke text must not come back
+  await load(); await openProj(); await page.fill('#proj-name', 'a');
+  await page.evaluate(() => { const pr = Object.getPrototypeOf(window.localStorage); window.__origSet = pr.setItem; pr.setItem = function () { throw new DOMException('full', 'QuotaExceededError'); }; });
+  await page.fill('#proj-name', 'abcdef'); await page.click('#b-proj-new');
+  await page.evaluate(() => { Object.getPrototypeOf(window.localStorage).setItem = window.__origSet; });
+  await load(); await openProj();
+  check(await page.inputValue('#proj-name') === '' && (await drafts()).every(k => !k.endsWith(':proj-name')), `${bt}: after Create the first-keystroke project name does not come back`);
   await browser.close();
 }
 const { lintPaths } = await import(pathToFileURL(join(ROOT, 'scripts', 'autosave-lint.mjs')).href);

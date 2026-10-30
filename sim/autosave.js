@@ -7,6 +7,8 @@
   var MAX = 1000000, ls = null, path = location.pathname.replace(/index\.html$/, '');
   var P = 'gc:draft:' + location.host + path + ':', OLD = 'gc:draft:' + (location.pathname.replace(/^.*\//, '') || 'index') + ':';
   try { ls = window.localStorage; ls.getItem('gc:draft'); } catch (e) { ls = null; }
+  var TAB = Date.now().toString(36) + Math.random().toString(36).slice(2, 10);   // this tab (kept over a reload in sessionStorage)
+  try { TAB = sessionStorage.getItem('gc:tab') || (sessionStorage.setItem('gc:tab', TAB), TAB); } catch (e) { /* per page load */ }
   function scope(el) {
     var s = el.closest('[data-autosave-scope]'), f = el.closest('form');
     return (s ? s.getAttribute('data-autosave-scope') : '') + (f ? [f.id, f.dataset.form, f.dataset.coll, f.dataset.id, f.dataset.cust, f.dataset.only].join('.') : '');
@@ -29,15 +31,15 @@
     } catch (e) { return null; }
   }
   function clear(el) { unnote(el); if (ls) try { ls.removeItem(P + tail(el)); ls.removeItem(OLD + tail(el)); } catch (e) { /* ignore */ } }
-  function settle(el) {   // after a submit: drop this box's own draft, but not text another tab typed in the same box
+  function settle(el) {   // after a submit: drop this tab's draft or one with the same text, but not text another tab typed in the same box
     var raw = read(el), d = null; try { d = raw && JSON.parse(raw); } catch (e) { /* ignore */ }
-    if (!d || d.v === el.value) clear(el);
+    if (!d || d.t === TAB || d.v === el.value) clear(el);
   }
   function save(el) {
     var k = P + tail(el);
     if (el.value === el.defaultValue) { clear(el); return; }
     if (el.value.length > MAX) { try { if (ls) ls.removeItem(k); } catch (e) { /* ignore */ } note(el, 'This text is too long to keep as a draft; it stays in this box until you leave the page.'); return; }
-    try { if (!ls) throw 0; ls.setItem(k, JSON.stringify({ v: el.value, b: el.defaultValue })); if (el.__gcn && !el.__gcr) unnote(el); }
+    try { if (!ls) throw 0; ls.setItem(k, JSON.stringify({ v: el.value, b: el.defaultValue, t: TAB })); if (el.__gcn && !el.__gcr) unnote(el); }
     catch (e) { note(el, 'Could not keep this text as a draft (browser storage is full or off); it stays in this box until you leave the page.'); }
   }
   function restore(el) {
