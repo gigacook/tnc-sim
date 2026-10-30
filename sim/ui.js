@@ -1470,15 +1470,15 @@ function aiModelUI(){
   const mp=document.createElement('div'); mp.id='ai-mp'; mp.style.marginTop='16px';
   const box=document.createElement('div'); box.className='fgrid'; box.style.marginTop='12px';
   box.innerHTML=`<label class="fld"><span>THINKING (REASONING MODELS)</span><select id="ai-think"><option value="off">Off — fastest, cheapest</option><option value="low">Low (recommended)</option><option value="medium">Medium — slower</option><option value="high">High — slow, can cost more</option></select></label>
-    <label class="fld"><span>MAX ANSWER TOKENS PER REQUEST (THINKING COUNTS)</span><input id="ai-maxtok" data-autosave-exempt="saved to tnc426.aimaxtok on change" inputmode="numeric" value="32000"><small id="ai-tokhint" style="opacity:.75"></small></label>
+    <label class="fld"><span>MAX ANSWER TOKENS PER REQUEST (THINKING COUNTS)</span><input id="ai-maxtok" data-autosave="ai-maxtok" data-autosave-commit inputmode="numeric" value="32000"><small id="ai-tokhint" style="opacity:.75"></small></label>
     <label class="fld"><span>MEASURE &amp; REFINE ROUNDS</span><select id="ai-rounds"><option value="0">0 — first answer only</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4 (recommended)</option><option value="5">5</option><option value="6">6 — slow</option></select></label>
     <label class="fld chk wide"><input type="checkbox" id="ai-auto"> Auto-repair: run every round without asking</label>`;
   const ta=$('ai-prompt').closest('.fld'); ta.parentNode.insertBefore(box,ta.nextSibling); ta.parentNode.insertBefore(mp,box);
   $('ai-think').value=aiThink(); $('ai-think').onchange=()=>{ local.set('tnc426.aithink',$('ai-think').value); };
   $('ai-rounds').value=String(aiRounds()); $('ai-rounds').onchange=()=>{ local.set('tnc426.airounds',$('ai-rounds').value); };
   $('ai-auto').checked=aiAuto(); $('ai-auto').onchange=()=>{ local.set('tnc426.aiauto',$('ai-auto').checked?'1':'0'); };
-  $('ai-maxtok').value=aiMaxTok(); $('ai-maxtok').addEventListener('keydown',e=>e.stopPropagation());
-  $('ai-maxtok').onchange=()=>{ const v=Math.round(+String($('ai-maxtok').value).replace(/[\s,_']/g,'')); if(v>=1) local.set('tnc426.aimaxtok',v); else say('MAX TOKENS: A WHOLE NUMBER'); $('ai-maxtok').value=aiMaxTok(); aiTokHint(); };
+  $('ai-maxtok').value=aiMaxTok(); $('ai-maxtok').defaultValue=aiMaxTok(); $('ai-maxtok').addEventListener('keydown',e=>e.stopPropagation());
+  $('ai-maxtok').onchange=()=>{ GCDraft.clear($('ai-maxtok')); const v=Math.round(+String($('ai-maxtok').value).replace(/[\s,_']/g,'')); if(v>=1) local.set('tnc426.aimaxtok',v); else say('MAX TOKENS: A WHOLE NUMBER'); $('ai-maxtok').value=aiMaxTok(); aiTokHint(); };
   mpMount(mp); aiTokHint();
 }
 
@@ -1554,8 +1554,8 @@ function renderProfile(){
 }
 function toolTableHTML(){
   return `<div class="tblw"><table class="ttab"><thead><tr><th>T</th><th>NAME</th><th>L</th><th>R</th><th></th></tr></thead><tbody>${
-  mtools().map(x=>`<tr data-t="${x.t}"${x.mine?' class="mine"':''}${x.t===curToolT?' data-cur="1"':''}><td>${x.t}${x.mine?' *':''}</td><td><input data-k="name" data-autosave-exempt="tool table cell, saved to the profile on change" value="${esc(x.name)}" maxlength="16" aria-label="T${x.t} name"></td>
-   <td><input data-k="l" data-autosave-exempt="tool table cell, saved to the profile on change" inputmode="decimal" value="${(+x.l).toFixed(3)}" aria-label="T${x.t} length"></td><td><input data-k="r" data-autosave-exempt="tool table cell, saved to the profile on change" inputmode="decimal" value="${(+x.r).toFixed(3)}" aria-label="T${x.t} radius"></td>
+  mtools().map(x=>`<tr data-t="${x.t}"${x.mine?' class="mine"':''}${x.t===curToolT?' data-cur="1"':''}><td>${x.t}${x.mine?' *':''}</td><td><input data-k="name" data-autosave="tool-${S.machine}-${x.t}-name" data-autosave-commit value="${esc(x.name)}" maxlength="16" aria-label="T${x.t} name"></td>
+   <td><input data-k="l" data-autosave="tool-${S.machine}-${x.t}-l" data-autosave-commit inputmode="decimal" value="${(+x.l).toFixed(3)}" aria-label="T${x.t} length"></td><td><input data-k="r" data-autosave="tool-${S.machine}-${x.t}-r" data-autosave-commit inputmode="decimal" value="${(+x.r).toFixed(3)}" aria-label="T${x.t} radius"></td>
    <td>${x.mine?`<button data-del="${x.t}" title="Remove your entry" aria-label="Remove T${x.t}">×</button>`:''}</td></tr>`).join('')}</tbody></table></div>
 <div class="actrow"><label class="fld" style="flex-direction:row;align-items:center;gap:6px"><span>T</span><input data-tt="new" data-autosave="new-tool" inputmode="numeric" style="width:70px" aria-label="New tool number"></label>
  <button class="cbtn" data-tt="add">Add tool</button><button class="cbtn" data-tt="missing">Add tools this program calls</button>
@@ -1569,7 +1569,7 @@ function wireToolTable(root,rerender){
     else if(k==='export'&&window.TNC_PROFILE) download('TOOL_TNC'+S.machine+'.T',new Blob([TNC_PROFILE.toolT(mtools())],{type:'text/plain'}),'TOOL-TABLES'); }; });
   const tb=root.querySelector('.ttab'); if(!tb) return;
   tb.addEventListener('keydown',e=>{ e.stopPropagation(); if(e.key==='Enter') e.target.blur(); });
-  tb.addEventListener('change',e=>{ const inp=e.target.closest('input'); if(!inp) return; const tr=inp.closest('tr'), t=+tr.dataset.t;
+  tb.addEventListener('change',e=>{ const inp=e.target.closest('input'); if(!inp) return; GCDraft.clear(inp); const tr=inp.closest('tr'), t=+tr.dataset.t;
     const cur=mtools().find(x=>x.t===t); if(!cur) return; const v=inp.dataset.k==='name'?inp.value.trim().toUpperCase().slice(0,16)||('T'+t):parseFloat(String(inp.value).replace(',','.'));
     if(inp.dataset.k!=='name'&&!isFinite(v)){ say('NOT A NUMBER'); rerender(); return; }
     if(inp.dataset.k==='r'&&v<0){ say('RADIUS MUST BE ≥ 0'); rerender(); return; }

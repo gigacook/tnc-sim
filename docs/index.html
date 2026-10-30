@@ -13675,29 +13675,60 @@ if (typeof module !== 'undefined') module.exports = TNC_I18N;
 </script>
 <script type="text/x-tnc-deferred">/* ===== Autosave drafts for text boxes (data-autosave) ===== */
 /* autosave drafts (#338, made by gigacook): <input|textarea data-autosave="name"> keeps what is typed in localStorage and puts it
-   back when the box is drawn again (boxes drawn by JS too, and after a reload). A submit that leaves the form gone, or
-   GCDraft.clear(box), drops it. Never password / payment / card boxes: mark those data-autosave-exempt="why". */
+   back when the box is drawn again (boxes drawn by JS too, and after a reload). Only a submit that leaves the form gone, or
+   GCDraft.clear(box), deletes a draft. A draft typed on an older saved value is still restored, with a note and "Use saved value".
+   data-autosave-commit: after a restore, fire the box's own "change" so the app saves it too. Never password / payment / card
+   boxes: mark those data-autosave-exempt="why". Keys: gc:draft:<host><path>:<form scope>:<name> (older gc:draft:<page>: keys migrate). */
 (function () {
-  var P = 'gc:draft:' + (location.pathname.replace(/^.*\//, '') || 'index') + ':', ls = null;
+  var MAX = 1000000, ls = null, path = location.pathname.replace(/index\.html$/, '');
+  var P = 'gc:draft:' + location.host + path + ':', OLD = 'gc:draft:' + (location.pathname.replace(/^.*\//, '') || 'index') + ':';
   try { ls = window.localStorage; ls.getItem('gc:draft'); } catch (e) { ls = null; }
   function scope(el) {
     var s = el.closest('[data-autosave-scope]'), f = el.closest('form');
     return (s ? s.getAttribute('data-autosave-scope') : '') + (f ? [f.id, f.dataset.form, f.dataset.coll, f.dataset.id, f.dataset.cust, f.dataset.only].join('.') : '');
   }
-  function key(el) { return P + scope(el) + ':' + (el.getAttribute('data-autosave') || el.id || el.name); }
+  function tail(el) { return scope(el) + ':' + (el.getAttribute('data-autosave') || el.id || el.name); }
+  function unnote(el) { if (el.__gcn) { el.__gcn.remove(); el.__gcn = null; } }
+  function note(el, text, label, fn) {
+    unnote(el);
+    var n = document.createElement('div'); n.setAttribute('role', 'status'); n.className = 'gc-draft-note'; n.style.cssText = 'font-size:.85em;margin:.25em 0';
+    n.appendChild(document.createTextNode(text + ' '));
+    if (label) { var b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.onclick = fn; n.appendChild(b); }
+    el.insertAdjacentElement('afterend', n); el.__gcn = n;
+  }
+  function read(el) {   // the draft text of a box; an older-style key is moved to the new one
+    if (!ls) return null;
+    try {
+      var k = P + tail(el), raw = ls.getItem(k);
+      if (raw === null) { raw = ls.getItem(OLD + tail(el)); if (raw !== null) { ls.setItem(k, raw); ls.removeItem(OLD + tail(el)); } }
+      return raw;
+    } catch (e) { return null; }
+  }
+  function clear(el) { unnote(el); if (ls) try { ls.removeItem(P + tail(el)); ls.removeItem(OLD + tail(el)); } catch (e) { /* ignore */ } }
+  function settle(el) {   // after a submit: drop this box's own draft, but not text another tab typed in the same box
+    var raw = read(el), d = null; try { d = raw && JSON.parse(raw); } catch (e) { /* ignore */ }
+    if (!d || d.v === el.value) clear(el);
+  }
   function save(el) {
-    if (!ls) return;
-    try { if (el.value === el.defaultValue) ls.removeItem(key(el)); else ls.setItem(key(el), JSON.stringify({ v: el.value, b: el.defaultValue })); } catch (e) { /* full or blocked: the text stays in the box */ }
+    var k = P + tail(el);
+    if (el.value === el.defaultValue) { clear(el); return; }
+    if (el.value.length > MAX) { try { if (ls) ls.removeItem(k); } catch (e) { /* ignore */ } note(el, 'This text is too long to keep as a draft; it stays in this box until you leave the page.'); return; }
+    try { if (!ls) throw 0; ls.setItem(k, JSON.stringify({ v: el.value, b: el.defaultValue })); if (el.__gcn && !el.__gcr) unnote(el); }
+    catch (e) { note(el, 'Could not keep this text as a draft (browser storage is full or off); it stays in this box until you leave the page.'); }
   }
   function restore(el) {
-    if (!ls) return;
-    try {
-      var raw = ls.getItem(key(el)); if (raw === null) return;
-      var d = JSON.parse(raw);
-      if (d.b === el.defaultValue) { if (el.value !== d.v) el.value = d.v; } else ls.removeItem(key(el));
-    } catch (e) { /* unreadable draft: ignore */ }
+    var raw = read(el); if (raw === null) return;
+    var d; try { d = JSON.parse(raw); } catch (e) { return; }
+    if (!d || typeof d.v !== 'string') return;
+    if (d.v === el.defaultValue) { clear(el); return; }
+    if (el.value !== d.v) el.value = d.v;
+    if (el.hasAttribute('data-autosave-commit')) { el.dispatchEvent(new Event('change', { bubbles: true })); return; }
+    if (d.b !== el.defaultValue) {   // typed on an older saved value: keep the text, say so, let the user take the saved one
+      var saved = el.defaultValue.length > 80 ? el.defaultValue.slice(0, 80) + '...' : el.defaultValue;
+      el.__gcr = true;
+      note(el, 'Unsaved text restored; the saved value is now "' + saved + '".', 'Use saved value', function () { el.value = el.defaultValue; el.__gcr = false; clear(el); el.focus(); });
+    }
   }
-  function clear(el) { if (ls) try { ls.removeItem(key(el)); } catch (e) { /* ignore */ } }
   function scan(root) {
     if (root.nodeType !== 1) return;
     if (root.matches('[data-autosave]')) restore(root);
@@ -13707,7 +13738,7 @@ if (typeof module !== 'undefined') module.exports = TNC_I18N;
   // a real submit: the form is gone afterwards (dialog closed, page redrawn). A refused submit keeps the form, so it keeps the text.
   window.addEventListener('submit', function (e) {
     var f = e.target, boxes = f.querySelectorAll ? [].slice.call(f.querySelectorAll('[data-autosave]')) : [];
-    if (!f.isConnected) boxes.forEach(clear);
+    if (!f.isConnected) boxes.forEach(settle);
   });
   new MutationObserver(function (ms) { ms.forEach(function (m) { m.addedNodes.forEach(scan); }); }).observe(document.documentElement, { childList: true, subtree: true });
   scan(document.documentElement);
@@ -15188,15 +15219,15 @@ function aiModelUI(){
   const mp=document.createElement('div'); mp.id='ai-mp'; mp.style.marginTop='16px';
   const box=document.createElement('div'); box.className='fgrid'; box.style.marginTop='12px';
   box.innerHTML=`<label class="fld"><span>THINKING (REASONING MODELS)</span><select id="ai-think"><option value="off">Off — fastest, cheapest</option><option value="low">Low (recommended)</option><option value="medium">Medium — slower</option><option value="high">High — slow, can cost more</option></select></label>
-    <label class="fld"><span>MAX ANSWER TOKENS PER REQUEST (THINKING COUNTS)</span><input id="ai-maxtok" data-autosave-exempt="saved to tnc426.aimaxtok on change" inputmode="numeric" value="32000"><small id="ai-tokhint" style="opacity:.75"></small></label>
+    <label class="fld"><span>MAX ANSWER TOKENS PER REQUEST (THINKING COUNTS)</span><input id="ai-maxtok" data-autosave="ai-maxtok" data-autosave-commit inputmode="numeric" value="32000"><small id="ai-tokhint" style="opacity:.75"></small></label>
     <label class="fld"><span>MEASURE &amp; REFINE ROUNDS</span><select id="ai-rounds"><option value="0">0 — first answer only</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4 (recommended)</option><option value="5">5</option><option value="6">6 — slow</option></select></label>
     <label class="fld chk wide"><input type="checkbox" id="ai-auto"> Auto-repair: run every round without asking</label>`;
   const ta=$('ai-prompt').closest('.fld'); ta.parentNode.insertBefore(box,ta.nextSibling); ta.parentNode.insertBefore(mp,box);
   $('ai-think').value=aiThink(); $('ai-think').onchange=()=>{ local.set('tnc426.aithink',$('ai-think').value); };
   $('ai-rounds').value=String(aiRounds()); $('ai-rounds').onchange=()=>{ local.set('tnc426.airounds',$('ai-rounds').value); };
   $('ai-auto').checked=aiAuto(); $('ai-auto').onchange=()=>{ local.set('tnc426.aiauto',$('ai-auto').checked?'1':'0'); };
-  $('ai-maxtok').value=aiMaxTok(); $('ai-maxtok').addEventListener('keydown',e=>e.stopPropagation());
-  $('ai-maxtok').onchange=()=>{ const v=Math.round(+String($('ai-maxtok').value).replace(/[\s,_']/g,'')); if(v>=1) local.set('tnc426.aimaxtok',v); else say('MAX TOKENS: A WHOLE NUMBER'); $('ai-maxtok').value=aiMaxTok(); aiTokHint(); };
+  $('ai-maxtok').value=aiMaxTok(); $('ai-maxtok').defaultValue=aiMaxTok(); $('ai-maxtok').addEventListener('keydown',e=>e.stopPropagation());
+  $('ai-maxtok').onchange=()=>{ GCDraft.clear($('ai-maxtok')); const v=Math.round(+String($('ai-maxtok').value).replace(/[\s,_']/g,'')); if(v>=1) local.set('tnc426.aimaxtok',v); else say('MAX TOKENS: A WHOLE NUMBER'); $('ai-maxtok').value=aiMaxTok(); aiTokHint(); };
   mpMount(mp); aiTokHint();
 }
 
@@ -15272,8 +15303,8 @@ function renderProfile(){
 }
 function toolTableHTML(){
   return `<div class="tblw"><table class="ttab"><thead><tr><th>T</th><th>NAME</th><th>L</th><th>R</th><th></th></tr></thead><tbody>${
-  mtools().map(x=>`<tr data-t="${x.t}"${x.mine?' class="mine"':''}${x.t===curToolT?' data-cur="1"':''}><td>${x.t}${x.mine?' *':''}</td><td><input data-k="name" data-autosave-exempt="tool table cell, saved to the profile on change" value="${esc(x.name)}" maxlength="16" aria-label="T${x.t} name"></td>
-   <td><input data-k="l" data-autosave-exempt="tool table cell, saved to the profile on change" inputmode="decimal" value="${(+x.l).toFixed(3)}" aria-label="T${x.t} length"></td><td><input data-k="r" data-autosave-exempt="tool table cell, saved to the profile on change" inputmode="decimal" value="${(+x.r).toFixed(3)}" aria-label="T${x.t} radius"></td>
+  mtools().map(x=>`<tr data-t="${x.t}"${x.mine?' class="mine"':''}${x.t===curToolT?' data-cur="1"':''}><td>${x.t}${x.mine?' *':''}</td><td><input data-k="name" data-autosave="tool-${S.machine}-${x.t}-name" data-autosave-commit value="${esc(x.name)}" maxlength="16" aria-label="T${x.t} name"></td>
+   <td><input data-k="l" data-autosave="tool-${S.machine}-${x.t}-l" data-autosave-commit inputmode="decimal" value="${(+x.l).toFixed(3)}" aria-label="T${x.t} length"></td><td><input data-k="r" data-autosave="tool-${S.machine}-${x.t}-r" data-autosave-commit inputmode="decimal" value="${(+x.r).toFixed(3)}" aria-label="T${x.t} radius"></td>
    <td>${x.mine?`<button data-del="${x.t}" title="Remove your entry" aria-label="Remove T${x.t}">×</button>`:''}</td></tr>`).join('')}</tbody></table></div>
 <div class="actrow"><label class="fld" style="flex-direction:row;align-items:center;gap:6px"><span>T</span><input data-tt="new" data-autosave="new-tool" inputmode="numeric" style="width:70px" aria-label="New tool number"></label>
  <button class="cbtn" data-tt="add">Add tool</button><button class="cbtn" data-tt="missing">Add tools this program calls</button>
@@ -15287,7 +15318,7 @@ function wireToolTable(root,rerender){
     else if(k==='export'&&window.TNC_PROFILE) download('TOOL_TNC'+S.machine+'.T',new Blob([TNC_PROFILE.toolT(mtools())],{type:'text/plain'}),'TOOL-TABLES'); }; });
   const tb=root.querySelector('.ttab'); if(!tb) return;
   tb.addEventListener('keydown',e=>{ e.stopPropagation(); if(e.key==='Enter') e.target.blur(); });
-  tb.addEventListener('change',e=>{ const inp=e.target.closest('input'); if(!inp) return; const tr=inp.closest('tr'), t=+tr.dataset.t;
+  tb.addEventListener('change',e=>{ const inp=e.target.closest('input'); if(!inp) return; GCDraft.clear(inp); const tr=inp.closest('tr'), t=+tr.dataset.t;
     const cur=mtools().find(x=>x.t===t); if(!cur) return; const v=inp.dataset.k==='name'?inp.value.trim().toUpperCase().slice(0,16)||('T'+t):parseFloat(String(inp.value).replace(',','.'));
     if(inp.dataset.k!=='name'&&!isFinite(v)){ say('NOT A NUMBER'); rerender(); return; }
     if(inp.dataset.k==='r'&&v<0){ say('RADIUS MUST BE ≥ 0'); rerender(); return; }

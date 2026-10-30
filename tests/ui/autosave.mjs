@@ -44,6 +44,25 @@ for (const bt of (process.env.BROWSERS || 'chromium').split(',')) {
   check(await page.inputValue('#proj-name') === '' && (await drafts()).every(k => !k.endsWith(':proj-name')), `${bt}: Create project clears it`);
   await load(); await openProj();
   check(await page.inputValue('#proj-name') === '', `${bt}: project name empty after Create and reload`);
+
+  // D338-2: boxes the app saves on "change" must survive a reload before the box loses focus (typed, no blur, reload)
+  await load(); await openAI(); await page.fill('#ai-maxtok', '12345');
+  await load(); await openAI();
+  check(await page.evaluate(() => localStorage.getItem('tnc426.aimaxtok')) === '12345', `${bt}: AI max tokens typed and not blurred is saved after a reload`);
+  check(await page.inputValue('#ai-maxtok') === '12345', `${bt}: AI max tokens box shows it`);
+  await page.keyboard.press('Escape');
+  const openTool = async () => { await page.click('#b-tools'); await page.waitForSelector('.ttab input[data-k=name]'); };
+  await load(); await openTool(); await page.locator('.ttab input[data-k=name]').first().fill('DRAFTNAME');
+  await load(); await page.waitForTimeout(700); await openTool();
+  check(await page.locator('.ttab input[data-k=name]').first().inputValue() === 'DRAFTNAME', `${bt}: tool name typed and not blurred survives a reload`);
+  await load(); await page.waitForTimeout(700); await openTool();
+  check(await page.locator('.ttab input[data-k=name]').first().inputValue() === 'DRAFTNAME' && (await drafts()).every(k => !k.includes('tool-')), `${bt}: ...and it was committed to the tool table (still there on the next load, draft gone)`);
+  // D338-3 key carries the site; D338-4 quota note
+  await load(); await openAI(); await page.fill('#ai-prompt', 'abc def ghi jkl');
+  check((await drafts()).some(k => k.includes(':ai-prompt') && !k.startsWith('gc:draft:index.html:')), `${bt}: key carries host and path`);
+  await page.evaluate(() => { Object.getPrototypeOf(window.localStorage).setItem = function () { throw new DOMException('full', 'QuotaExceededError'); }; });
+  await page.fill('#ai-prompt', 'abc def ghi jkl mno');
+  check(await page.inputValue('#ai-prompt') === 'abc def ghi jkl mno' && /storage is full or off/.test(await page.locator('#ai-prompt + .gc-draft-note[role=status]').innerText().catch(() => '')), `${bt}: storage full keeps the text and shows a note`);
   await browser.close();
 }
 const { lintPaths } = await import(pathToFileURL(join(ROOT, 'scripts', 'autosave-lint.mjs')).href);
