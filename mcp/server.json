@@ -1,0 +1,22 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.gigacook/tnc-sim",
+  "title": "TNC 426/430 Simulator",
+  "description": "Checks HEIDENHAIN Klartext programs with the simulator's own engine: control errors, cycle time and path lengths as tnc_* tools.",
+  "version": "1.0.0",
+  "_meta": {
+    "io.gigacook/entry": {
+      "owner": "gigacook",
+      "thing": "%USERPROFILE%\\Developer\\tnc-sim",
+      "protocol": ["2026-07-28", "2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"],
+      "run": { "command": "node", "args": ["%USERPROFILE%\\Developer\\tnc-sim\\mcp\\tnc-mcp.mjs"], "transport": "stdio" },
+      "tools": ["tnc_check", "tnc_machines", "tnc_example"],
+      "toolsHash": "f3488b7c998e2eaff45b93c0ccbf7b50f4bfb27aa421486063a17059a82228ff",
+      "destructive": [],
+      "probe": { "method": "server/discover", "fallback": "initialize", "tool": "tnc_machines", "args": {}, "timeoutMs": 5000 },
+      "clients": ["claude-code", "assgpt"],
+      "live": false,
+      "autofix": ["reregister", "restart"]
+    }
+  }
+}
