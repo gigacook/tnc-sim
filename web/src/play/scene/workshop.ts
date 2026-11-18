@@ -189,6 +189,36 @@ export function createWorkshop(o: WorkshopOptions): Workshop {
     if (walkable(player.x + dx, player.z)) player.x += dx;
     if (walkable(player.x, player.z + dz)) player.z += dz;
   }
+  /* Walking follows the time that really passed, not the number of frames drawn: `settle` walks the player for the
+   * time since it was last called, with the keys and the pad as they were during that time. It runs before every
+   * change of that input and in every frame, so a key held for 0.7 s moves the player the same distance at 60 frames
+   * a second and at one. Long stretches are walked in short steps, so a slow frame cannot carry the player through a
+   * wall; a stall longer than WALK_MAX (a sleeping laptop) is not walked. */
+  const WALK_STEP = 1 / 30;
+  const WALK_MAX = 2;
+  let walkedTo = performance.now();
+  function settle(now = performance.now()) {
+    let left = Math.min((now - walkedTo) / 1000, WALK_MAX);
+    if (left <= 0) return;
+    walkedTo = now;
+    if (view !== 'walk' || fly || !inputOn || !running) return;
+    const f = (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0) + stick.y;
+    const s = (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') ? 1 : 0) + stick.x;
+    const turn = (keys.has('ArrowLeft') ? 1 : 0) - (keys.has('ArrowRight') ? 1 : 0);
+    if (!f && !s && !turn) return;
+    const pace = keys.has('ShiftLeft') || keys.has('ShiftRight') ? 5.2 : 3.1;
+    // keys walk at full speed; the thumb pad walks as fast as it is pushed
+    const n = f || s ? Math.min(1, Math.hypot(f, s)) / Math.hypot(f, s) : 0;
+    while (left > 0) {
+      const dt = Math.min(left, WALK_STEP);
+      left -= dt;
+      player.yaw += turn * dt * 1.9;
+      if (!n) continue;
+      const sin = Math.sin(player.yaw);
+      const cos = Math.cos(player.yaw);
+      move((-sin * f + cos * s) * n * pace * dt, (-cos * f - sin * s) * n * pace * dt);
+    }
+  }
 
   const anchorOf = (t: TargetId): THREE.Vector3 => {
     if (t === 'fil15' || t === 'dmc125') return rigs[t].screen;
@@ -221,7 +251,9 @@ export function createWorkshop(o: WorkshopOptions): Workshop {
 
   /* ---- camera moves ---- */
   type Pose = { p: THREE.Vector3; q: THREE.Quaternion };
-  let fly: { from: Pose; to: Pose; t: number; dur: number; done?: () => void } | null = null;
+  // A camera move runs on the clock: it starts at `t0` and is over `dur` seconds later, whatever the frame rate. The
+  // frames only draw where it is; the timer ends it on time when no frame comes in time (a slow renderer, a hidden tab).
+  let fly: { from: Pose; to: Pose; t0: number; dur: number; done?: () => void; timer: number } | null = null;
   const lookPose = (p: THREE.Vector3, at: THREE.Vector3): Pose => {
     const m = new THREE.Matrix4().lookAt(p, at, new THREE.Vector3(0, 1, 0));
     return { p: p.clone(), q: new THREE.Quaternion().setFromRotationMatrix(m) };
@@ -240,6 +272,8 @@ export function createWorkshop(o: WorkshopOptions): Workshop {
   }
   const controlPose = (id: StationId) => lookPose(rigs[id].eye, rigs[id].screen);
   function startFly(toPose: Pose, done?: () => void, dur = 1.1) {
+    settle();
+    if (fly) clearTimeout(fly.timer); // a move that is replaced never arrives
     if (still) {
       camera.position.copy(toPose.p);
       camera.quaternion.copy(toPose.q);
@@ -247,7 +281,21 @@ export function createWorkshop(o: WorkshopOptions): Workshop {
       done?.();
       return;
     }
-    fly = { from: { p: camera.position.clone(), q: camera.quaternion.clone() }, to: toPose, t: 0, dur, done };
+    const f = { from: { p: camera.position.clone(), q: camera.quaternion.clone() }, to: toPose, t0: performance.now(), dur, done, timer: 0 };
+    f.timer = window.setTimeout(() => {
+      if (fly === f) endFly();
+    }, dur * 1000);
+    fly = f;
+  }
+  function endFly() {
+    const f = fly;
+    if (!f) return;
+    clearTimeout(f.timer);
+    camera.position.copy(f.to.p);
+    camera.quaternion.copy(f.to.q);
+    settle(); // the time of the move is not walked
+    fly = null;
+    f.done?.();
   }
   function facePlayer(at: THREE.Vector3) {
     player.yaw = Math.atan2(-(at.x - player.x), -(at.z - player.z));
@@ -288,17 +336,25 @@ export function createWorkshop(o: WorkshopOptions): Workshop {
     const free = !el || el === document.body || el === canvas;
     if (MOVE_KEYS.has(e.code)) {
       if (!free && e.code.startsWith('Arrow')) return;
+      settle();
       keys.add(e.code);
       if (e.code.startsWith('Arrow') && free) e.preventDefault();
     } else if (e.code === 'KeyE' && !e.repeat && view === 'walk' && !fly && target && (free || locked)) {
       o.onInteract(target);
     }
   };
-  const onKeyUp = (e: KeyboardEvent) => keys.delete(e.code);
-  const onBlur = () => keys.clear();
+  const onKeyUp = (e: KeyboardEvent) => {
+    settle();
+    keys.delete(e.code);
+  };
+  const onBlur = () => {
+    settle();
+    keys.clear();
+  };
   const onMouseMove = (e: MouseEvent) => {
     if (!inputOn || view !== 'walk' || fly) return;
     if (!locked && !dragging) return;
+    settle();
     player.yaw -= e.movementX * 0.0023;
     player.pitch = Math.max(-1.2, Math.min(1.2, player.pitch - e.movementY * 0.0023));
   };
@@ -324,6 +380,7 @@ export function createWorkshop(o: WorkshopOptions): Workshop {
   const onTouchMove = (e: PointerEvent) => {
     if (e.pointerType === 'mouse' || !dragging || e.pointerId !== lookId || view !== 'walk' || !inputOn || fly) return;
     if (touch) {
+      settle();
       player.yaw -= (e.clientX - touch.x) * 0.005;
       player.pitch = Math.max(-1.2, Math.min(1.2, player.pitch - (e.clientY - touch.y) * 0.005));
     }
@@ -336,6 +393,7 @@ export function createWorkshop(o: WorkshopOptions): Workshop {
   };
   const onLockChange = () => {
     locked = document.pointerLockElement === canvas;
+    settle();
     if (!locked) keys.clear();
     o.onLock(locked);
   };
@@ -376,30 +434,16 @@ export function createWorkshop(o: WorkshopOptions): Workshop {
     clock += dt;
     ring[ringN++ % ring.length] = rawMs;
 
-    if (view === 'walk' && !fly && inputOn) {
-      const speed = (keys.has('ShiftLeft') || keys.has('ShiftRight') ? 5.2 : 3.1) * dt;
-      const f = (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0) + stick.y;
-      const s = (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') ? 1 : 0) + stick.x;
-      const turn = (keys.has('ArrowLeft') ? 1 : 0) - (keys.has('ArrowRight') ? 1 : 0);
-      player.yaw += turn * dt * 1.9;
-      if (f || s) {
-        // keys walk at full speed; the thumb pad walks as fast as it is pushed
-        const n = Math.min(1, Math.hypot(f, s)) / Math.hypot(f, s);
-        const sin = Math.sin(player.yaw);
-        const cos = Math.cos(player.yaw);
-        move((-sin * f + cos * s) * n * speed, (-cos * f - sin * s) * n * speed);
-      }
-    }
+    // `dt` (at most 0.1 s a frame) drives only what is decoration; walking and camera moves follow the real clock
+    settle();
 
     if (fly) {
-      fly.t = Math.min(1, fly.t + dt / fly.dur);
-      const e = fly.t < 0.5 ? 4 * fly.t ** 3 : 1 - (-2 * fly.t + 2) ** 3 / 2;
-      camera.position.lerpVectors(fly.from.p, fly.to.p, e);
-      camera.quaternion.slerpQuaternions(fly.from.q, fly.to.q, e);
-      if (fly.t >= 1) {
-        const done = fly.done;
-        fly = null;
-        done?.();
+      const t = Math.min(1, Math.max(0, (performance.now() - fly.t0) / (fly.dur * 1000)));
+      if (t >= 1) endFly();
+      else {
+        const e = t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2;
+        camera.position.lerpVectors(fly.from.p, fly.to.p, e);
+        camera.quaternion.slerpQuaternions(fly.from.q, fly.to.q, e);
       }
     } else if (view === 'walk') {
       camera.position.set(player.x, EYE, player.z);
@@ -473,6 +517,7 @@ export function createWorkshop(o: WorkshopOptions): Workshop {
       refreshDrives();
     },
     setView(v, station) {
+      settle();
       if (station) orbitOf = station;
       else if (v === 'orbit') orbitOf = Math.hypot(player.x - rigs.fil15.stand.x, player.z - rigs.fil15.stand.z) < Math.hypot(player.x - rigs.dmc125.stand.x, player.z - rigs.dmc125.stand.z) ? 'fil15' : 'dmc125';
       if (v !== 'walk' && document.pointerLockElement === canvas) document.exitPointerLock();
@@ -483,6 +528,7 @@ export function createWorkshop(o: WorkshopOptions): Workshop {
       startFly(v === 'walk' ? playerPose() : v === 'overview' ? overviewPose() : orbitPose(), undefined, 0.9);
     },
     flyTo(station, done) {
+      settle();
       if (document.pointerLockElement === canvas) document.exitPointerLock();
       keys.clear();
       const r = rigs[station];
@@ -493,6 +539,7 @@ export function createWorkshop(o: WorkshopOptions): Workshop {
       startFly(controlPose(station), done, 1.1);
     },
     flyBack(station) {
+      settle();
       const r = rigs[station];
       const c = controlPose(station);
       camera.position.copy(c.p);
@@ -504,6 +551,7 @@ export function createWorkshop(o: WorkshopOptions): Workshop {
       startFly(playerPose(), undefined, 1.0);
     },
     goTo(t) {
+      settle();
       const a = anchorOf(t);
       const st = t === 'fil15' || t === 'dmc125' ? { x: rigs[t].stand.x, z: rigs[t].stand.z } : spotNear(a, t === 'big' || t === 'arm' ? 2.6 : 1.5);
       player.x = st.x;
@@ -514,15 +562,17 @@ export function createWorkshop(o: WorkshopOptions): Workshop {
     },
     setRunning(on) {
       if (on === running) return;
+      settle();
       running = on;
       keys.clear();
       cancelAnimationFrame(raf);
       if (on) {
-        last = performance.now();
+        last = walkedTo = performance.now();
         raf = requestAnimationFrame(frame);
       }
     },
     setInput(on) {
+      settle();
       inputOn = on;
       if (!on) {
         keys.clear();
@@ -531,6 +581,7 @@ export function createWorkshop(o: WorkshopOptions): Workshop {
       }
     },
     setStick(x, y) {
+      settle();
       stick.x = Math.max(-1, Math.min(1, x));
       stick.y = Math.max(-1, Math.min(1, y));
     },
@@ -564,6 +615,7 @@ export function createWorkshop(o: WorkshopOptions): Workshop {
       });
       // turn to them, also when the camera is still on its way back from a control
       if (view === 'walk') {
+        settle();
         facePlayer(new THREE.Vector3(spot.x, 1.45, spot.z));
         startFly(playerPose(), undefined, 0.6);
       }
@@ -573,7 +625,10 @@ export function createWorkshop(o: WorkshopOptions): Workshop {
       canvas.focus({ preventScroll: true });
       Promise.resolve(canvas.requestPointerLock?.()).catch(() => {});
     },
-    pose: () => ({ x: player.x, z: player.z, yaw: player.yaw }),
+    pose() {
+      settle(); // where the player is now, not where the last frame drew them
+      return { x: player.x, z: player.z, yaw: player.yaw };
+    },
     stats() {
       const n = Math.min(ringN, ring.length);
       const a = Array.from(ring.subarray(0, n)).sort((x, y) => x - y);
@@ -584,6 +639,7 @@ export function createWorkshop(o: WorkshopOptions): Workshop {
     },
     dispose() {
       cancelAnimationFrame(raf);
+      if (fly) clearTimeout(fly.timer);
       ro.disconnect();
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);

@@ -20,12 +20,44 @@ import { SECRETS } from '../../web/src/play/secrets.ts';
 const dir = requireBuild('play');
 const c = checks('play: start, stations, state kept, interlocks');
 const measure = process.argv.includes('--measure');
+// --slow or --slow=6: a machine without a GPU and with a slow processor (a CI runner): software rendering and the
+// page's main thread slowed down by that factor. Every check has to pass there too: none may depend on frame rate.
+const slowArg = process.argv.find((a) => a === '--slow' || a.startsWith('--slow='));
+const slow = slowArg ? Number(slowArg.split('=')[1] || 4) : 0;
 const server = await serve(dir);
 // the measured run uses the machine's GPU; the checks run the same either way
-const { browser } = await launch(measure ? ['--use-angle=d3d11', '--enable-gpu'] : []);
+const { browser } = await launch(measure ? ['--use-angle=d3d11', '--enable-gpu'] : slow ? ['--use-gl=angle', '--use-angle=swiftshader', '--disable-gpu'] : []);
+/** a page of this run; under --slow its main thread (the simulator frame included) runs `slow` times slower */
+async function open(ctx) {
+  const pg = await ctx.newPage();
+  if (slow) await (await ctx.newCDPSession(pg)).send('Emulation.setCPUThrottlingRate', { rate: slow });
+  return pg;
+}
 const out = shots('play');
 const NAME = 'PLAY_E2E';
 
+/** In-page stopwatch from the page receiving the next `trigger` event to the machine view being on screen. Read with
+ *  `window.__sw`. The page's own clock leaves out how long this script and the browser take to deliver the input. */
+const stopwatch = (pg, trigger) =>
+  pg.evaluate((type) => {
+    const sw = { t0: 0, t1: 0 };
+    window.__sw = sw;
+    const shop = document.querySelector('.shop');
+    window.addEventListener(
+      type,
+      () => {
+        sw.t0 = performance.now();
+      },
+      { capture: true, once: true },
+    );
+    new MutationObserver((_, o) => {
+      if (shop.dataset.mode !== 'machine') return;
+      sw.t1 = performance.now();
+      o.disconnect();
+    }).observe(shop, { attributes: true, attributeFilter: ['data-mode'] });
+  }, trigger);
+/** the list's "go there" has arrived when the prompt names the station (the walk there is a camera move) */
+const promptNames = (pg, station) => pg.waitForFunction((n) => (document.querySelector('.hud-prompt')?.textContent ?? '').includes(n), station, { timeout: 15000 }).then(() => true, () => false);
 const stored = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('tnc.settings.v1') || '{}').lang);
 const htmlLang = (page) => page.evaluate(() => document.documentElement.lang);
 
@@ -34,7 +66,7 @@ try {
   {
     const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
     await ctx.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
-    const page = await ctx.newPage();
+    const page = await open(ctx);
     const errors = [];
     page.on('pageerror', (e) => errors.push(e.message));
     await page.goto(server.url + '/play');
@@ -123,7 +155,7 @@ try {
 
   const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
   await ctx.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
-  const page = await ctx.newPage();
+  const page = await open(ctx);
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
 
@@ -190,7 +222,7 @@ try {
   c.ok(p0.z - p1.z > 0.8, 'W walks down the shop floor', JSON.stringify([p0, p1]));
   await page.locator('.hud-rail .hud-btn').first().click();
   await page.locator('.st-list li', { has: page.locator('h3', { hasText: 'fil15' }) }).locator('.hud-quiet').click();
-  await page.waitForTimeout(1300);
+  await promptNames(page, 'fil15');
   await page.locator('.shop-canvas').focus();
   const prompt = await page.locator('.hud-prompt').innerText().catch(() => '');
   c.ok(/Öppna styrningen/.test(prompt) && /fil15/.test(prompt), 'at fil15 the prompt names the action and the station', prompt.replace(/\s+/g, ' '));
@@ -203,16 +235,22 @@ try {
   c.ok(!insideMachine && p2.x > -9 && p2.z > -12, 'walking into the machine stops at it (no clipping through machine or wall)', JSON.stringify(p2));
 
   /* ---- E opens the station in front of the player; the sweep takes 0.8 to 1.5 s ---- */
+  // The sweep runs on the clock, not on frames, so it is over after its time on any machine. What a slow machine adds
+  // is waiting for a frame that is being drawn: one when the time is up, one before the view is put on screen. The
+  // bound allows for two of this machine's slowest frames: 0.03 s with a graphics card, seconds without one (CI).
   await page.locator('.hud-rail .hud-btn').first().click();
+  await page.evaluate(() => window.__tncPlay.resetStats());
   await page.locator('.st-list li', { has: page.locator('h3', { hasText: 'fil15' }) }).locator('.hud-quiet').click();
-  await page.waitForTimeout(1300);
+  await promptNames(page, 'fil15');
   await page.locator('.shop-canvas').focus();
-  const t0 = Date.now();
+  await stopwatch(page, 'keydown');
   await page.keyboard.press('KeyE');
   const in1 = await page.waitForSelector('.shop[data-mode="machine"]', { timeout: 8000 }).then(() => true, () => false);
-  const sweep = Date.now() - t0;
+  const sw = await page.evaluate(() => ({ ...window.__sw, frame: window.__tncPlay.stats().maxMs }));
+  const sweep = Math.round(sw.t1 - sw.t0);
+  const most = Math.round(1900 + 2 * sw.frame);
   c.ok(in1, 'E at fil15 opens its control');
-  c.ok(sweep >= 800 && sweep <= 1900, `the sweep into the machine view takes about a second (${sweep} ms, bound 0.8 to 1.5 s plus the fade)`);
+  c.ok(in1 && sweep >= 800 && sweep <= most, `the sweep into the machine view takes about a second (${sweep} ms from the key to the view; bound 0.8 to 1.5 s plus the fade plus two frames of ${Math.round(sw.frame)} ms = ${most} ms)`, JSON.stringify(sw));
   await sim.waitForFunction(() => window.TNC_UI.state.machine === '426', null, { timeout: 5000 }).catch(() => {});
   let s = await simState();
   c.ok(s.machine === '426', 'fil15 selects machine 426 in the simulator', s.machine);
@@ -424,7 +462,7 @@ try {
   /* ---- reduced motion: poster or grid only, no film; the machine view switches at once ---- */
   const calm = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, reducedMotion: 'reduce', hasTouch: true });
   await calm.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
-  const p = await calm.newPage();
+  const p = await open(calm);
   await p.goto(server.url + '/play');
   await p.waitForSelector('.land-start');
   c.ok((await p.locator('video').count()) === 0, 'reduced motion: the landing has no film element');
@@ -437,11 +475,12 @@ try {
   const small = await p.evaluate(() => [...document.querySelectorAll('.hud-rail .hud-btn')].map((b) => b.getBoundingClientRect()).filter((r) => r.width < 44 || r.height < 44).length);
   c.ok(small === 0, '390x844: every rail control is at least 44 x 44 px');
   await p.locator('.hud-rail .hud-btn').first().click();
-  const t1 = Date.now();
+  await stopwatch(p, 'click');
   await p.locator('.st-list li').first().locator('.st-acts .hud-btn').first().click();
-  await p.waitForSelector('.shop[data-mode="machine"]', { timeout: 5000 }).catch(() => {});
-  const instant = Date.now() - t1;
-  c.ok(instant < 500, `reduced motion: the machine view opens at once (${instant} ms)`);
+  const calmIn = await p.waitForSelector('.shop[data-mode="machine"]', { timeout: 5000 }).then(() => true, () => false);
+  const calmSw = await p.evaluate(() => window.__sw);
+  const instant = Math.round(calmSw.t1 - calmSw.t0);
+  c.ok(calmIn && instant >= 0 && instant < 500, `reduced motion: the machine view opens at once (${instant} ms from the click to the view, in the same turn as the click)`, JSON.stringify(calmSw));
   await calm.close();
 
   /* ---- a phone: the thumb pad walks, a drag looks around. Chromium touch emulation, not a real phone. ---- */
@@ -449,7 +488,7 @@ try {
   await phone.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
   // this context has no "after" pictures, which keeps the live-simulator mode of 333 under test
   await phone.route('**/play/after/**', (r) => r.fulfill({ status: 404, body: 'not found' }));
-  const ph = await phone.newPage();
+  const ph = await open(phone);
   const phErrors = [];
   ph.on('pageerror', (e) => phErrors.push(e.message));
   await ph.goto(server.url + '/play');
@@ -507,8 +546,13 @@ try {
   // a drag on the floor looks around, also while the other thumb holds the pad
   await finger('touchStart', [[cx, cy]]);
   await finger('touchStart', [[cx, cy], [300, 420]]);
-  for (const x of [280, 250, 220, 190]) await finger('touchMove', [[cx, cy], [x, 420]]);
-  await ph.waitForTimeout(150);
+  // one frame between the moves: the browser hands a page the moves of one frame as a single event, and the view
+  // turns by the distance between two events, so on a slow machine four quick moves could arrive as fewer
+  for (const x of [280, 250, 220, 190]) {
+    await finger('touchMove', [[cx, cy], [x, 420]]);
+    await ph.evaluate(() => new Promise((r) => requestAnimationFrame(() => r())));
+  }
+  await ph.waitForFunction((yaw) => Math.abs(window.__tncPlay.pose().yaw - yaw) > 0.3, w4.yaw, { timeout: 5000 }).catch(() => {});
   const w5 = await pose();
   await finger('touchEnd', []);
   c.ok(Math.abs(w5.yaw - w4.yaw) > 0.3, `touch: a drag on the floor turns the view (${(w5.yaw - w4.yaw).toFixed(2)} rad) with the pad held`, JSON.stringify([w4.yaw, w5.yaw]));
