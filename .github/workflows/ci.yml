@@ -109,8 +109,18 @@ jobs:
       - name: Polar blocks (dialog and engine agree)
         if: hashFiles('tests/polar.js') != ''
         run: node tests/polar.js
+      # Playwright 1.56's installer downloads the browser and then never finishes unpacking it under Node 26 (run 44312527425:
+      # 100% at 13:19:53, no further line for 20 minutes). Under Node 22 it completes, as in the ui job. The browser cache
+      # does not depend on the Node version, so the tests below still run on Node 26.
+      - name: Node 22 for the browser download
+        uses: actions/setup-node@v4
+        with: { node-version: 22 }
       - name: Chromium for the browser tests
         run: npx playwright install --with-deps chromium
+        timeout-minutes: 10
+      - name: Back to Node 26 for the tests
+        uses: actions/setup-node@v4
+        with: { node-version: 26 }
       - name: Bridge contract v2 in a real browser
         if: hashFiles('tests/bridge.js') != ''
         run: node tests/bridge.js

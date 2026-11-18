@@ -556,7 +556,15 @@ const NAME = 'QA Tester';
 const S = (p) => p.evaluate(() => { const s = TNC_UI.state; return { pgm: s.pgm, text: s.text, names: Object.keys(s.pgms[s.machine]), tools: s.tools[s.machine] || [],
   errors: s.res.errors.map((e) => e.msg), editing: s.editing, mode: s.mode, tt: !!s.tt, mgt: !!s.mgt }; });
 const ready = (p) => p.waitForFunction(() => window.TNC_UI && TNC_UI.state.res, null, { timeout: 30000 });
-async function reload(p) { await p.waitForTimeout(700); await p.reload(); await ready(p); await p.waitForTimeout(500); }
+/* The profile is written 300 ms after an edit, and the write is asynchronous: on a slow machine (CI, software GL) a fixed
+   pause can end before it. So the reload waits until the stored profile holds the program text on screen. */
+const saved = (p) => p.waitForFunction(() => { try {
+  const s = TNC_UI.state, j = JSON.parse(localStorage.getItem('tnc.profile.v2') || 'null');
+  if (!j) return true;                                             // no profile yet: nothing is being saved
+  const m = (j.machines || {})[s.machine], t = m && m.pgms ? m.pgms[s.pgm] : undefined;
+  return t === undefined || t === s.text;
+} catch { return true; } }, null, { timeout: 15000 }).catch(() => {});
+async function reload(p) { await p.waitForTimeout(700); await saved(p); await p.reload(); await ready(p); await p.waitForTimeout(500); }
 async function dl(p, dir, fn, timeout = 8000) { const [d] = await Promise.all([p.waitForEvent('download', { timeout }), fn()]); const f = join(dir, d.suggestedFilename()); await d.saveAs(f); return f; }
 async function upload(p, files) {
   const fcP = p.waitForEvent('filechooser', { timeout: 8000 });
