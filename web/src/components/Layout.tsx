@@ -1,25 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router';
 import { useAuth } from '../lib/auth';
+import { useDisclosure } from '../lib/disclosure';
 
 export function Layout() {
   const { user, info, signOut } = useAuth();
   // phones: the page links fold behind a Menu button (disclosure); wide screens show them inline
-  const [open, setOpen] = useState(false);
-  const toggle = useRef<HTMLButtonElement>(null);
+  const { open, setOpen, toggle } = useDisclosure();
   const { pathname } = useLocation();
-  useEffect(() => setOpen(false), [pathname]);
-  useEffect(() => {
-    if (!open) return;
-    const esc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setOpen(false);
-        toggle.current?.focus();
-      }
-    };
-    document.addEventListener('keydown', esc);
-    return () => document.removeEventListener('keydown', esc);
-  }, [open]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new page is the trigger; the path is not read here
+  useEffect(() => setOpen(false), [pathname, setOpen]);
 
   return (
     <div className="shell">
@@ -58,7 +48,7 @@ export function Layout() {
           )}
           <span className="muted">{user?.name}</span>
           {!info?.local && (
-            <button className="ghost" onClick={signOut}>
+            <button type="button" className="ghost" onClick={signOut}>
               Sign out
             </button>
           )}

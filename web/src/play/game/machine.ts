@@ -3,8 +3,9 @@
 // and, when the event is not allowed in this state, why. Nothing here touches the CNC interpreter:
 // the only thing that reaches the simulator from an interlock is `tnc:lock`.
 
+import type { MachineId } from '../../lib/bridge.ts';
+
 export type StationId = 'fil15' | 'dmc125';
-export type MachineId = '426' | '430';
 export const STATION_IDS: readonly StationId[] = ['fil15', 'dmc125'];
 /** Fictional shop machines and the controller each one carries. */
 export const STATION_MACHINE: Record<StationId, MachineId> = { fil15: '426', dmc125: '430' };
@@ -15,6 +16,7 @@ export const STATION_MACHINE: Record<StationId, MachineId> = { fil15: '426', dmc
  */
 export type Phase = 'control' | 'floor' | 'doorOpen' | 'isolated' | 'toolLoose' | 'spindleEmpty' | 'toolSeated';
 export type Item = 'wrench' | 'oil' | 'gauge';
+export const ITEMS: readonly Item[] = ['wrench', 'oil', 'gauge'];
 
 export interface RackTool {
   id: string;
@@ -56,8 +58,8 @@ export interface Game {
   carrying: string | null;
 }
 
-export const OIL_RATE_PP_PER_MIN = 2;
-export const OIL_LOW = 20;
+const OIL_RATE_PP_PER_MIN = 2;
+const OIL_LOW = 20;
 
 export function newGame(): Game {
   return {

@@ -71,9 +71,9 @@ export type AppMessage =
 /* ---------- validation ---------- */
 const MAX_TEXT = 4_000_000; // a program far beyond any real one; stops a hostile frame from flooding the app
 const MAX_TOOLS = 1000;
-const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+export const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const str = (v: unknown, max = 256): v is string => typeof v === 'string' && v.length <= max;
-const num = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+export const num = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 const bool = (v: unknown): v is boolean => typeof v === 'boolean';
 const oneOf = <T extends string>(v: unknown, set: readonly T[]): v is T => typeof v === 'string' && (set as readonly string[]).includes(v);
 
@@ -84,7 +84,7 @@ export const QUALITIES = ['low', 'medium', 'high'] as const;
 export const MOTIONS = ['full', 'reduced'] as const;
 
 /** A valid tool row or null. Only plain numbers, strings and booleans survive. */
-export function parseTool(v: unknown): BridgeTool | null {
+function parseTool(v: unknown): BridgeTool | null {
   if (!isObj(v) || !num(v.t) || !num(v.l) || !num(v.r)) return null;
   if (v.name !== undefined && !str(v.name, 64)) return null;
   const out: BridgeTool = { t: v.t, l: v.l, r: v.r };
@@ -95,7 +95,7 @@ export function parseTool(v: unknown): BridgeTool | null {
   return out;
 }
 
-export function parseTools(v: unknown): BridgeTool[] | null {
+function parseTools(v: unknown): BridgeTool[] | null {
   if (!Array.isArray(v) || v.length > MAX_TOOLS) return null;
   const out: BridgeTool[] = [];
   for (const row of v) {

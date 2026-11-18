@@ -103,7 +103,6 @@ try {
     const errors = [];
     page.on('pageerror', (e) => errors.push(e.message));
     await page.goto(server.url + '/work');
-    const frame = page.frameLocator('main.work > iframe');
     const handle = await page.waitForSelector('main.work > iframe', { timeout: 15000 });
     const sim = await handle.contentFrame();
     const booted = await sim.waitForFunction(() => window.TNC_UI && window.TNC_UI.state && window.TNC_UI.state.res, null, { timeout: 45000 }).then(() => true, () => false);
@@ -115,7 +114,6 @@ try {
     const play = seen.filter((p) => p.startsWith('/play') || [...playOnly].some((n) => p.includes(n.replace(/\.(js|css)$/, '-'))));
     c.ok(play.length === 0, `${w}x${h}: no Play asset requested (${seen.length} requests)`, play.join(', '));
     c.ok(errors.length === 0, `${w}x${h}: no page error in the shell`, errors.join(' | '));
-    void frame;
     await page.waitForTimeout(800);
     await page.screenshot({ path: join(out, `shell-${w}x${h}.png`) });
     if (w === 1920) {

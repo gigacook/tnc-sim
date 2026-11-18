@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 export const DIST = join(ROOT, 'dist');
-export const ARTIFACTS = join(ROOT, 'artifacts');
+const ARTIFACTS = join(ROOT, 'artifacts');
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -104,7 +104,6 @@ export async function launch(args = []) {
 export function checks(name) {
   let pass = 0;
   const failures = [];
-  const waiting = [];
   console.log(`\n== ${name} ==`);
   return {
     ok(cond, what, detail = '') {
@@ -117,16 +116,10 @@ export function checks(name) {
       }
       return !!cond;
     },
-    /** a step that cannot pass yet because another lane has not landed its part; counted as a failure, reported apart */
-    waits(what, on) {
-      waiting.push(`${what} -- waits on: ${on}`);
-      console.log(`  WAIT  ${what}  (waits on: ${on})`);
-    },
     done() {
-      console.log(`\n${name}: ${pass} passed, ${failures.length} failed, ${waiting.length} waiting`);
+      console.log(`\n${name}: ${pass} passed, ${failures.length} failed`);
       for (const f of failures) console.log('  failed: ' + f);
-      for (const w of waiting) console.log('  waiting: ' + w);
-      return failures.length + waiting.length ? 1 : 0;
+      return failures.length ? 1 : 0;
     },
   };
 }

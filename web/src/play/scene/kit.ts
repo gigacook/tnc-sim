@@ -7,7 +7,7 @@ export const hsl = (h: number, s: number, l: number) => new THREE.Color().setHSL
 const css = (h: number, s: number, l: number, a = 1) => `hsl(${h} ${s}% ${l}% / ${a})`;
 
 /** A brand token as a colour (the dark value: Play runs with data-theme="dark"). */
-export function token(name: string, fallback: THREE.Color): THREE.Color {
+function token(name: string, fallback: THREE.Color): THREE.Color {
   try {
     const probe = document.createElement('span');
     probe.style.color = `var(${name})`;
@@ -30,7 +30,7 @@ export interface Palette {
   success: THREE.Color;
   ink: THREE.Color;
 }
-export function readPalette(): Palette {
+function readPalette(): Palette {
   return {
     accent: token('--gc-accent', hsl(210, 100, 58)),
     warning: token('--gc-warning', hsl(36, 100, 52)),

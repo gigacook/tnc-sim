@@ -104,7 +104,6 @@ try {
   c.ok(!insideMachine && p2.x > -9 && p2.z > -12, 'walking into the machine stops at it (no clipping through machine or wall)', JSON.stringify(p2));
 
   /* ---- E opens the station in front of the player; the sweep takes 0.8 to 1.5 s ---- */
-  await page.locator('.st-list').count();
   await page.locator('.hud-rail .hud-btn').first().click();
   await page.locator('.st-list li', { has: page.locator('h3', { hasText: 'fil15' }) }).locator('.hud-quiet').click();
   await page.waitForTimeout(1300);

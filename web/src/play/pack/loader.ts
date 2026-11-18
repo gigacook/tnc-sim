@@ -3,7 +3,9 @@
 // anything unknown is dropped and anything out of range rejects the pack. Schema: README.md beside this file.
 // Plain TypeScript (no DOM at import time) so the validator runs under `node --test`.
 
-export const PACK_URL = '/play/pack/pack.json';
+import { isObj } from '../../lib/bridge.ts';
+
+const PACK_URL = '/play/pack/pack.json';
 
 export interface PackFigure {
   /** shown in the caption */
@@ -44,7 +46,6 @@ export interface Pack {
 
 export type PackResult = { ok: true; pack: Pack } | { ok: false; errors: string[] };
 
-const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const COLOUR = /^#[0-9a-fA-F]{6}$/;
 // text shown in a caption: letters, digits, common punctuation. No angle brackets, no control characters.
 const plainText = (s: string) => !/[<>]/.test(s) && ![...s].some((ch) => ch.charCodeAt(0) < 32 || ch.charCodeAt(0) === 127);

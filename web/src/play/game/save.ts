@@ -1,6 +1,8 @@
 // The Play save: `tnc.play.save.v1` in localStorage. Read back through a validator, so a hand-edited or
 // damaged save can never put the game in a state the state machine does not know. Business never reads it.
-import { newGame, rackTool, STATION_IDS, type Game, type Item, type StationId } from './machine.ts';
+import { isObj, num } from '../../lib/bridge.ts';
+import type { KV } from '../../lib/settings.ts';
+import { ITEMS, newGame, rackTool, STATION_IDS, type Game, type Item, type StationId } from './machine.ts';
 import { newScheduler, type Npc, type SchedulerState } from './scheduler.ts';
 
 export const SAVE_KEY = 'tnc.play.save.v1';
@@ -21,10 +23,7 @@ export interface Save {
   scheduler: SchedulerState;
 }
 
-export const DEFAULT_PREFS: Prefs = { onboarded: false, captions: true, muted: false, npc: { boss: true, office: true } };
-const ITEMS: readonly Item[] = ['wrench', 'oil', 'gauge'];
-const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
-const fin = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+const DEFAULT_PREFS: Prefs = { onboarded: false, captions: true, muted: false, npc: { boss: true, office: true } };
 
 export function toSave(g: Game, secrets: readonly string[], scheduler: SchedulerState): Save {
   const stations = {} as Save['stations'];
@@ -41,7 +40,7 @@ export function parseSave(raw: unknown): Save | null {
   const stations = {} as Save['stations'];
   for (const id of STATION_IDS) {
     const s = raw.stations[id];
-    if (!isObj(s) || !fin(s.oil) || typeof s.power !== 'boolean') return null;
+    if (!isObj(s) || !num(s.oil) || typeof s.power !== 'boolean') return null;
     if (s.equipped !== null && !(typeof s.equipped === 'string' && rackTool(s.equipped))) return null;
     stations[id] = { oil: Math.min(100, Math.max(0, s.oil)), power: s.power, equipped: s.equipped as string | null };
   }
@@ -50,7 +49,7 @@ export function parseSave(raw: unknown): Save | null {
   const secrets = Array.isArray(raw.secrets) ? raw.secrets.filter((x): x is string => typeof x === 'string' && x.length <= 32).slice(0, 64) : [];
   let scheduler = newScheduler();
   const sc = raw.scheduler;
-  if (isObj(sc) && fin(sc.activeMs) && fin(sc.lastAtMs) && sc.activeMs >= 0 && sc.lastAtMs >= 0 && sc.lastAtMs <= sc.activeMs) {
+  if (isObj(sc) && num(sc.activeMs) && num(sc.lastAtMs) && sc.activeMs >= 0 && sc.lastAtMs >= 0 && sc.lastAtMs <= sc.activeMs) {
     scheduler = { activeMs: sc.activeMs, lastAtMs: sc.lastAtMs, last: sc.last === 'boss' || sc.last === 'office' ? sc.last : null };
   }
   return { v: 1, stations, held, secrets, scheduler };
@@ -67,7 +66,7 @@ export function fromSave(s: Save): Game {
   return g;
 }
 
-export function parsePrefs(raw: unknown): Prefs {
+function parsePrefs(raw: unknown): Prefs {
   const p: Prefs = { ...DEFAULT_PREFS, npc: { ...DEFAULT_PREFS.npc } };
   if (!isObj(raw)) return p;
   if (typeof raw.onboarded === 'boolean') p.onboarded = raw.onboarded;
@@ -78,11 +77,6 @@ export function parsePrefs(raw: unknown): Prefs {
     if (typeof raw.npc.office === 'boolean') p.npc.office = raw.npc.office;
   }
   return p;
-}
-
-export interface KV {
-  getItem(k: string): string | null;
-  setItem(k: string, v: string): void;
 }
 
 function readJson(store: KV | null, key: string): unknown {

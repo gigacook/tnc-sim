@@ -3,7 +3,7 @@
 // tab visible), never during setup, modal editing or error recovery, never a character the player switched off.
 
 export type Npc = 'boss' | 'office';
-export const NPCS: readonly Npc[] = ['boss', 'office'];
+const NPCS: readonly Npc[] = ['boss', 'office'];
 
 export interface SchedulerState {
   /** active play time so far, ms */
@@ -30,7 +30,7 @@ export interface SchedulerContext {
 
 export const MIN_GAP_MS = 5 * 60 * 1000;
 /** one frame of a stalled or throttled tab never counts for more than this */
-export const MAX_TICK_MS = 1000;
+const MAX_TICK_MS = 1000;
 
 export const newScheduler = (): SchedulerState => ({ activeMs: 0, lastAtMs: 0, last: null });
 

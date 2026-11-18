@@ -14,7 +14,7 @@ export interface Settings {
   sound: boolean;
 }
 
-export const DEFAULT_SETTINGS: Settings = { lang: 'sv', skin: '426', env: 'cold-steel', quality: 'medium', motion: 'full', sound: true };
+const DEFAULT_SETTINGS: Settings = { lang: 'sv', skin: '426', env: 'cold-steel', quality: 'medium', motion: 'full', sound: true };
 
 export interface KV {
   getItem(k: string): string | null;

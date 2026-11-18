@@ -81,6 +81,49 @@ jobs:
         if: always()
         with: { name: "ui-screenshots-${{ strategy.job-index }}", path: local/ui-shots, if-no-files-found: ignore }
 
+  editions:
+    # Business (/work) and Play (/play): both builds, the Play unit tests, the showcase programs and the end-to-end
+    # scripts against the built editions on a plain static host. Node 26: the tests import TypeScript sources directly.
+    name: Editions (Business + Play builds, unit and end-to-end tests)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 26, cache: npm, cache-dependency-path: "package-lock.json\nweb/package-lock.json" }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: npm ci
+      - run: npm ci
+        working-directory: web
+      - name: Simulator single file (each edition carries a copy)
+        run: python3 build.py
+      - name: Business build
+        run: npm run build:business
+      - name: Play build
+        run: npm run build:play
+      - name: Play game, scheduler, pack, bridge and settings (unit)
+        run: node --test tests/play/
+      - name: Showcase programs
+        if: hashFiles('tests/showcase.js') != ''
+        run: node tests/showcase.js
+      - name: Polar blocks (dialog and engine agree)
+        if: hashFiles('tests/polar.js') != ''
+        run: node tests/polar.js
+      - name: Chromium for the browser tests
+        run: npx playwright install --with-deps chromium
+      - name: Bridge contract v2 in a real browser
+        if: hashFiles('tests/bridge.js') != ''
+        run: node tests/bridge.js
+      - name: Business has nothing of Play
+        run: node tests/e2e/business-isolation.mjs
+      - name: Business core (create, edit, run, save, reload, reopen, rerun)
+        run: node tests/e2e/core.mjs
+      - name: Play (start, stations, state kept, interlocks)
+        run: node tests/e2e/play.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: edition-screenshots, path: "artifacts/**/*.png", if-no-files-found: ignore }
+
   desktop:
     # Unsigned build validation only. Code signing / notarisation / store distribution are NOT set up
     # (they need certificates as repository secrets; see README "Desktop app").

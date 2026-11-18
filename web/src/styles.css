@@ -218,9 +218,6 @@ table.grid { width: 100%; border-collapse: collapse; }
 .simframe { position: relative; width: 100%; height: 100%; min-height: 400px; background: #000; }
 .simframe iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 .simframe-loading { position: absolute; inset: 0; display: grid; place-items: center; color: #8a9aab; pointer-events: none; }
-.sim-page { display: flex; flex-direction: column; height: 100%; }
-.sim-page .toolbar { padding: 8px 16px; border-bottom: 1px solid var(--line); }
-.sim-page .simframe { flex: 1; }
 
 .meter { display: flex; flex-direction: column; gap: 6px; }
 .meter-bar { height: 8px; background: var(--panel-2); border-radius: 4px; overflow: hidden; }
@@ -261,15 +258,6 @@ table.grid { width: 100%; border-collapse: collapse; }
   .topbar { gap: 10px; padding: 0 12px; }
   .topbar-right .muted { display: none; }
   .page { padding: 16px; }
-  .sim-page .toolbar { padding: 6px 12px; }
   .main-col .toolbar form { flex-wrap: wrap; min-width: 0; }
   .main-col .toolbar form input.grow { flex: 1 1 100%; min-width: 0; }
-  /* the simulator gets every pixel under one slim bar: the hint ellipsises (and gives way to a save result), the frame fills the rest */
-  .sim-page .simframe { min-height: 0; }
-  .sim-page .toolbar { flex-wrap: nowrap; gap: 8px; padding: 4px 12px; }
-  .sim-page .toolbar > .muted { flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 12.5px; }
-  .sim-page .toolbar:has(.ok-text, .error) > .muted { display: none; }
-  .sim-page .toolbar > .row { flex: 0 0 auto; max-width: 100%; min-width: 0; font-size: 12.5px; }
-  .sim-page .toolbar > .row > span { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-  .sim-page .toolbar button.primary { flex: none; white-space: nowrap; }
 }

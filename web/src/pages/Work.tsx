@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { createBridge, type Bridge } from '../lib/bridge';
+import { useDisclosure } from '../lib/disclosure';
 import { browserStore, readSettings, watchSettings } from '../lib/settings';
 import '../tokens.css';
 import '../work.css';
@@ -51,11 +52,10 @@ const T = {
 export function Work() {
   const frame = useRef<HTMLIFrameElement>(null);
   const bridge = useRef<Bridge | null>(null);
-  const toggle = useRef<HTMLButtonElement>(null);
   const { info, user } = useAuth();
   const qc = useQueryClient();
   const [lang, setLang] = useState(() => readSettings(browserStore()).lang);
-  const [open, setOpen] = useState(false);
+  const { open, setOpen, toggle } = useDisclosure();
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<{ ok: boolean; text: string; id?: string } | null>(null);
   const t = T[lang];
@@ -85,17 +85,6 @@ export function Work() {
       else root.dataset.theme = before;
     };
   }, []);
-  useEffect(() => {
-    if (!open) return;
-    const esc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setOpen(false);
-        toggle.current?.focus();
-      }
-    };
-    document.addEventListener('keydown', esc);
-    return () => document.removeEventListener('keydown', esc);
-  }, [open]);
 
   async function store() {
     setBusy(true);

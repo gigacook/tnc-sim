@@ -1,6 +1,6 @@
 // What can be done at each thing in the workshop, given the game state. One list feeds both the 3-D
 // interaction (E does the first enabled action) and the text station list, so the two can never differ.
-import { RACK, STATION_IDS, type Game, type GameEvent, type Item, type StationId } from './machine.ts';
+import { ITEMS, RACK, STATION_IDS, type Game, type GameEvent, type Item, type StationId } from './machine.ts';
 
 export type TargetId = StationId | 'big' | 'rack' | 'wrench' | 'oil' | 'gauge' | 'computer' | 'cabinet' | 'arm';
 export const TARGET_IDS: readonly TargetId[] = ['fil15', 'dmc125', 'big', 'rack', 'wrench', 'oil', 'gauge', 'computer', 'cabinet', 'arm'];
@@ -19,7 +19,6 @@ export interface Action {
 }
 
 const isStation = (t: TargetId): t is StationId => (STATION_IDS as readonly string[]).includes(t);
-const ITEM_TARGETS: readonly Item[] = ['wrench', 'oil', 'gauge'];
 
 export function actionsFor(target: TargetId, g: Game): Action[] {
   if (isStation(target)) {
@@ -59,7 +58,7 @@ export function actionsFor(target: TargetId, g: Game): Action[] {
     for (const t of RACK) if (t.id !== g.carrying && !STATION_IDS.some((k) => g.stations[k].equipped === t.id)) a.push({ id: 'rackTake', arg: t.id, do: { type: 'RACK_TAKE', tool: t.id } });
     return a;
   }
-  if ((ITEM_TARGETS as readonly string[]).includes(target)) {
+  if ((ITEMS as readonly string[]).includes(target)) {
     const item = target as Item;
     return g.held === item ? [{ id: 'drop', do: { type: 'DROP' } }] : [{ id: 'pick', arg: item, do: { type: 'PICK', item } }];
   }
