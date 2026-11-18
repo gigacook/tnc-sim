@@ -199,14 +199,16 @@ test('bridge: only the simulator frame on our own origin is heard; v1 and v2 are
   b.machine('430');
   b.camera('tool');
   b.exec('stop');
+  b.inspect('compare');
   b.setTools([{ t: 1, l: 60, r: 5 }]);
   b.present({ lang: 'en', skin: '430' });
-  assert.deepEqual(sent.slice(-9).map((s) => (s as [unknown])[0]), [
+  assert.deepEqual(sent.slice(-10).map((s) => (s as [unknown])[0]), [
     { type: 'tnc:lock', locked: true, reason: 'door' },
     { type: 'tnc:lock', locked: false },
     { type: 'tnc:machine', machine: '430' },
     { type: 'tnc:camera', view: 'tool' },
     { type: 'tnc:exec', cmd: 'stop' },
+    { type: 'tnc:inspect', panel: 'compare' },
     { type: 'tnc:tools:set', tools: [{ t: 1, l: 60, r: 5 }] },
     // the language travels alone, so a simulator that does not know it still takes the rest ...
     { type: 'tnc:present', skin: '430' },

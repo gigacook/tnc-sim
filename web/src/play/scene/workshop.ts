@@ -48,6 +48,8 @@ export interface Workshop {
   setRunning(on: boolean): void;
   /** keyboard and mouse belong to the scene, or to a dialog */
   setInput(on: boolean): void;
+  /** the on-screen thumb pad: x = right, y = forward, each -1..1 (0, 0 = let go) */
+  setStick(x: number, y: number): void;
   setEnv(env: 'cold-steel' | 'workshop-night'): void;
   setReducedMotion(on: boolean): void;
   setCabinetOpen(open: boolean): void;
@@ -166,6 +168,7 @@ export function createWorkshop(o: WorkshopOptions): Workshop {
   /* ---- player ---- */
   const player = { x: 0.9, z: 5.6, yaw: 0, pitch: -0.04 };
   const keys = new Set<string>();
+  const stick = { x: 0, y: 0 };
   let inputOn = true;
   let locked = false;
   let view: View = 'walk';
@@ -306,19 +309,31 @@ export function createWorkshop(o: WorkshopOptions): Workshop {
       // a click takes the pointer; if the browser refuses (no gesture, a sandbox), dragging still looks around
       Promise.resolve(canvas.requestPointerLock?.()).catch(() => {});
     }
+    // one finger looks around; a second one (on the thumb pad) is not this one
+    if (e.pointerType !== 'mouse') {
+      lookId = e.pointerId;
+      touch = null;
+    }
     dragging = true;
   };
-  const onPointerUp = () => (dragging = false);
+  let lookId = -1;
+  const onPointerUp = (e: PointerEvent) => {
+    if (e.pointerType === 'mouse' || e.pointerId === lookId) dragging = false;
+  };
   let touch: { x: number; y: number } | null = null;
   const onTouchMove = (e: PointerEvent) => {
-    if (e.pointerType === 'mouse' || !dragging || view !== 'walk') return;
+    if (e.pointerType === 'mouse' || !dragging || e.pointerId !== lookId || view !== 'walk' || !inputOn || fly) return;
     if (touch) {
       player.yaw -= (e.clientX - touch.x) * 0.005;
       player.pitch = Math.max(-1.2, Math.min(1.2, player.pitch - (e.clientY - touch.y) * 0.005));
     }
     touch = { x: e.clientX, y: e.clientY };
   };
-  const onTouchEnd = () => (touch = null);
+  const onTouchEnd = (e: PointerEvent) => {
+    if (e.pointerId !== lookId) return;
+    touch = null;
+    dragging = false;
+  };
   const onLockChange = () => {
     locked = document.pointerLockElement === canvas;
     if (!locked) keys.clear();
@@ -363,12 +378,13 @@ export function createWorkshop(o: WorkshopOptions): Workshop {
 
     if (view === 'walk' && !fly && inputOn) {
       const speed = (keys.has('ShiftLeft') || keys.has('ShiftRight') ? 5.2 : 3.1) * dt;
-      const f = (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
-      const s = (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') ? 1 : 0);
+      const f = (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0) + stick.y;
+      const s = (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') ? 1 : 0) + stick.x;
       const turn = (keys.has('ArrowLeft') ? 1 : 0) - (keys.has('ArrowRight') ? 1 : 0);
       player.yaw += turn * dt * 1.9;
       if (f || s) {
-        const n = 1 / Math.hypot(f, s);
+        // keys walk at full speed; the thumb pad walks as fast as it is pushed
+        const n = Math.min(1, Math.hypot(f, s)) / Math.hypot(f, s);
         const sin = Math.sin(player.yaw);
         const cos = Math.cos(player.yaw);
         move((-sin * f + cos * s) * n * speed, (-cos * f - sin * s) * n * speed);
@@ -510,8 +526,13 @@ export function createWorkshop(o: WorkshopOptions): Workshop {
       inputOn = on;
       if (!on) {
         keys.clear();
+        stick.x = stick.y = 0;
         if (document.pointerLockElement === canvas) document.exitPointerLock();
       }
+    },
+    setStick(x, y) {
+      stick.x = Math.max(-1, Math.min(1, x));
+      stick.y = Math.max(-1, Math.min(1, y));
     },
     setEnv(e) {
       env = e;

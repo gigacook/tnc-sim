@@ -36,7 +36,8 @@
 @keyframes lg-feed { to { stroke-dashoffset: -36; } }
 .land-shade { position: absolute; inset: 0; background: color-mix(in srgb, var(--gc-canvas) 38%, transparent); }
 /* a flat darker panel behind the headline: a hard edge, like a guard plate */
-.land-shade::before { content: ''; position: absolute; inset: 0 40% 0 0; background: color-mix(in srgb, var(--gc-canvas) 67%, transparent); border-right: var(--rule); }
+/* up to 1920 px wide the plate is 60 % of the screen; wider, its edge stays at the same place in the centred frame */
+.land-shade::before { content: ''; position: absolute; inset: 0 max(40%, calc(50% - 192px)) 0 0; background: color-mix(in srgb, var(--gc-canvas) 67%, transparent); border-right: var(--rule); }
 
 .land-frame {
   position: relative;
@@ -134,6 +135,11 @@
   .land-cells li { border-left: 0; border-top: var(--rule); padding: var(--gc-space-3) var(--gc-space-4); }
   .land-cells li:first-child { border-top: 0; }
 }
+/* a wide but low screen (1440x900 laptops): the headline follows the height too, so the cells and the note stay on the first screen */
+@media (min-width: 761px) and (max-height: 960px) {
+  .land-hero { padding-block: var(--gc-space-6) var(--gc-space-5); }
+  .land-hero h1 { font-size: clamp(var(--gc-text-3xl), min(12.5vw, 15.5vh), calc(var(--gc-text-3xl) * 3.2)); }
+}
 .play[data-motion='reduced'] .lg-spin, .play[data-motion='reduced'] .lg-path { animation: none; }
 .play[data-motion='reduced'] .land-start { transition: none; }
 @media (prefers-reduced-motion: reduce) {
@@ -195,6 +201,14 @@
 .npc b { font: 700 var(--gc-text-xs) var(--gc-font-mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--gc-accent); }
 .npc p { margin: 6px 0 var(--gc-space-3); font-size: var(--gc-text-md); line-height: var(--gc-leading-md); }
 .npc-btns, .st-acts, .view-list { display: flex; flex-wrap: wrap; gap: var(--gc-space-2); }
+
+/* touch: a thumb pad to walk (a drag anywhere else on the floor looks around). It sits above the prompt strip,
+   far from the rail, and is not there at all where the pointer is a mouse. */
+.pad { position: absolute; z-index: 3; left: var(--gc-space-4); bottom: calc(96px + env(safe-area-inset-bottom, 0px)); width: 132px; height: 132px; border-radius: 50%; background: var(--glass); border: var(--rule-strong); touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.pad-knob { position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; margin: -28px; border-radius: 50%; background: var(--gc-ink); opacity: 0.85; pointer-events: none; }
+@media (pointer: fine) {
+  .pad { display: none; }
+}
 
 @media (max-width: 760px) {
   .hud-rail .hud-btn { padding: 0 10px; }

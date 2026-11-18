@@ -10,7 +10,8 @@
  * First of all the third language: Srpski changes the labels, survives a reload and a simulator that does not
  * know it, and START still enters the workshop.
  * Everything is done through the keyboard/list paths (the text station list), which are the alternatives to
- * the 3-D interactions. Screenshots: artifacts/play/e2e-*.png
+ * the 3-D interactions. Last a phone-sized touch context: the thumb pad walks, a drag looks around. That is
+ * Chromium's touch emulation, not a test on a real phone. Screenshots: artifacts/play/e2e-*.png
  */
 import { join } from 'node:path';
 import { checks, launch, requireBuild, serve, shots } from './lib.mjs';
@@ -66,8 +67,11 @@ try {
     const sim = await (await page.waitForSelector('.shop-sim iframe', { state: 'attached' })).contentFrame();
     await sim.waitForFunction(() => window.TNC_UI?.state?.res, null, { timeout: 45000 });
     await page.waitForTimeout(500);
-    const simSpeaks = await sim.evaluate(() => window.TNC_UI.lang);
-    console.log(`  note  the simulator in this build shows "${simSpeaks}" when asked for "sr"` + (simSpeaks === 'sr' ? '' : ' (it falls back; the shell must keep Serbian)'));
+    // end to end: the shell sent tnc:present {lang:'sr'}; the simulator's own labels are Serbian (sim/i18n.js: btn.insp, btn.new)
+    const simLabels = () => sim.evaluate(() => ({ lang: window.TNC_UI.lang, insp: document.querySelector('#b-insp [data-i18n="btn.insp"]')?.textContent.trim(), neu: document.querySelector('#b-new [data-i18n="btn.new"]')?.textContent.trim() }));
+    await sim.waitForFunction(() => window.TNC_UI.lang === 'sr', null, { timeout: 8000 }).catch(() => {});
+    let labels = await simLabels();
+    c.ok(labels.lang === 'sr' && labels.insp === 'Inspektor' && labels.neu === 'Novi program', 'Srpski end to end: the simulator shows "sr", its own controls read "Inspektor" and "Novi program"', JSON.stringify(labels));
     // a save of the shared key by the simulator itself (the user flips a switch in its settings panel, twice)
     await sim.evaluate(() => { window.TNC_SETTINGS.set('sound', false); window.TNC_SETTINGS.set('sound', true); });
     await page.waitForTimeout(600);
@@ -109,6 +113,10 @@ try {
     c.ok((await page.locator('.ob').count()) === 0 && (await rail()).startsWith('Stanice'), 'Srpski: START enters the workshop again, straight to the floor');
     await page.locator('.hud-lang .hud-btn[lang="sv"]').click();
     c.ok((await rail()).startsWith('Stationer') && (await htmlLang(page)) === 'sv' && (await stored(page)) === 'sv', 'and back to Svenska from the workshop rail', await rail());
+    const sim2 = await (await page.waitForSelector('.shop-sim iframe', { state: 'attached' })).contentFrame();
+    await sim2.waitForFunction(() => window.TNC_UI?.lang === 'sv' && document.querySelector('#b-insp [data-i18n="btn.insp"]')?.textContent.trim() === 'Inspektör', null, { timeout: 45000 }).catch(() => {});
+    labels = await sim2.evaluate(() => ({ lang: window.TNC_UI?.lang, insp: document.querySelector('#b-insp [data-i18n="btn.insp"]')?.textContent.trim() }));
+    c.ok(labels.lang === 'sv' && labels.insp === 'Inspektör', 'and the simulator follows back to Swedish ("Inspektör")', JSON.stringify(labels));
     c.ok(errors.length === 0, 'Srpski: no page error in the shell', errors.join(' | '));
     await ctx.close();
   }
@@ -171,6 +179,8 @@ try {
   }
 
   /* ---- walking: WASD moves, machines and walls stop the player ---- */
+  const padShown = await page.evaluate(() => ({ fine: matchMedia('(pointer: fine)').matches, n: document.querySelectorAll('.pad').length, display: getComputedStyle(document.querySelector('.pad')).display }));
+  c.ok(padShown.fine && padShown.n === 1 && padShown.display === 'none', 'with a mouse (pointer: fine) the thumb pad is not shown', JSON.stringify(padShown));
   await page.locator('.shop-canvas').focus();
   const p0 = await page.evaluate(() => window.__tncPlay.pose());
   await page.keyboard.down('KeyW');
@@ -283,6 +293,21 @@ try {
   const save = JSON.parse(await page.evaluate(() => localStorage.getItem('tnc.play.save.v1')));
   c.ok(save && save.v === 1 && save.stations.fil15.oil === 100 && save.stations.fil15.equipped === 'face40' && save.held === 'oil', 'the game is saved in tnc.play.save.v1', JSON.stringify(save && save.stations.fil15));
   c.ok((await page.evaluate(() => localStorage.getItem('tnc.edition.business.v1'))) === null, 'nothing of the game is written to the Business edition key');
+
+  /* ---- the measuring tool: into the control, then tnc:inspect compare opens the simulator's comparison ---- */
+  const inspector = () => sim.evaluate(() => ({ open: !document.body.classList.contains('focus'), pressed: document.getElementById('b-insp').getAttribute('aria-pressed'), tab: document.querySelector('#stabs [aria-selected="true"]')?.dataset.tab }));
+  const closedBefore = await inspector();
+  await list('Skjutmåttet', 'Ta upp');
+  await list('fil15', 'Mät detaljen');
+  c.ok(await page.waitForSelector('.shop[data-mode="machine"]', { timeout: 8000 }).then(() => true, () => false), 'the measuring tool ("Mät detaljen") enters the control of fil15');
+  await sim.waitForFunction(() => !document.body.classList.contains('focus'), null, { timeout: 5000 }).catch(() => {});
+  const openAfter = await inspector();
+  c.ok(closedBefore.open === false && openAfter.open === true && openAfter.pressed === 'true', 'the inspector was closed and is open after the measuring tool', JSON.stringify([closedBefore, openAfter]));
+  c.ok(openAfter.tab === 'diag' && (await sim.locator('#st-diag').isVisible()) && (await sim.locator('#sp-diag .card-compare').isVisible()) && (await sim.locator('#cmp').isVisible()), 'the inspector shows the compare tab: Diagnostics selected, the comparison card visible', JSON.stringify(openAfter));
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: join(out, 'e2e-measure-compare.png') });
+  await leave();
+  await page.waitForTimeout(1300);
   await closeList();
 
   /* ---- a running program: the oil drops with cutting time, the door stays shut ---- */
@@ -314,12 +339,47 @@ try {
   await page.waitForTimeout(800);
   const beforeOk = await page.evaluate(() => { const i = document.querySelector('.cmp-before img'); return !!i && i.naturalWidth > 0; });
   c.ok(beforeOk, 'the "before" screenshot is shown');
+  // slider mode: this build carries the "after" pictures (tests/e2e/capture-after.mjs), so no live simulator beside it
   const liveMode = await page.evaluate(() => document.querySelector('.shop-sim').dataset.show);
   const hasSlider = (await page.locator('.cmp-range').count()) === 1;
-  c.ok(liveMode === 'compare' || hasSlider, `"after": ${hasSlider ? 'a slider over the after screenshot' : 'the live simulator beside it (no after screenshot in this build)'}`);
+  const afterOk = await page.evaluate(() => { const i = document.querySelector('.cmp-after img'); return !!i && i.naturalWidth === 1920 && i.naturalHeight === 1080; });
+  c.ok(hasSlider && afterOk && liveMode !== 'compare', '333 is in slider mode: the "after" screenshot (1920x1080) under a slider, no live simulator', JSON.stringify({ hasSlider, afterOk, liveMode }));
+  const split = () => page.evaluate(() => {
+    const stage = document.querySelector('.cmp-stage').getBoundingClientRect();
+    const bar = document.querySelector('.cmp-bar').getBoundingClientRect();
+    return { value: +document.querySelector('.cmp-range').value, bar: Math.round(((bar.left + bar.width / 2 - stage.left) / stage.width) * 100), clip: getComputedStyle(document.querySelector('.cmp-after')).clipPath };
+  });
+  const sp0 = await split();
+  await page.locator('.cmp-range').focus();
+  for (let i = 0; i < 10; i++) await page.keyboard.press('ArrowRight');
+  const sp1 = await split();
+  c.ok(sp0.value === 50 && sp1.value === 60 && sp1.bar === 60 && sp1.clip !== sp0.clip, 'the slider moves by keyboard: 50 -> 60, the divider and the cut follow', JSON.stringify([sp0, sp1]));
+  const rb = await page.locator('.cmp-range').boundingBox();
+  await page.mouse.click(rb.x + rb.width * 0.25, rb.y + rb.height / 2);
+  const sp2 = await split();
+  c.ok(Math.abs(sp2.value - 25) <= 3 && Math.abs(sp2.bar - sp2.value) <= 1, 'the slider moves by pointer: a click at a quarter of the track', JSON.stringify(sp2));
   await page.screenshot({ path: join(out, 'e2e-333.png') });
+  const pairs = [];
+  for (let i = 0; i < 4; i++) {
+    await page.locator('.cmp-tabs [role="tab"]').nth(i).click();
+    await page.waitForFunction(() => [...document.querySelectorAll('.cmp-pane img')].every((im) => im.complete), null, { timeout: 5000 }).catch(() => {});
+    pairs.push(await page.evaluate(() => [...document.querySelectorAll('.cmp-pane img')].map((im) => im.naturalWidth).join('+') + (document.querySelector('.cmp-range') ? '' : ' no slider')));
+  }
+  c.ok(pairs.every((x) => x === '1920+1920'), 'all four comparisons have their before and their after picture', pairs.join(' | '));
   await page.keyboard.press('Escape');
   c.ok((await page.locator('.cmp').count()) === 0, 'Esc closes it');
+  // typed into the simulator's editor, 333 is program text, not the Easter egg
+  await enter('fil15');
+  await sim.click('#modes [data-m="edit"]');
+  await sim.locator('body').press('i');
+  await sim.waitForFunction(() => !document.getElementById('dlg-in').disabled, null, { timeout: 3000 }).catch(() => {});
+  await sim.locator('#dlg-in').pressSequentially('333', { delay: 40 });
+  await page.waitForTimeout(400);
+  const typedInSim = await sim.evaluate(() => document.getElementById('dlg-in').value);
+  c.ok(typedInSim.includes('333') && (await page.locator('.cmp').count()) === 0, '333 typed in the simulator\'s editor stays in the editor and opens nothing', typedInSim);
+  await sim.press('#dlg-in', 'Escape');
+  await leave();
+  await page.waitForTimeout(1300);
   await page.locator('.hud-rail .hud-btn', { hasText: 'Dator' }).click();
   await page.locator('.sec-list li', { hasText: 'Före och efter' }).locator('.hud-btn').click();
   c.ok((await page.locator('.cmp').count()) === 1, 'the comparison is also reachable from the computer\'s secrets list');
@@ -383,6 +443,96 @@ try {
   const instant = Date.now() - t1;
   c.ok(instant < 500, `reduced motion: the machine view opens at once (${instant} ms)`);
   await calm.close();
+
+  /* ---- a phone: the thumb pad walks, a drag looks around. Chromium touch emulation, not a real phone. ---- */
+  const phone = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, hasTouch: true, isMobile: true });
+  await phone.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
+  // this context has no "after" pictures, which keeps the live-simulator mode of 333 under test
+  await phone.route('**/play/after/**', (r) => r.fulfill({ status: 404, body: 'not found' }));
+  const ph = await phone.newPage();
+  const phErrors = [];
+  ph.on('pageerror', (e) => phErrors.push(e.message));
+  await ph.goto(server.url + '/play');
+  await ph.waitForSelector('.land-start');
+  await ph.tap('.land-start');
+  await ph.waitForSelector('.shop-canvas', { timeout: 30000 });
+  c.ok((await ph.locator('.pad').count()) === 0, 'touch: no thumb pad under the introduction');
+  await ph.tap('.ob .hud-quiet');
+  await ph.waitForSelector('.pad', { timeout: 3000 }).catch(() => {});
+  const lay = await ph.evaluate(() => {
+    const box = (el) => { const r = el.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; };
+    const pad = document.querySelector('.pad');
+    return {
+      coarse: matchMedia('(pointer: coarse)').matches,
+      display: pad ? getComputedStyle(pad).display : 'missing',
+      pad: pad ? box(pad) : null,
+      knob: pad ? box(pad.querySelector('.pad-knob')) : null,
+      others: [...document.querySelectorAll('.hud-rail .hud-btn, .hud-status, .hud-bottom > *')].map((el) => ({ what: el.className + ' ' + el.textContent.trim().slice(0, 14), ...box(el) })),
+    };
+  });
+  const hits = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+  c.ok(lay.coarse && lay.display !== 'none' && lay.pad && lay.pad.w >= 44 && lay.pad.h >= 44 && lay.knob.w >= 44 && lay.knob.h >= 44, 'touch (pointer: coarse): the thumb pad is shown, pad and knob at least 44 x 44 px', JSON.stringify({ coarse: lay.coarse, pad: lay.pad, knob: lay.knob }));
+  c.ok(lay.pad && lay.pad.x >= 0 && lay.pad.y >= 0 && lay.pad.x + lay.pad.w <= 390 && lay.pad.y + lay.pad.h <= 844, 'touch: the pad is inside the 390 x 844 screen');
+  const covered = lay.pad ? lay.others.filter((o) => hits(lay.pad, o)).map((o) => o.what) : ['no pad'];
+  c.ok(covered.length === 0 && lay.others.length >= 8, 'touch: the pad covers neither the station list button nor any other HUD control', covered.join(' | '));
+  const stationBtn = await ph.evaluate(() => { const b = document.querySelector('.hud-rail .hud-btn'); const r = b.getBoundingClientRect(); return document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) === b; });
+  c.ok(stationBtn, 'touch: the station list button is the topmost thing where it is drawn');
+
+  const cdp = await phone.newCDPSession(ph);
+  const finger = (type, pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts.map(([x, y], id) => ({ x, y, id })) });
+  const pose = () => ph.evaluate(() => window.__tncPlay.pose());
+  const cx = lay.pad.x + lay.pad.w / 2;
+  const cy = lay.pad.y + lay.pad.h / 2;
+  const w0 = await pose();
+  await finger('touchStart', [[cx, cy]]);
+  await finger('touchMove', [[cx, cy - 20]]);
+  await finger('touchMove', [[cx, cy - 60]]);
+  await ph.waitForTimeout(900);
+  const knobUp = await ph.evaluate(() => document.querySelector('.pad-knob').style.transform);
+  const w1 = await pose();
+  await finger('touchEnd', []);
+  await ph.waitForTimeout(250);
+  const w2 = await pose();
+  await ph.waitForTimeout(400);
+  const w3 = await pose();
+  c.ok(w0.z - w1.z > 0.8 && Math.abs(w1.x - w0.x) < 0.2, `touch: pushing the pad forward walks down the floor (${(w0.z - w1.z).toFixed(2)} m in 0.9 s)`, JSON.stringify([w0, w1]));
+  c.ok(/translate\(0px, -38px\)/.test(knobUp), 'touch: the knob follows the thumb and stops at its travel', knobUp);
+  c.ok(w2.z === w3.z && w2.x === w3.x && (await ph.evaluate(() => document.querySelector('.pad-knob').style.transform)) === 'translate(0px, 0px)', 'touch: letting go stops the player and centres the knob', JSON.stringify([w2, w3]));
+  await finger('touchStart', [[cx, cy]]);
+  await finger('touchMove', [[cx + 60, cy]]);
+  await ph.waitForTimeout(600);
+  const w4 = await pose();
+  await finger('touchEnd', []);
+  c.ok(w4.x - w3.x > 0.5, `touch: pushing the pad right steps to the right (${(w4.x - w3.x).toFixed(2)} m)`, JSON.stringify([w3, w4]));
+  // a drag on the floor looks around, also while the other thumb holds the pad
+  await finger('touchStart', [[cx, cy]]);
+  await finger('touchStart', [[cx, cy], [300, 420]]);
+  for (const x of [280, 250, 220, 190]) await finger('touchMove', [[cx, cy], [x, 420]]);
+  await ph.waitForTimeout(150);
+  const w5 = await pose();
+  await finger('touchEnd', []);
+  c.ok(Math.abs(w5.yaw - w4.yaw) > 0.3, `touch: a drag on the floor turns the view (${(w5.yaw - w4.yaw).toFixed(2)} rad) with the pad held`, JSON.stringify([w4.yaw, w5.yaw]));
+  await ph.waitForTimeout(300);
+  await ph.screenshot({ path: join(out, 'touch-pad-390x844.png') });
+
+  await ph.tap('.hud-rail .hud-btn');
+  await ph.waitForSelector('.st-list', { timeout: 3000 }).catch(() => {});
+  c.ok((await ph.locator('.st-list').count()) === 1 && (await ph.locator('.pad').count()) === 0, 'touch: a tap on the station list button opens the list; the pad is away while a panel is open');
+  await ph.keyboard.press('Escape');
+
+  // 333 without "after" pictures: the live simulator beside the old picture
+  const phSim = await (await ph.waitForSelector('.shop-sim iframe', { state: 'attached' })).contentFrame();
+  await phSim.waitForFunction(() => window.TNC_UI?.state?.res, null, { timeout: 45000 }).catch(() => {});
+  await ph.locator('.shop-canvas').focus();
+  await ph.keyboard.type('333');
+  await ph.waitForSelector('.cmp-live', { timeout: 4000 }).catch(() => {});
+  await ph.waitForTimeout(500);
+  const liveShown = await ph.evaluate(() => ({ show: document.querySelector('.shop-sim').dataset.show, slider: document.querySelectorAll('.cmp-range').length, live: document.querySelectorAll('.cmp-live').length }));
+  c.ok(liveShown.show === 'compare' && liveShown.slider === 0 && liveShown.live === 1, '333 without "after" pictures: the live simulator beside the old picture, no slider', JSON.stringify(liveShown));
+  await ph.keyboard.press('Escape');
+  c.ok((await ph.locator('.cmp').count()) === 0 && (await ph.evaluate(() => document.querySelector('.shop-sim').dataset.show)) === 'no', 'Esc closes that one too and hides the simulator again');
+  c.ok(phErrors.length === 0, 'touch: no page error in the shell', phErrors.join(' | '));
+  await phone.close();
 } finally {
   await browser.close();
   await server.close();

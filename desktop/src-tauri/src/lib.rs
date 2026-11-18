@@ -98,8 +98,9 @@ async fn start(data_dir: PathBuf, resources: PathBuf, running: &Mutex<Running>) 
     cfg.csp = Some(CSP.into());
     cfg.local_mode = true;
     cfg.engine_workers = 2;
-    // Local mode keeps the AI key in the simulator (BYOK, straight to OpenRouter); set
-    // OPENROUTER_API_KEY in the environment to route it through this process instead.
+    // The OpenRouter key lives with this in-process server: the local operator (an admin) stores it through
+    // PUT /ai/key, which writes `openrouter.key` into the data folder (docs/AI_API.md). A key in the
+    // environment (OPENROUTER_API_KEY) is used when none is stored.
     cfg.openrouter_api_key = std::env::var("OPENROUTER_API_KEY").ok().filter(|k| !k.trim().is_empty());
     for (what, p) in [("web app", cfg.web_dir.join("index.html")), ("simulator", cfg.sim_file.clone())] {
         if !p.exists() {
@@ -179,12 +180,14 @@ pub fn run() {
             let handle = app.handle().clone();
             let data_dir = app.path().app_data_dir()?;
             let resources = app.path().resource_dir()?;
+            // the title is the edition's product name: tauri.business.conf.json / tauri.play.conf.json overlay it
+            let title = app.config().product_name.clone().unwrap_or_else(|| "TNC 426 Simulator".into());
             // one window: the bundled splash first, then navigated to the local server
             let origin: Arc<OnceLock<url::Url>> = Arc::default();
             let allowed = origin.clone();
             let opener = handle.clone();
             let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
-                .title("TNC 426 Simulator")
+                .title(title)
                 .inner_size(1360.0, 860.0)
                 .min_inner_size(360.0, 480.0)
                 .on_navigation(move |u| {

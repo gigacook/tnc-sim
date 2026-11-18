@@ -11,6 +11,8 @@ export type Quality = 'low' | 'medium' | 'high';
 export type Motion = 'full' | 'reduced';
 export type ExecCmd = 'start' | 'stop' | 'step' | 'reset';
 export type CameraView = 'orbit' | 'pov' | 'tool' | 'part' | 'plan';
+/** A tab of the simulator's inspector; `compare` is the comparison card in Diagnostics. */
+export type InspectPanel = 'compare' | 'diag' | 'ref' | 'progs';
 
 /** A tool-table row, the same shape `tnc:open` takes. Extra numeric/string columns pass through. */
 export interface BridgeTool {
@@ -65,6 +67,7 @@ export type AppMessage =
   | { type: 'tnc:exec'; cmd: ExecCmd }
   | { type: 'tnc:camera'; view: CameraView }
   | { type: 'tnc:lock'; locked: boolean; reason?: string }
+  | { type: 'tnc:inspect'; panel: InspectPanel }
   | { type: 'tnc:tools:get'; id: string }
   | { type: 'tnc:tools:set'; tools: BridgeTool[] };
 
@@ -243,6 +246,8 @@ export interface Bridge {
   exec(cmd: ExecCmd): void;
   camera(view: CameraView): void;
   lock(locked: boolean, reason?: string): void;
+  /** Open the simulator's inspector on that tab. */
+  inspect(panel: InspectPanel): void;
   tools(timeoutMs?: number): Promise<BridgeTool[]>;
   setTools(tools: BridgeTool[]): void;
   dispose(): void;
@@ -368,6 +373,7 @@ export function createBridge(target: () => Window | null | undefined, origin: st
     exec: (cmd) => post({ type: 'tnc:exec', cmd }),
     camera: (view) => post({ type: 'tnc:camera', view }),
     lock: (locked, reason) => post(reason ? { type: 'tnc:lock', locked, reason } : { type: 'tnc:lock', locked }),
+    inspect: (panel) => post({ type: 'tnc:inspect', panel }),
     tools: (timeoutMs = 3000) => ask<'tnc:tools'>((id) => ({ type: 'tnc:tools:get', id }), timeoutMs).then((m) => m.tools),
     setTools: (tools) => post({ type: 'tnc:tools:set', tools }),
     dispose() {

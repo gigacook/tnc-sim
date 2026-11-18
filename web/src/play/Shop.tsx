@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
-import { createBridge, htmlLang, LANG_NAMES, LANGS, type Bridge, type BridgeLevel, type CameraView, type Present, type SimState } from '../lib/bridge';
+import { createBridge, htmlLang, LANG_NAMES, LANGS, type Bridge, type BridgeLevel, type CameraView, type InspectPanel, type Present, type SimState } from '../lib/bridge';
 import { browserStore, type Settings } from '../lib/settings';
 import { actionsFor, TARGET_IDS, type Action, type TargetId } from './game/actions';
 import { applyEquipped, CuttingClock, lockOf, newGame, oilLevel, rackTool, step, STATION_IDS, STATION_MACHINE, type Effect, type Game, type GameEvent, type StationId } from './game/machine';
@@ -9,6 +9,7 @@ import { loadPack, packText, type Pack } from './pack/loader';
 import { BOSS, OFFICE_WORKER, specFromPack } from './scene/people';
 import { createWorkshop, type View, type Workshop } from './scene/workshop';
 import { Compare } from './Compare';
+import { Pad } from './Pad';
 import { Panel } from './Panel';
 import { SECRETS, type SecretId } from './secrets';
 import type { Key, T } from './strings';
@@ -44,6 +45,7 @@ export function Shop({ settings, change, reduced, t, simLang }: Props) {
   const [step_, setStep] = useState(0);
   const [target, setTarget] = useState<TargetId | null>(null);
   const [locked, setLocked] = useState(false);
+  const [walking, setWalking] = useState(true); // the scene's view is the walking one (not the overview or the orbit)
   const [toast, setToast] = useState('');
   const [npc, setNpc] = useState<Scene | null>(null);
   const [level, setLevel] = useState<BridgeLevel>(0);
@@ -62,6 +64,7 @@ export function Shop({ settings, change, reduced, t, simLang }: Props) {
   const clock = useRef(new CuttingClock());
   const cutDebt = useRef(0);
   const pendingCamera = useRef<CameraView | null>(null);
+  const pendingInspect = useRef<InspectPanel | null>(null);
   const pack = useRef<Pack | null>(null);
   const packDue = useRef(false);
   const wasDone = useRef(false);
@@ -120,10 +123,13 @@ export function Shop({ settings, change, reduced, t, simLang }: Props) {
         case 'view':
           if (e.view === 'machine') {
             setPanel(null);
+            setWalking(true);
             scene.current?.flyTo(e.station, () => {
               setMode('machine');
               if (pendingCamera.current) bridge.current?.camera(pendingCamera.current);
               pendingCamera.current = null;
+              if (pendingInspect.current) bridge.current?.inspect(pendingInspect.current);
+              pendingInspect.current = null;
               frame.current?.focus();
             });
           } else {
@@ -248,6 +254,16 @@ export function Shop({ settings, change, reduced, t, simLang }: Props) {
     return () => document.removeEventListener('visibilitychange', apply);
   }, [mode, liveCompare, settings.quality]);
 
+  // The focus follows the view, after the change is on screen: into the simulator when its control opens, back to
+  // the floor when it closes. (The side being left is inert until then, and an inert element cannot take the focus.)
+  const modeBefore = useRef(mode);
+  useEffect(() => {
+    if (modeBefore.current === mode) return;
+    modeBefore.current = mode;
+    if (mode === 'machine') frame.current?.focus();
+    else canvas.current?.focus({ preventScroll: true });
+  }, [mode]);
+
   /* ---------- once a second: oil, the interruption scheduler, the pack scene ---------- */
   useEffect(() => {
     let last = performance.now();
@@ -322,9 +338,13 @@ export function Shop({ settings, change, reduced, t, simLang }: Props) {
         return;
       }
       if (d.type === 'MEASURE') {
-        // the measuring tool opens the simulator's own part view on that machine
+        // the measuring tool opens the simulator's own part view on that machine, with its comparison panel
         pendingCamera.current = 'part';
-        if (!dispatch({ type: 'ENTER_CONTROL', station: d.station })) pendingCamera.current = null;
+        pendingInspect.current = 'compare';
+        if (!dispatch({ type: 'ENTER_CONTROL', station: d.station })) {
+          pendingCamera.current = null;
+          pendingInspect.current = null;
+        }
         return;
       }
       if (dispatch(d) && d.type === 'REFILL') say(tRef.current('i.refilled'));
@@ -340,6 +360,7 @@ export function Shop({ settings, change, reduced, t, simLang }: Props) {
   const chooseView = (v: (typeof VIEWS)[number]) => {
     setPanel(null);
     if (v === 'walk' || v === 'overview' || v === 'orbit') {
+      setWalking(v === 'walk');
       scene.current?.setView(v);
       return;
     }
@@ -498,6 +519,7 @@ export function Shop({ settings, change, reduced, t, simLang }: Props) {
       <div className="shop-floor" inert={mode === 'machine'} aria-hidden={mode === 'machine'}>
         <canvas ref={canvas} className="shop-canvas" tabIndex={0} aria-label={`${t('land.kicker')}. ${t('hud.click')}. ${t('hud.stations')}.`} />
         <span className="shop-cross" aria-hidden="true" />
+        {mode === 'floor' && walking && !panel && !npc && <Pad onMove={(x, y) => scene.current?.setStick(x, y)} />}
 
         <nav className="hud hud-rail" aria-label="5511">
           <span className="hud-badge" aria-hidden="true">
@@ -619,7 +641,10 @@ export function Shop({ settings, change, reduced, t, simLang }: Props) {
                         type="button"
                         className="hud-btn"
                         onClick={() => {
-                          if (a.id !== 'exitControl' && a.id !== 'enterControl' && a.id !== 'measure') scene.current?.goTo(id);
+                          if (a.id !== 'exitControl' && a.id !== 'enterControl' && a.id !== 'measure') {
+                            setWalking(true);
+                            scene.current?.goTo(id);
+                          }
                           act(id, a);
                         }}
                       >
@@ -630,6 +655,7 @@ export function Shop({ settings, change, reduced, t, simLang }: Props) {
                       type="button"
                       className="hud-btn hud-quiet"
                       onClick={() => {
+                        setWalking(true);
                         scene.current?.goTo(id);
                         setPanel(null);
                       }}
