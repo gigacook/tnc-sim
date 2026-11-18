@@ -13,7 +13,9 @@
      - The OpenRouter key goes from the field straight to PUT /ai/key. It is never put in the state, in
        browser storage, in a log line or in a program; the field is taken out of the page once the server took it.
      - No server (plain index.html, GitHub Pages): one line of text, no key field, no request.
-     - The active program is never touched by a job. Only the Load button opens the result, as a new program.
+     - The active program is never touched by a job. Only the Load button brings the result in: a "new" job opens it as a
+       new program; a "change" job (the open program is the base) replaces that program's text as ONE undo step, so
+       Ctrl+Z gives the original back.
      - Progress is what the server sent: stage and round. No percentage is made up.
      - Reasoning, token, measurement and round settings are the server's policy; there are no controls for them.
      - "fast & cheap" is not shown: the catalog has prices but no speed figure, so there is no current,
@@ -116,6 +118,8 @@ var TNC_AIGEN = (function () {
       key: { present: null, stored: false, busy: false, error: null, note: null },
       catalog: { status: 'idle', models: [], def: null, policy: null, stale: false, error: null },
       model: null, query: '',
+      mode: 'new',              // 'new' = write a program | 'change' = change the open one
+      base: null,               // {name}: the program a running or finished change job started from
       job: null,                // {id, model, maxRounds}
       steps: [],                // the stage events, in the order the server sent them
       stage: null, round: 0, maxRounds: null,
@@ -179,10 +183,13 @@ var TNC_AIGEN = (function () {
       case 'catalog/error': return set(s, { catalog: set(s.catalog, { status: 'error', error: { code: a.code, message: a.message || '' } }) });
       case 'model': return s.catalog.models.some(function (m) { return m.id === a.id; }) ? set(s, { model: a.id }) : s;
       case 'query': return set(s, { query: String(a.q || '') });
+      case 'mode':            // not while a job runs, and not while its result waits for Load
+        if (s.phase === 'running' || s.phase === 'cancelling' || (a.mode !== 'new' && a.mode !== 'change') || a.mode === s.mode) return s;
+        return set(s, { mode: a.mode, phase: s.phase === 'done' || s.phase === 'failed' ? 'idle' : s.phase, result: null, draft: null, error: null, loaded: null, steps: [], text: '', lines: [] });
       case 'guard': return say(s, { error: { code: a.code, message: '', retryable: false } }, { k: 'error', code: a.code });
       case 'job/start':
         if (s.phase !== 'idle' && s.phase !== 'done' && s.phase !== 'failed') return s;
-        return say(s, { phase: 'running', job: null, steps: [], stage: null, round: 0, text: '', lines: [], result: null, draft: null, error: null, loaded: null }, { k: 'sent' });
+        return say(s, { phase: 'running', job: null, base: a.base || null, steps: [], stage: null, round: 0, text: '', lines: [], result: null, draft: null, error: null, loaded: null }, { k: 'sent' });
       case 'job/refused':
         if (s.phase !== 'running' && s.phase !== 'cancelling') return s;
         return say(s, { phase: 'idle', error: { code: a.code, message: a.message || '', retryable: false },
@@ -195,7 +202,7 @@ var TNC_AIGEN = (function () {
         if (s.phase === 'cancelling') return fail(s, CANCELLED, null);
         return s.phase === 'running' ? fail(s, { code: a.code, message: '', retryable: true }, null) : s;
       case 'cancel': return s.phase === 'running' ? say(s, { phase: 'cancelling' }, { k: 'cancelling' }) : s;
-      case 'load/done': return s.phase === 'done' && s.result && !s.loaded ? say(s, { loaded: { name: a.name, previous: a.previous } }, { k: 'loaded' }) : s;
+      case 'load/done': return s.phase === 'done' && s.result && !s.loaded ? say(s, { loaded: { name: a.name, previous: a.previous, changed: a.changed === true } }, { k: 'loaded' }) : s;
       case 'again': return s.phase === 'done' || s.phase === 'failed' ? set(s, { phase: 'idle', result: null, error: null, loaded: null }) : s;
       default: return s;
     }
@@ -206,7 +213,8 @@ var TNC_AIGEN = (function () {
        transport  {keyState(), putKey(key), deleteKey(), models(), startJob(body, signal), cancel(id), measure(id, body)}
                   every call resolves {ok, status, data | error:{code, message}}; startJob resolves
                   {ok:true, jobId, chunks: async iterable of text} or {ok:false, status, error}. null = no server.
-       host       {machine(), tools(), system(tools), measure(program, spec) | null, active(), load(program) -> name, pick: {get(), set(id)}}
+       host       {machine(), tools(), system(tools), measure(program, spec) | null, active(), load(program) -> name,
+                  base() -> {name, text} | null (the open program), change(name, program) -> name, pick: {get(), set(id)}}
        timers     {set(fn, ms) -> id, clear(id)} */
   function create(o) {
     var tr = o.transport || null, host = o.host || {}, timers = o.timers || { set: function (f, ms) { return setTimeout(f, ms); }, clear: function (i) { clearTimeout(i); } };
@@ -272,18 +280,26 @@ var TNC_AIGEN = (function () {
     }
 
     function generate(prompt) {
-      var p = String(prompt == null ? '' : prompt).trim(), body, tools, my, parser, watch = null, timedOut = false, ended = false, r, machine;
+      var p = String(prompt == null ? '' : prompt).trim(), body, tools, my, parser, watch = null, timedOut = false, ended = false, r, machine, base = null;
       if (!tr || s.phase === 'running' || s.phase === 'cancelling' || s.phase === 'boot' || s.phase === 'offline') return Promise.resolve(false);
       if (s.key.present !== true) { dispatch({ type: 'guard', code: 'no_key' }); return Promise.resolve(false); }
       if (!p) { dispatch({ type: 'guard', code: 'prompt_empty' }); return Promise.resolve(false); }
       if (p.length > 20000) { dispatch({ type: 'guard', code: 'prompt_long' }); return Promise.resolve(false); }
+      if (s.mode === 'change') {
+        base = host.base ? host.base() : null;
+        if (!base || typeof base.text !== 'string' || !base.text.trim()) { dispatch({ type: 'guard', code: 'base_empty' }); return Promise.resolve(false); }
+      }
       tools = (host.tools ? host.tools() : []).map(function (t) { return { t: t.t, name: t.name, l: t.l, r: t.r }; });
       body = { prompt: p, tools: tools, client_measure: !!host.measure };
       if (s.model) body.model = s.model;
       machine = host.machine ? host.machine() : null;
       if (machine === '426' || machine === '430') body.machine = machine;
       if (host.system) body.system = host.system(tools);
-      dispatch({ type: 'job/start' });
+      if (base) {
+        body.base_program = { name: String(base.name || '').slice(0, 64), text: base.text };
+        if (body.machine) body.base_program.machine = body.machine;
+      }
+      dispatch({ type: 'job/start', base: base ? { name: base.name } : null });
       my = ++run; headerId = null; abort = typeof AbortController === 'function' ? new AbortController() : { signal: null, abort: function () {} };
       var ac = abort;
       function arm() { if (watch != null) timers.clear(watch); watch = timers.set(function () { timedOut = true; ac.abort(); if (my === run && !ended) { ended = true; dispatch({ type: 'stream/fail', code: 'client_timeout' }); } }, IDLE_MS); }
@@ -326,16 +342,19 @@ var TNC_AIGEN = (function () {
       timers.set(function () { if (my === run && s.phase === 'cancelling') ac.abort(); }, CANCEL_GRACE_MS);
       return true;
     }
-    /* the only way a generated program reaches the control */
+    /* the only way a generated program reaches the control. A change job puts its result into the program it started
+       from, as one undo step; every other job opens a new program. */
     function load() {
       if (s.phase !== 'done' || !s.result || s.loaded || !host.load) return null;
-      var previous = host.active ? host.active() : null, name = host.load(s.result.program);
-      dispatch({ type: 'load/done', name: name, previous: previous });
+      var previous = host.active ? host.active() : null, changed = !!(s.base && host.change);
+      var name = changed ? host.change(s.base.name, s.result.program) : host.load(s.result.program);
+      dispatch({ type: 'load/done', name: name, previous: changed ? s.base.name : previous, changed: changed });
       return name;
     }
     return {
       get state() { return s; }, subscribe: function (fn) { subs.push(fn); }, dispatch: dispatch,
       refresh: refresh, refreshCatalog: refreshCatalog, saveKey: saveKey, removeKey: removeKey, generate: generate, cancel: cancel, load: load,
+      setMode: function (mode) { dispatch({ type: 'mode', mode: mode }); },
       pickModel: function (id) { dispatch({ type: 'model', id: id }); if (s.model === id && host.pick) host.pick.set(id); },
       search: function (q) { dispatch({ type: 'query', q: q }); },
       again: function () { dispatch({ type: 'again' }); }
@@ -393,6 +412,13 @@ var TNC_AIGEN = (function () {
       keyRemovedEnv: 'Den lagrade nyckeln är borttagen. Servern har fortfarande en nyckel från sin egen inställning.',
       keyMigrated: 'En nyckel som låg sparad i den här webbläsaren har raderats härifrån. Nyckeln lagras nu på servern.',
       prompt: 'Beskriv detaljen',
+      modeLabel: 'Vad ska AI göra?', modeNew: 'Nytt', modeChange: 'Ändra aktuellt',
+      promptChange: 'Vad ska ändras i {pgm}?',
+      exChange: ['Gör spåret 1 mm djupare', 'Lägg en fas på 1 mm runt utsidan', 'Sänk matningen till F300 i alla skär'],
+      disclosureChange: 'När du trycker på GENERERA skickas beskrivningen och hela programmet {pgm} till OpenRouter (tredje part).',
+      loadNoteChange: 'Ladda ersätter texten i {active} med resultatet, som ett enda ångringssteg: Ctrl+Z ger tillbaka originalet.',
+      loadedChange: '{name} är ändrat. Ctrl+Z ger tillbaka originalet.',
+      donePlateau: 'Programmet klarade kontrollen och matchar den planerade detaljen till {s} procent (mål {g}). Fler omgångar gav ingen förbättring, så förfiningen stoppades.',
       examples: 'Exempel',
       ex: ['Platta 100x60, spår 80 långt, 6 brett, 2 djupt', 'Rektangulär ficka 60x40, djup 5, hörnradie 6', 'Fyra hål Ø8 på delningscirkel Ø60, djup 12'],
       model: 'Modell', selected: 'Vald modell', search: 'Sök modell', count: '{n} av {m}', noMatch: 'Ingen modell matchar sökningen.',
@@ -409,7 +435,7 @@ var TNC_AIGEN = (function () {
       sent: 'Begäran skickad. Väntar på servern.', cancelling: 'Avbryter…',
       status: { waiting: 'Väntar på modellen…', reasoning: 'Modellen resonerar (visas inte).', retry: 'Begäran misslyckades innan något svar kom. Ett nytt försök görs.',
         truncated: 'Svaret klipptes vid utdatagränsen. Nästa omgång begär ett kortare program.', validated: 'Kontroll: {m}', measured: 'Mätning: {m}',
-        measurement_timeout: 'Mätningen kom inte fram i tid. Omgången bedöms på kontrollen.' },
+        measurement_timeout: 'Mätningen kom inte fram i tid. Omgången bedöms på kontrollen.', plateau: 'Förfiningen stoppades: {m}' },
       textLabel: 'Programtext', draftLabel: 'Utkast (inte laddat)',
       done: 'Programmet klarade kontrollen. Tryck på Ladda för att öppna det.',
       doneMeta: '{b} block · omgång {n} · {q} förfrågningar',
@@ -420,6 +446,7 @@ var TNC_AIGEN = (function () {
       err: {
         no_key: 'Ingen OpenRouter-nyckel är lagrad. Ange nyckeln överst.',
         prompt_empty: 'Beskriv detaljen först.',
+        base_empty: 'Det finns inget öppet program att ändra.',
         prompt_long: 'Beskrivningen är för lång (högst 20 000 tecken).',
         unauthorized: 'Du är inte inloggad på servern. Logga in och öppna dialogen igen.',
         forbidden: 'Bara en administratör kan ändra nyckeln.',
@@ -464,6 +491,13 @@ var TNC_AIGEN = (function () {
       keyRemovedEnv: 'The stored key was removed. The server still has a key from its own configuration.',
       keyMigrated: 'A key that was saved in this browser has been deleted from it. The key now lives on the server.',
       prompt: 'Describe the part',
+      modeLabel: 'What should the AI do?', modeNew: 'New', modeChange: 'Change current',
+      promptChange: 'What should change in {pgm}?',
+      exChange: ['Make the slot 1 mm deeper', 'Add a 1 mm chamfer around the outside', 'Lower the feed to F300 in every cut'],
+      disclosureChange: 'Pressing GENERATE sends your description and the whole program {pgm} to OpenRouter (a third party).',
+      loadNoteChange: 'Load replaces the text of {active} with the result as one undo step: Ctrl+Z brings the original back.',
+      loadedChange: '{name} is changed. Ctrl+Z brings the original back.',
+      donePlateau: 'The program passed the check and matches the planned part to {s} percent (goal {g}). Further rounds did not improve it, so refinement stopped.',
       examples: 'Examples',
       ex: ['Plate 100x60, slot 80 long, 6 wide, 2 deep', 'Rectangular pocket 60x40, depth 5, corner radius 6', 'Four Ø8 holes on a Ø60 bolt circle, depth 12'],
       model: 'Model', selected: 'Selected model', search: 'Search models', count: '{n} of {m}', noMatch: 'No model matches the search.',
@@ -480,7 +514,7 @@ var TNC_AIGEN = (function () {
       sent: 'Request sent. Waiting for the server.', cancelling: 'Cancelling…',
       status: { waiting: 'Waiting for the model…', reasoning: 'The model is reasoning (not shown).', retry: 'The request failed before any answer came. One retry is being made.',
         truncated: 'The answer was cut off at the output limit. The next round asks for a shorter program.', validated: 'Check: {m}', measured: 'Measurement: {m}',
-        measurement_timeout: 'The measurement did not arrive in time. The round is judged by the check.' },
+        measurement_timeout: 'The measurement did not arrive in time. The round is judged by the check.', plateau: 'Refinement stopped: {m}' },
       textLabel: 'Program text', draftLabel: 'Draft (not loaded)',
       done: 'The program passed the check. Press Load to open it.',
       doneMeta: '{b} blocks · round {n} · {q} requests',
@@ -491,6 +525,7 @@ var TNC_AIGEN = (function () {
       err: {
         no_key: 'No OpenRouter key is stored. Enter the key at the top.',
         prompt_empty: 'Describe the part first.',
+        base_empty: 'There is no open program to change.',
         prompt_long: 'The description is too long (20,000 characters at most).',
         unauthorized: 'You are not signed in to the server. Sign in and open the dialog again.',
         forbidden: 'Only an administrator can change the key.',
@@ -535,6 +570,13 @@ var TNC_AIGEN = (function () {
       keyRemovedEnv: 'Sačuvani ključ je uklonjen. Server i dalje ima ključ iz sopstvenog podešavanja.',
       keyMigrated: 'Ključ koji je bio sačuvan u ovom pregledaču obrisan je odavde. Ključ se sada čuva na serveru.',
       prompt: 'Opišite deo',
+      modeLabel: 'Šta AI treba da uradi?', modeNew: 'Novo', modeChange: 'Izmeni trenutni',
+      promptChange: 'Šta da se izmeni u {pgm}?',
+      exChange: ['Produbi žleb za 1 mm', 'Dodaj obaranje ivice 1 mm spolja', 'Smanji pomak na F300 u svim rezovima'],
+      disclosureChange: 'Pritiskom na GENERIŠI opis i ceo program {pgm} šalju se servisu OpenRouter (treća strana).',
+      loadNoteChange: 'Učitavanje zamenjuje tekst programa {active} rezultatom kao jedan korak poništavanja: Ctrl+Z vraća original.',
+      loadedChange: '{name} je izmenjen. Ctrl+Z vraća original.',
+      donePlateau: 'Program je prošao proveru i poklapa se sa planiranim delom {s} procenata (cilj {g}). Dalji krugovi ga nisu poboljšali, pa je dorada zaustavljena.',
       examples: 'Primeri',
       ex: ['Ploča 100x60, žleb dužine 80, širine 6, dubine 2', 'Pravougaoni džep 60x40, dubina 5, radijus ugla 6', 'Četiri rupe Ø8 na podeonom krugu Ø60, dubina 12'],
       model: 'Model', selected: 'Izabrani model', search: 'Pretraži modele', count: '{n} od {m}', noMatch: 'Nijedan model ne odgovara pretrazi.',
@@ -551,7 +593,7 @@ var TNC_AIGEN = (function () {
       sent: 'Zahtev je poslat. Čeka se server.', cancelling: 'Otkazivanje…',
       status: { waiting: 'Čeka se model…', reasoning: 'Model rezonuje (ne prikazuje se).', retry: 'Zahtev nije uspeo pre nego što je stigao odgovor. Pokušava se još jednom.',
         truncated: 'Odgovor je odsečen na ograničenju izlaza. Sledeći krug traži kraći program.', validated: 'Provera: {m}', measured: 'Merenje: {m}',
-        measurement_timeout: 'Merenje nije stiglo na vreme. Krug se ocenjuje po proveri.' },
+        measurement_timeout: 'Merenje nije stiglo na vreme. Krug se ocenjuje po proveri.', plateau: 'Dorada je zaustavljena: {m}' },
       textLabel: 'Tekst programa', draftLabel: 'Nacrt (nije učitan)',
       done: 'Program je prošao proveru. Pritisnite Učitaj da ga otvorite.',
       doneMeta: '{b} blokova · krug {n} · {q} zahteva',
@@ -562,6 +604,7 @@ var TNC_AIGEN = (function () {
       err: {
         no_key: 'Nijedan OpenRouter ključ nije sačuvan. Unesite ključ na vrhu.',
         prompt_empty: 'Prvo opišite deo.',
+        base_empty: 'Nema otvorenog programa za izmenu.',
         prompt_long: 'Opis je predugačak (najviše 20.000 znakova).',
         unauthorized: 'Niste prijavljeni na server. Prijavite se i ponovo otvorite dijalog.',
         forbidden: 'Samo administrator može da menja ključ.',
@@ -612,7 +655,7 @@ var TNC_AIGEN = (function () {
     if (a.k === 'stage') return stepText(lang, { stage: a.stage, round: a.round, maxRounds: a.max });
     if (a.k === 'error') return errorText(lang, a.code);
     if (a.k === 'done') return L.done;
-    if (a.k === 'loaded') return fill(L.loaded, { name: s.loaded.name, active: s.loaded.previous || '' });
+    if (a.k === 'loaded') return fill(s.loaded.changed ? L.loadedChange : L.loaded, { name: s.loaded.name, active: s.loaded.previous || '' });
     return L[a.k] || '';
   }
 
@@ -633,7 +676,8 @@ var TNC_AIGEN = (function () {
     '.ag-row>.fld{flex:1 1 12rem}',
     '.ag .fld input,.ag .fld textarea{min-height:2.75rem}',
     '.ag .fld textarea{min-height:4.5rem}',
-    '.ag .cbtn,.ag-ex button,.ag-m,.ag-link{min-height:2.75rem;min-width:2.75rem}',
+    '.ag .cbtn,.ag-ex button,.ag-m,.ag-link,.ag .seg button{min-height:2.75rem;min-width:2.75rem}',
+    '.ag-mode{align-self:flex-start}',
     '.ag-ex{display:flex;gap:.375rem;flex-wrap:wrap}',
     '.ag-ex button{background:transparent;border:1px solid var(--gc-line);border-radius:var(--gc-radius-btn);color:var(--gc-ink-2);padding:0 .625rem;font-size:.78rem;text-align:left}',
     '.ag-ex button:hover{background:var(--gc-hover);color:var(--gc-ink)}',
@@ -713,6 +757,9 @@ var TNC_AIGEN = (function () {
       system: function (tools) { return window.TNC_AI && window.TNC_AI.system ? window.TNC_AI.system(tools, { plan: true }) : undefined; },
       measure: window.TNC_PART && window.TNC && window.TNC_SIM ? measure : null,
       active: function () { return ui.program.name; },
+      base: function () { var p = ui.program; return p && p.name ? { name: p.name, text: p.text } : null; },
+      /* the program the job started from gets the result as one undo step (ui.js changeProgram): Ctrl+Z gives the original back */
+      change: function (name, program) { closeDialog(); return ui.changeProgram(name, program); },
       /* the way "New program" does it: a new name, the program added and opened; the one on screen before stays as it is */
       load: function (program) {
         var base = programBase(program);
@@ -734,7 +781,10 @@ var TNC_AIGEN = (function () {
     N.off = el('p', { cls: 'ag-note', id: 'aigen-offline' });
     N.notice = el('p', { cls: 'ag-note', id: 'aigen-notice', role: 'status' });
     N.keyForm = el('form', { cls: 'ag-key', id: 'aigen-keyform', autocomplete: 'off', novalidate: '' });
-    N.promptLabel = el('span');
+    N.modeNew = el('button', { type: 'button', id: 'aigen-mode-new', 'data-mode': 'new' });
+    N.modeChange = el('button', { type: 'button', id: 'aigen-mode-change', 'data-mode': 'change' });
+    N.mode = el('div', { cls: 'seg ag-mode', id: 'aigen-mode', role: 'group' }, [N.modeNew, N.modeChange]);
+    N.promptLabel = el('span', { id: 'aigen-promptl' });
     N.prompt = el('textarea', { id: 'aigen-prompt', 'data-autosave': 'aigen-prompt', rows: '3', maxlength: '20000' });
     N.exLabel = el('span', { cls: 'ag-muted', id: 'aigen-exl' });
     N.ex = el('div', { cls: 'ag-ex', id: 'aigen-ex', role: 'group', 'aria-labelledby': 'aigen-exl' });
@@ -763,7 +813,7 @@ var TNC_AIGEN = (function () {
     N.rm = el('button', { cls: 'ag-link', type: 'button', id: 'aigen-keyrm' });
     N.foot = el('div', { cls: 'ag-foot' }, [N.loadNote, N.disc, el('div', { cls: 'ag-act' }, [N.go, N.cancel, N.again, N.copy]), N.rm]);
     N.live = el('div', { cls: 'ag-live', id: 'aigen-live', role: 'status', 'aria-live': 'polite' });
-    N.main = el('div', { id: 'aigen-main' }, [el('label', { cls: 'fld wide' }, [N.promptLabel, N.prompt]), el('div', {}, [N.exLabel, N.ex]), N.models, N.retry, N.prog, N.err, N.ok,
+    N.main = el('div', { id: 'aigen-main' }, [N.mode, el('label', { cls: 'fld wide' }, [N.promptLabel, N.prompt]), el('div', {}, [N.exLabel, N.ex]), N.models, N.retry, N.prog, N.err, N.ok,
       el('div', { id: 'aigen-textbox' }, [N.textLabel, N.text]), N.foot]);
     N.main.style.cssText = 'display:flex;flex-direction:column;gap:.75rem';
     N.root = el('div', { cls: 'ag', id: 'aigen' }, [N.off, N.notice, N.keyForm, N.main, N.live]);
@@ -855,11 +905,15 @@ var TNC_AIGEN = (function () {
         text(keyErr, s.key.error ? '⚠ ' + errorText(lg, s.key.error.code) : ''); show(keyErr, !!s.key.error);
       }
       if (!online) return;
-      text(N.promptLabel, Lx.prompt); text(N.exLabel, Lx.examples); text(N.qLabel, Lx.search);
-      if (N.ex.getAttribute('data-lang') !== lg) {
-        N.ex.setAttribute('data-lang', lg);
+      var change = s.mode === 'change', exs = change ? Lx.exChange : Lx.ex, exKey = lg + ':' + s.mode, baseName = (live || s.phase === 'done') && s.base ? s.base.name : ui.program.name;
+      text(N.modeNew, Lx.modeNew); text(N.modeChange, Lx.modeChange); N.mode.setAttribute('aria-label', Lx.modeLabel);
+      N.modeNew.setAttribute('aria-pressed', change ? 'false' : 'true'); N.modeChange.setAttribute('aria-pressed', change ? 'true' : 'false');
+      N.modeNew.disabled = live; N.modeChange.disabled = live;
+      text(N.promptLabel, change ? fill(Lx.promptChange, { pgm: baseName }) : Lx.prompt); text(N.exLabel, Lx.examples); text(N.qLabel, Lx.search);
+      if (N.ex.getAttribute('data-lang') !== exKey) {
+        N.ex.setAttribute('data-lang', exKey);
         while (N.ex.firstChild) N.ex.removeChild(N.ex.firstChild);
-        for (i = 0; i < Lx.ex.length; i++) { b = el('button', { type: 'button', text: Lx.ex[i] }); N.ex.appendChild(b); }
+        for (i = 0; i < exs.length; i++) { b = el('button', { type: 'button', text: exs[i] }); N.ex.appendChild(b); }
       }
       N.prompt.readOnly = live; N.q.disabled = live;
       paintList(s); paintSteps(s);
@@ -867,16 +921,18 @@ var TNC_AIGEN = (function () {
       text(N.err, e ? '⚠ ' + errorText(lg, e.code) + (e.message && e.code !== 'cancelled' ? ' ' + Lx.serverSays + ' ' + e.message : '') : keyGone ? '⚠ ' + errorText(lg, keyGone.code) : '');
       show(N.err, !!e || !!keyGone);
       var res = s.result, v = res && res.validation, u = res && res.usage;
-      text(N.ok, s.phase === 'done' ? '✓ ' + (s.loaded ? fill(Lx.loaded, { name: s.loaded.name, active: s.loaded.previous || '' })
-        : Lx.done + ' ' + fill(Lx.doneMeta, { b: v && v.blocks != null ? v.blocks : '—', n: res.round == null ? 0 : res.round, q: u && u.requests != null ? u.requests : '—' })) : '');
+      var cm = res && res.measurement && res.measurement.client, pol = s.catalog.policy || {};
+      var doneLine = res && res.stopped === 'plateau' && cm && typeof cm.score === 'number' ? fill(Lx.donePlateau, { s: cm.score.toFixed(1), g: pol.measure_goal == null ? 95 : pol.measure_goal }) : Lx.done;
+      text(N.ok, s.phase === 'done' ? '✓ ' + (s.loaded ? fill(s.loaded.changed ? Lx.loadedChange : Lx.loaded, { name: s.loaded.name, active: s.loaded.previous || '' })
+        : doneLine + ' ' + fill(Lx.doneMeta, { b: v && v.blocks != null ? v.blocks : '—', n: res.round == null ? 0 : res.round, q: u && u.requests != null ? u.requests : '—' })) : '');
       show(N.ok, s.phase === 'done');
       text(N.textLabel, s.phase === 'failed' && s.draft ? Lx.draftLabel : Lx.textLabel);
       text(N.text, s.text); show(N.text.parentNode, !!s.text);
       if (live) N.text.scrollTop = N.text.scrollHeight;
       var canLoad = s.phase === 'done' && !s.loaded;
-      text(N.loadNote, canLoad ? fill(Lx.loadNote, { name: freeName(programBase(res.program), names()), active: ui.program.name }) + (ui.state.editing ? ' ' + fill(Lx.editNote, { active: ui.program.name }) : '') : '');
+      text(N.loadNote, canLoad ? (s.base ? fill(Lx.loadNoteChange, { active: s.base.name }) : fill(Lx.loadNote, { name: freeName(programBase(res.program), names()), active: ui.program.name })) + (ui.state.editing ? ' ' + fill(Lx.editNote, { active: ui.program.name }) : '') : '');
       show(N.loadNote, canLoad);
-      text(N.disc, Lx.disclosure); show(N.disc, !canLoad && !live);
+      text(N.disc, change ? fill(Lx.disclosureChange, { pgm: baseName }) : Lx.disclosure); show(N.disc, !canLoad && !live);
       text(N.go, canLoad ? Lx.load : Lx.generate); N.go.setAttribute('data-mode', canLoad ? 'load' : 'generate');
       show(N.go, !live && !(s.phase === 'done' && s.loaded));
       text(N.cancel, Lx.cancel); show(N.cancel, live); N.cancel.disabled = s.phase === 'cancelling';
@@ -907,6 +963,7 @@ var TNC_AIGEN = (function () {
     });
     N.cancel.addEventListener('click', function () { ctl.cancel(); });
     N.again.addEventListener('click', function () { ctl.again(); N.prompt.focus(); });
+    N.mode.addEventListener('click', function (e) { var b = e.target.closest('[data-mode]'); if (b && !b.disabled) { ctl.setMode(b.getAttribute('data-mode')); render(); } });
     N.retry.addEventListener('click', function () { ctl.refreshCatalog(); });
     N.copy.addEventListener('click', function () {
       var d = ctl.state.draft;

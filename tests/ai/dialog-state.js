@@ -40,7 +40,7 @@ function stream() {
 function rig(o = {}) {
   const calls = [], timers = [], programs = { 'MINE.H': 'BEGIN PGM MINE MM\n; unsaved edit\nEND PGM MINE MM' };
   let st = stream(), used = false;   // one stream per job
-  const env = { clock: 0, active: 'MINE.H', loads: [], measured: [], keyPresent: o.key !== false, refuse: o.refuse || null };
+  const env = { clock: 0, active: 'MINE.H', loads: [], changes: [], undo: [], measured: [], keyPresent: o.key !== false, refuse: o.refuse || null };
   const transport = {
     keyState: async () => { calls.push(['keyState']); return { ok: true, status: 200, data: { present: env.keyPresent, stored: env.keyPresent } }; },
     putKey: async (key) => { calls.push(['putKey', key]); if (o.putFails) return { ok: false, status: 403, error: { code: 'forbidden', message: 'admin only' } }; env.keyPresent = true; return { ok: true, status: 200, data: { present: true, stored: true } }; },
@@ -62,6 +62,8 @@ function rig(o = {}) {
     machine: () => '426', tools: () => [{ t: 5, name: 'ENDMILL_12', l: 120, r: 6, mine: true }], system: () => 'SYSTEM PROMPT',
     measure: o.measure === undefined ? ((program, spec) => { env.measured.push([program, spec]); env.clock += o.measureTakes || 5; return { score: 61.5, text: 'S1 SLOT: NOT CUT' }; }) : o.measure,
     active: () => env.active,
+    base: () => (o.noBase ? null : { name: env.active, text: programs[env.active] }),
+    change: (name, program) => { env.changes.push([name, program]); env.undo.push([name, programs[name]]); programs[name] = program; return name; },
     load: (program) => { env.loads.push(program); const n = A.freeName(A.programBase(program), Object.keys(programs)); programs[n] = program; env.active = n; return n; },
     pick: { get: () => null, set: () => {} },
   };
@@ -295,6 +297,63 @@ const DONE = { program: GOOD, round: 0, accepted: true, model: 'acme/fast-one-v2
     const r6 = rig({ refuse: { code: 'busy', message: 'A job is running.' } });
     await start(r6);
     ok(r6.ctl.state.phase === 'idle' && r6.ctl.state.error.code === 'busy' && r6.ctl.load() === null, 'a refusal before the stream: back to idle with the reason');
+  }
+
+  /* ---- change current: the open program is the base, Load changes it as one undo step ---- */
+  {
+    const r = rig();
+    await r.ctl.refresh();
+    ok(r.ctl.state.mode === 'new', 'mode: a new program is the default');
+    r.ctl.setMode('sideways');
+    ok(r.ctl.state.mode === 'new', 'mode: only "new" and "change" exist');
+    r.ctl.setMode('change');
+    const original = r.programs['MINE.H'];
+    const [p] = await start(r, 'make the slot end at X+80');
+    const body = r.of('startJob')[0][1];
+    ok(body.base_program && body.base_program.name === 'MINE.H' && body.base_program.text === original && body.base_program.machine === '426' && body.prompt === 'make the slot end at X+80', 'change: the job carries the open program (name, text, machine) and the wish', body.base_program);
+    ok(JSON.stringify(Object.keys(body.base_program).sort()) === '["machine","name","text"]' && body.client_measure === true && body.model === 'acme/fast-one-v2', 'change: otherwise the same job as for a new program', Object.keys(body));
+    r.ctl.setMode('new');
+    ok(r.ctl.state.mode === 'change' && r.ctl.state.base.name === 'MINE.H', 'change: the mode cannot be switched while the job runs');
+    job(r); stage(r, 'generation'); stage(r, 'validation'); stage(r, 'measurement'); stage(r, 'refinement', 1); stage(r, 'validation', 1); stage(r, 'measurement', 1); stage(r, 'completion', 1); await settle();
+    ok(r.ctl.state.steps.map((s) => A.stepText('en', s)).join(' > ') === 'Generation > Validation > Measurement > Refinement, round 1 of 5 > Validation > Measurement > Completion', 'change: progress and rounds are the same events');
+    r.env.active = 'OTHER.H'; r.programs['OTHER.H'] = 'BEGIN PGM OTHER MM\nEND PGM OTHER MM';     // the operator opened another program meanwhile
+    r.st.send(frame('done', DONE)); r.st.close(); await p;
+    ok(r.ctl.state.phase === 'done' && r.programs['MINE.H'] === original && r.env.changes.length === 0 && r.env.loads.length === 0, 'change: done, and the program is still untouched');
+    const name = r.ctl.load();
+    ok(name === 'MINE.H' && r.env.changes.length === 1 && r.env.changes[0][0] === 'MINE.H' && r.env.changes[0][1] === GOOD && r.env.loads.length === 0, 'change: Load puts the result into the program the job started from, not into whatever is open now', r.env.changes);
+    ok(r.env.undo.length === 1 && r.env.undo[0][1] === original && r.programs['OTHER.H'].includes('OTHER') && Object.keys(r.programs).length === 2, 'change: one undo step holds the original; no program was added, none lost');
+    ok(r.ctl.state.loaded.changed === true && A.announcement('en', r.ctl.state) === 'MINE.H is changed. Ctrl+Z brings the original back.' && r.ctl.load() === null && r.env.changes.length === 1, 'change: said so, once', A.announcement('en', r.ctl.state));
+
+    const r2 = rig({ noBase: true });
+    await r2.ctl.refresh(); r2.ctl.setMode('change');
+    ok((await r2.ctl.generate('deeper')) === false && r2.of('startJob').length === 0 && r2.ctl.state.error.code === 'base_empty', 'change: no open program -> nothing is sent');
+
+    const r3 = rig();
+    const [p3] = await start(r3);
+    ok(!('base_program' in r3.of('startJob')[0][1]), 'new: no base program is sent');
+    job(r3); r3.st.send(frame('done', DONE)); r3.st.close(); await p3;
+    r3.ctl.setMode('change');
+    ok(r3.ctl.state.phase === 'idle' && r3.ctl.state.result === null && r3.ctl.load() === null && r3.env.loads.length === 0 && r3.env.changes.length === 0, 'switching the mode drops a result that was waiting: a "new" result can never be loaded over the open program');
+
+    const r4 = rig();
+    r4.ctl.dispatch({ type: 'online' }); await r4.ctl.refresh(); r4.ctl.setMode('change');
+    const [p4] = await start(r4, 'deeper');
+    job(r4); stage(r4, 'generation'); await settle();
+    r4.ctl.cancel(); await settle();
+    r4.st.send(frame('error', { code: 'cancelled', message: '', retryable: false, draft: null })); r4.st.close(); await p4;
+    ok(r4.ctl.state.error.code === 'cancelled' && r4.ctl.load() === null && r4.env.changes.length === 0 && r4.programs['MINE.H'].includes('unsaved edit'), 'change: cancel leaves the program as it was');
+  }
+
+  /* ---- a job the server stopped on a plateau ---- */
+  {
+    const r = rig();
+    const [p] = await start(r);
+    job(r); stage(r, 'generation'); stage(r, 'refinement', 1);
+    r.st.send(frame('status', { code: 'plateau', message: 'The match stopped improving: best 88.7 % before, 88.7 % in round 1.' }));
+    r.st.send(frame('done', Object.assign({}, DONE, { round: 1, stopped: 'plateau', measurement: { native: {}, client: { score: 88.7, pass: null, text: null } } }))); r.st.close(); await p;
+    ok(r.ctl.state.phase === 'done' && r.ctl.state.result.stopped === 'plateau' && r.ctl.state.steps.length === 2, 'plateau: the job ends after the round the server stopped at, with a result');
+    ok(A.statusText('en', r.ctl.state.lines[r.ctl.state.lines.length - 1]).startsWith('Refinement stopped: The match stopped improving') && A.statusText('sv', { code: 'plateau', message: 'x' }) === 'Förfiningen stoppades: x', 'plateau: the status line says refinement stopped');
+    ok(/\{s\} percent \(goal \{g\}\)/.test(A.STR.en.donePlateau) && /did not improve/.test(A.STR.en.donePlateau), 'plateau: the result line gives the match and the goal');
   }
 
   /* ---- measurement inside the server's time ---- */

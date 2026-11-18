@@ -103,6 +103,21 @@ struct Start {
     /// The client answers `measure-request` events (it has the part measurement, `sim/part.js`).
     #[serde(default)]
     client_measure: bool,
+    /// "Change current": the program the job edits. Absent = a new program is written.
+    #[serde(default)]
+    base_program: Option<BaseProgram>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct BaseProgram {
+    /// The program's name on the control, for the model's orientation only.
+    #[serde(default)]
+    name: Option<String>,
+    text: String,
+    /// Used for the check when the job itself names no machine.
+    #[serde(default)]
+    machine: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -261,6 +276,8 @@ struct Ctx {
     model: catalog::Model,
     system: String,
     ask: String,
+    /// "new" or "change" (a job with `base_program`).
+    mode: &'static str,
     opts: tnc_engine::Options,
     client_measure: bool,
     out: mpsc::Sender<Event>,
@@ -309,7 +326,15 @@ pub async fn start(State(st): State<AppState>, CurrentUser(u): CurrentUser, body
     if b.tools.len() > 999 || b.tools.iter().any(|t| !t.l.is_finite() || !t.r.is_finite() || t.r < 0.0 || t.name.chars().count() > 200) {
         return fail(StatusCode::BAD_REQUEST, "bad_request", "tools must be at most 999 rows of {t, name, l, r} with finite numbers");
     }
-    let machine = b.machine.clone().unwrap_or_default();
+    if let Some(bp) = &b.base_program {
+        if bp.text.trim().is_empty() || bp.text.chars().count() > policy::MAX_BASE_PROGRAM_CHARS {
+            return fail(StatusCode::BAD_REQUEST, "bad_request", format!("base_program.text must be 1 to {} characters", policy::MAX_BASE_PROGRAM_CHARS));
+        }
+        if bp.name.as_deref().is_some_and(|n| n.chars().count() > policy::MAX_PROGRAM_NAME_CHARS) {
+            return fail(StatusCode::BAD_REQUEST, "bad_request", format!("base_program.name must be at most {} characters", policy::MAX_PROGRAM_NAME_CHARS));
+        }
+    }
+    let machine = b.machine.clone().or_else(|| b.base_program.as_ref().and_then(|p| p.machine.clone())).unwrap_or_default();
     if !machine.is_empty() && !tnc_formats::MACHINES.contains(&machine.as_str()) {
         return fail(StatusCode::BAD_REQUEST, "bad_request", format!("machine must be one of {}", tnc_formats::MACHINES.join(", ")));
     }
@@ -357,10 +382,14 @@ pub async fn start(State(st): State<AppState>, CurrentUser(u): CurrentUser, body
     }
     tools.sort_by_key(|t| t.t);
     let system = b.system.clone().filter(|s| !s.trim().is_empty()).unwrap_or_else(|| default_system(&tools));
-    let ask = format!(
-        "Write the program for this part:\n\n{prompt}{}",
-        if b.client_measure { "\n\nIf the system prompt defines a PART SPEC format, put the finished part in one ```partspec fence before the program." } else { "" }
-    );
+    let ask = match &b.base_program {
+        Some(bp) => change_ask(bp.name.as_deref(), &bp.text, prompt),
+        None => format!(
+            "Write the program for this part:\n\n{prompt}{}",
+            if b.client_measure { "\n\nIf the system prompt defines a PART SPEC format, put the finished part in one ```partspec fence before the program." } else { "" }
+        ),
+    };
+    let mode = if b.base_program.is_some() { "change" } else { "new" };
     let (tx, rx) = mpsc::channel::<Event>(256);
     let ctx = Arc::new(Ctx {
         st: st.clone(),
@@ -369,6 +398,7 @@ pub async fn start(State(st): State<AppState>, CurrentUser(u): CurrentUser, body
         model,
         system,
         ask,
+        mode,
         opts: tnc_engine::Options { machine, tools: b.tools, holder: b.holder, auto_tools: false, listing: false },
         client_measure: b.client_measure,
         out: tx,
@@ -432,7 +462,8 @@ pub async fn measurement(State(st): State<AppState>, CurrentUser(u): CurrentUser
 /* ---------------- the job ---------------- */
 
 enum End {
-    Done(Box<Cand>),
+    /// The program to deliver, and why refining stopped early when it did ("plateau").
+    Done(Box<Cand>, Option<&'static str>),
     Failed(Fail),
     /// The client closed the stream: nobody to tell.
     Gone,
@@ -443,7 +474,7 @@ async fn run(ctx: Arc<Ctx>, id: String, engine: tnc_engine::Engine) {
         "job",
         json!({
             "id": id, "model": ctx.model.id, "max_rounds": policy::MAX_REFINEMENT_ROUNDS,
-            "reasoning": ctx.model.reasoning, "client_measure": ctx.client_measure,
+            "reasoning": ctx.model.reasoning, "client_measure": ctx.client_measure, "mode": ctx.mode,
         }),
     )
     .await;
@@ -458,12 +489,12 @@ async fn run(ctx: Arc<Ctx>, id: String, engine: tnc_engine::Engine) {
     ctx.st.ai_jobs.remove(&id);
     match end {
         End::Gone => {}
-        End::Done(c) => {
+        End::Done(c, stopped) => {
             ctx.emit("stage", json!({ "stage": "completion", "round": c.round, "max_rounds": policy::MAX_REFINEMENT_ROUNDS })).await;
             ctx.emit(
                 "done",
                 json!({
-                    "program": c.program, "round": c.round, "accepted": true,
+                    "program": c.program, "round": c.round, "accepted": true, "stopped": stopped,
                     "validation": c.validation, "measurement": c.measurement, "usage": ctx.usage(), "model": ctx.model.id,
                 }),
             )
@@ -480,6 +511,8 @@ async fn drive(ctx: &Ctx, engine: &tnc_engine::Engine) -> End {
     let total = max + 1;
     let mut hist: Vec<(u32, String)> = vec![];
     let mut spec: Option<Value> = None;
+    // the best measured match among the rounds that passed the interpreter's check (the plateau rule)
+    let mut clean_best: Option<f64> = None;
     // what goes back to the model next round: (assistant turn, user turn)
     let mut back: Option<(String, String)> = None;
 
@@ -561,7 +594,14 @@ async fn drive(ctx: &Ctx, engine: &tnc_engine::Engine) -> End {
         if let Some(c) = &cand {
             keep_best(ctx, c.clone());
             if c.accepted() {
-                return End::Done(Box::new(c.clone()));
+                return End::Done(Box::new(c.clone()), None);
+            }
+            if let (true, Some(now)) = (c.validation.ok, c.score()) {
+                let before = clean_best;
+                clean_best = Some(before.map_or(now, |b| b.max(now)));
+                if let Some(prev) = before.filter(|p| policy::plateau(*p, now)) {
+                    return on_plateau(ctx, round, prev, now).await;
+                }
             }
         }
         if round == max || !policy::AUTO_REPAIR {
@@ -589,6 +629,41 @@ async fn drive(ctx: &Ctx, engine: &tnc_engine::Engine) -> End {
         ),
         None => Fail::new("no_program", format!("The model returned no program in {total} answers. Rephrase the request or try another model."), true),
     })
+}
+
+/// A checked-clean round did not raise the match by the policy margin: refining stops here.
+/// The best clean program is delivered when its match reaches the plateau floor (and the client did
+/// not say `pass: false`); otherwise the job ends with the draft.
+async fn on_plateau(ctx: &Ctx, round: u32, prev: f64, now: f64) -> End {
+    let best = ctx.shared.lock().unwrap().best.clone().filter(|b| b.validation.ok && !b.truncated);
+    let top = best.as_ref().and_then(Cand::score).unwrap_or(now);
+    let said_no = best.as_ref().and_then(|b| b.measurement.client.as_ref()).and_then(|c| c.pass) == Some(false);
+    let (goal, gain, floor) = (policy::MEASURE_GOAL, policy::PLATEAU_MIN_GAIN, policy::PLATEAU_ACCEPT_FLOOR);
+    let why = format!("The match stopped improving: best {prev:.1} % before, {now:.1} % in round {round} (a round must gain {gain:.1} points). Refinement stopped.");
+    match best {
+        Some(b) if policy::plateau_accepts(top) && !said_no => {
+            ctx.status("plateau", format!("{why} The program passed the check and matches the intended part to {top:.1} % (goal {goal:.0} %).")).await;
+            End::Done(Box::new(b), Some("plateau"))
+        }
+        _ => {
+            ctx.status("plateau", format!("{why} {top:.1} % is under the {floor:.0} % a stopped job needs.")).await;
+            End::Failed(Fail::new(
+                "validation_failed",
+                format!("The cut matches the intended part to {top:.1} % (goal {goal:.0} %) and round {round} did not improve it. Stopped early; the draft is kept and nothing was loaded. Change the request or try another model."),
+                true,
+            ))
+        }
+    }
+}
+
+/// The task of a "change" job: the program on the control and what to change in it.
+fn change_ask(name: Option<&str>, text: &str, prompt: &str) -> String {
+    let name: String = name.unwrap_or("").chars().filter(|c| !c.is_control() && *c != '`').collect();
+    let called = if name.trim().is_empty() { String::new() } else { format!(" ({})", name.trim()) };
+    format!(
+        "Here is the current program{called}:\n```klartext\n{}\n```\n\nChange it as follows: {prompt}\n\nKeep everything else as it is. Return the COMPLETE changed program in one ```klartext fence.",
+        text.trim_end()
+    )
 }
 
 fn short(s: &str, n: usize) -> String {
@@ -1006,6 +1081,20 @@ mod tests {
         let broken = cand(1, vec![finding(1, "L FOO", "SYNTAX ERROR")], vec![]);
         assert!(!broken.accepted());
         assert!(high.rank() > low.rank() && low.rank() > broken.rank() && broken.rank() > cut.rank());
+    }
+
+    #[test]
+    fn a_change_job_sends_the_open_program_and_the_wish() {
+        let a = change_ask(Some("SLOT.H"), "BEGIN PGM SLOT MM\nL X+90 F500\nEND PGM SLOT MM\n\n", "make the slot end at X+80");
+        assert!(a.starts_with("Here is the current program (SLOT.H):\n```klartext\nBEGIN PGM SLOT MM\nL X+90 F500\nEND PGM SLOT MM\n```"), "{a}");
+        assert!(a.contains("Change it as follows: make the slot end at X+80"), "{a}");
+        assert!(a.ends_with("Return the COMPLETE changed program in one ```klartext fence."), "{a}");
+        assert!(change_ask(None, "X", "y").starts_with("Here is the current program:\n"));
+        assert!(!change_ask(Some("A```B\n"), "X", "y").lines().next().unwrap().contains('`'), "a name cannot open a fence");
+        let b: Start = serde_json::from_str(r#"{"prompt":"p","base_program":{"name":"A.H","text":"BEGIN PGM A MM","machine":"426"}}"#).unwrap();
+        assert_eq!(b.base_program.unwrap().machine.as_deref(), Some("426"));
+        assert!(serde_json::from_str::<Start>(r#"{"prompt":"p","base_program":{"text":"x","extra":1}}"#).is_err());
+        assert!(serde_json::from_str::<Start>(r#"{"prompt":"p","base_program":{"name":"A.H"}}"#).is_err());
     }
 
     #[test]

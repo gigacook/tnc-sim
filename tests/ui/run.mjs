@@ -288,8 +288,8 @@ async function phoneFlows(browser, tag) {
   await swipe(page, 330, mid, 60, mid + 10);   // leftward = next; Status is last: stays
   ok(await page.evaluate(() => document.querySelector('.main').dataset.pane) === 'side', `${L}: swipe past the last workspace does nothing`);
   await page.evaluate(() => { window.__t = []; const m = document.querySelector('.main');
-    ['touchstart', 'touchmove', 'touchend', 'touchcancel'].forEach((ty) => m.addEventListener(ty, (e) => { const t = e.changedTouches[0] || {};
-      window.__t.push(ty[5] + ':' + Math.round(t.clientX) + ',' + Math.round(t.clientY) + '@' + Math.round(e.timeStamp) + (ty === 'touchstart' ? ':' + (e.target.id || e.target.className || e.target.tagName) : '')); }, { passive: true })); });
+    ['touchstart', 'touchmove', 'touchend', 'touchcancel'].forEach((ty) => { m.addEventListener(ty, (e) => { const t = e.changedTouches[0] || {};
+      window.__t.push(ty[5] + ':' + Math.round(t.clientX) + ',' + Math.round(t.clientY) + '@' + Math.round(e.timeStamp) + (ty === 'touchstart' ? ':' + (e.target.id || e.target.className || e.target.tagName) : '')); }, { passive: true }); }); });
   mid = await swipeY();
   await swipe(page, 60, mid, 330, mid + 5);   // rightward = previous
   const prevOk = (await paneAfter(page, 'gfx')) === 'gfx';
@@ -389,8 +389,9 @@ async function desktopFlows(browser, tag) {
 /* AI without a server (this suite opens the plain file): the AI choice is one line of text. No key field, no request to
    OpenRouter, a key an older build left in the browser is deleted, the manual path is whole. The AI flow itself (key on the
    server, models, stages, cancel, a repair round, the measurement, Load) runs against the real server and a mock provider in
-   tests/ai/dialog-e2e.mjs. The browser-key flow that ui.js had (plan step, Continue / Stop, modify + Ctrl+Z, the model
-   table) was removed with its code and has no successor here. */
+   tests/ai/dialog-e2e.mjs, and so does "Change current" (the request carries the open program and the wish, the change
+   lands in that program, Ctrl+Z undoes it); that the two-option control is there is checked in serverChecks below.
+   The browser-key loop that ui.js had (plan step, Continue / Stop, the model table) was removed with its code. */
 async function aiOffline(browser, tag) {
   const { ctx, page, errors } = await simPage(browser, { width: 390, height: 844, storage: { 'tnc426.orkey': 'test-key-not-real' } });
   const L = `[${tag}] AI (no server)`;
@@ -477,6 +478,19 @@ async function serverChecks(browser, tag) {
     ok(await page.evaluate(() => !!window.TNC_BACKEND), `${L}: simulator sees the server (bridge)`);
     const nonFont = csps.filter((c) => !/fonts\.(googleapis|gstatic)/.test(c));
     ok(nonFont.length === 0, `${L}: simulator runs under the CSP (fonts aside)`, nonFont.slice(0, 2).join(' | '));
+    // the AI view with a server: one two-option control, new program or change the one that is open
+    if (await page.locator('#setup:not([hidden])').count()) await page.evaluate(() => document.getElementById('setup-skip').click());
+    await page.evaluate(() => { document.getElementById('b-new').click(); document.getElementById('new-t-ai').click(); });
+    await page.waitForSelector('#aigen-mode', { state: 'visible', timeout: 10000 }).catch(() => {});
+    const modes = () => page.evaluate(() => [...document.querySelectorAll('#aigen-mode button')].map((b) => b.textContent + ':' + b.getAttribute('aria-pressed')).join('|'));
+    ok(await modes() === 'Nytt:true|Ändra aktuellt:false', `${L}: AI: new program or change the current one`, await modes());
+    const open = await page.evaluate(() => TNC_UI.program.name);
+    await page.evaluate(() => document.getElementById('aigen-mode-change').click());
+    ok(await modes() === 'Nytt:false|Ändra aktuellt:true' && (await page.textContent('#aigen-promptl')) === `Vad ska ändras i ${open}?` && (await page.textContent('#aigen-go')) === 'GENERERA' && (await page.textContent('#aigen-disclosure')).includes(`hela programmet ${open}`),
+      `${L}: "Change current" keeps the modify flow reachable (it names the open program and says the whole program is sent)`, await page.textContent('#aigen-promptl'));
+    await page.evaluate(() => document.getElementById('aigen-mode-new').click());
+    ok(await modes() === 'Nytt:true|Ändra aktuellt:false' && (await page.textContent('#aigen-promptl')) === 'Beskriv detaljen', `${L}: back to a new program`);
+    await page.keyboard.press('Escape');
     ok(errors.length === 0, `${L}: simulator page errors`, errors.slice(0, 2).join(' | '));
     // fetch() will not send a custom Host header; a raw request does (this is what a DNS-rebinding page looks like)
     const status = await new Promise((res) => { const r = http.request({ host: '127.0.0.1', port, path: '/api/health', headers: { Host: `evil.example:${port}` } }, (x) => { x.resume(); res(x.statusCode); }); r.on('error', () => res(0)); r.end(); });
@@ -490,32 +504,46 @@ async function serverChecks(browser, tag) {
     p2.on('console', (m) => { if (/Refused to/.test(m.text()) && !/fonts/.test(m.text())) e2.push(m.text()); });
     await p2.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
     await p2.goto(base + '/');
+    // Business opens straight into the machine; the first-account form is one menu away (☰ → Sign in → /library)
+    await p2.waitForSelector('.work-menu-toggle', { timeout: 15000 }).catch(() => {});
+    ok(new URL(p2.url()).pathname === '/work' && await p2.locator('.work iframe').count() === 1, `${L}: web / opens the machine at /work`, p2.url());
+    const wm = await box(p2, '.work-menu-toggle');
+    ok(wm && wm.height >= 44 && wm.width >= 44, `${L}: the machine page's menu button ≥ 44 px`, JSON.stringify(wm));
+    await p2.click('.work-menu-toggle');
+    await p2.click('#work-menu a[href="/library"]');
+    await p2.waitForSelector('input[type=email]', { timeout: 10000 }).catch(() => {});
+    ok(new URL(p2.url()).pathname === '/library' && await p2.locator('input[type=email]').count() === 1 && await p2.locator('input[type=password]').count() === 1, `${L}: sign-up is reachable from the machine: menu → Sign in → the form at /library`, p2.url());
     await p2.fill('input[type=email]', 'op@shop.test');
     const name = p2.locator('input[autocomplete=name], input[name=name]');
     if (await name.count()) await name.first().fill('Operator');
     await p2.fill('input[type=password]', 'correct horse');
     await p2.click('button[type=submit]');
     await p2.waitForSelector('.topbar', { timeout: 10000 });
-    for (const path of ['/', '/tools', '/account', '/simulator']) {
+    ok(new URL(p2.url()).pathname === '/library', `${L}: after sign-up the library opens (/library)`, p2.url());
+    let nav = 0;
+    for (const path of ['/library', '/tools', '/account', '/work']) {
       await p2.goto(base + path); await p2.waitForTimeout(400);
       const o = await overflow(p2);
       ok(o.sw <= o.cw, `${L}: web ${path} has no horizontal overflow at 360 px`, `${o.sw} > ${o.cw}`);
       await p2.screenshot({ path: join(SHOTS, `${tag}-web-360${path.replace(/\//g, '_') || '_'}.png`) });
+      if (path === '/account') nav = await p2.evaluate(() => { const b = document.querySelector('.nav-toggle'); return b ? b.getBoundingClientRect().height : 0; });
     }
-    const nav = await p2.evaluate(() => { const b = document.querySelector('.nav-toggle'); return b ? b.getBoundingClientRect().height : 0; });
     ok(nav >= 44, `${L}: web menu button ≥ 44 px`, nav);
-    const fr = await box(p2, '.simframe iframe');
+    await p2.goto(base + '/simulator'); await p2.waitForSelector('.work iframe', { timeout: 10000 }).catch(() => {});
+    ok(new URL(p2.url()).pathname === '/work', `${L}: the old /simulator address leads to the machine (/work)`, p2.url());
+    const fr = await box(p2, '.work iframe');
     ok(fr && fr.height >= 400, `${L}: simulator iframe fills the phone`, JSON.stringify(fr));
-    // every soft-key row of the simulator inside /simulator is fully on screen (page viewport and iframe)
-    const sf = p2.frames().find((f) => /\/sim\//.test(f.url()));
+    // every soft-key row of the simulator inside /work is fully on screen (page viewport and iframe)
+    let sf = null;   // the iframe starts at about:blank: wait until it is on the simulator page
+    for (let i = 0; i < 150 && !sf; i++) { sf = p2.frames().find((f) => /\/sim\//.test(f.url())) || null; if (!sf) await p2.waitForTimeout(100); }
     if (sf) await sf.waitForFunction(() => [...document.querySelectorAll('.sk:not([hidden])')].some((e) => e.offsetParent !== null), null, { timeout: 15000 }).catch(() => {});
     // retake the shot now that the simulator has loaded (the loop above shoots 400 ms after navigation)
-    await p2.screenshot({ path: join(SHOTS, `${tag}-web-360_simulator.png`) });
+    await p2.screenshot({ path: join(SHOTS, `${tag}-web-360_work.png`) });
     const keys = sf ? await sf.evaluate(() => [...document.querySelectorAll('.sk:not([hidden])')].filter((e) => e.offsetParent !== null).map((e) => {
       const r = e.getBoundingClientRect(); return { t: e.textContent.trim().slice(0, 12), top: r.top, bottom: r.bottom, ih: innerHeight }; })) : [];
-    ok(keys.length > 0, `${L}: web /simulator shows the simulator's soft keys`, sf ? 'no visible soft key' : 'simulator frame not found');
+    ok(keys.length > 0, `${L}: web /work shows the simulator's soft keys`, sf ? 'no visible soft key' : 'simulator frame not found');
     const cutKeys = keys.filter((k) => k.top < 0 || k.bottom > k.ih + 0.5 || (fr ? fr.y : 0) + k.bottom > 740 + 0.5).map((k) => k.t + '@' + Math.round(k.bottom));
-    ok(keys.length > 0 && cutKeys.length === 0, `${L}: web /simulator at 360×740 shows every soft-key row in full`, cutKeys.slice(0, 6).join(', '));
+    ok(keys.length > 0 && cutKeys.length === 0, `${L}: web /work at 360×740 shows every soft-key row in full`, cutKeys.slice(0, 6).join(', '));
     ok(e2.length === 0, `${L}: web app errors`, e2.slice(0, 2).join(' | '));
     await c2.close();
   } finally { proc.kill(); try { rmSync(data, { recursive: true, force: true }); } catch {} }
@@ -802,7 +830,7 @@ END PGM ${n} MM
 
 /* ---------- regressions (spec-driven): checks that wait for app fixes are named after the defect ---------- */
 /* a test-side probe, no app hook: a TNC_UI plugin (the documented plugin bus) remembers the tool group */
-const PROBE = () => { (window.TNC_UI_PLUGINS = window.TNC_UI_PLUGINS || []).push((ui) => { ui.on('tool', (e) => { window.__qaTool = e.group; }); }); };
+const PROBE = () => { window.TNC_UI_PLUGINS = window.TNC_UI_PLUGINS || []; window.TNC_UI_PLUGINS.push((ui) => { ui.on('tool', (e) => { window.__qaTool = e.group; }); }); };
 /* NDC extent of the blank (BLK FORM box) and the drawn tool (cutter + holder) in the current camera; inside = within ±1 */
 const framing = (p) => p.evaluate(() => {
   const ui = TNC_UI, T = ui.THREE, st = ui.state.res.stock, cam = ui.camera;

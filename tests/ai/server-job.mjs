@@ -561,6 +561,109 @@ test('measurement hook: no answer in time -> the job goes on with the interprete
   assert.equal(r.last.data.measurement.client, null);
 });
 
+test('change job: the open program and the wish go upstream; the result is checked and repaired like a new program', async () => {
+  mock.reset();
+  const CHANGED = GOOD.replace('L X+90 F500', 'L X+80 F500');
+  mock.script.push({ text: fence(BAD) }, { text: fence(CHANGED) }, { text: fence(GOOD) });
+  const r = await job({ prompt: 'make the slot end at X+80', model: MODEL, base_program: { name: 'SLOT.H', text: GOOD, machine: '426' } });
+  assert.equal(r.events[0].data.mode, 'change');
+  assert.deepEqual(r.stages, ['generation', 'validation', 'measurement', 'refinement 1/5', 'validation', 'measurement', 'completion']);
+  assert.equal(r.last.type, 'done');
+  assert.equal(r.last.data.program, CHANGED);
+  assert.equal(r.last.data.round, 1);
+  assert.equal(r.last.data.stopped, null);
+  const sent = mock.chat();
+  assert.equal(sent.length, 2, 'stopped at the first program that passes');
+  const task = sent[0].body.messages[1].content;
+  assert.ok(task.startsWith(`Here is the current program (SLOT.H):\n\`\`\`klartext\n${GOOD}\n\`\`\``), task.slice(0, 120));
+  assert.match(task, /Change it as follows: make the slot end at X\+80/);
+  assert.match(task, /Return the COMPLETE changed program/);
+  assert.ok(!/Write the program for this part/.test(task));
+  assert.equal(sent[1].body.messages.length, 4, 'system + the task with the base program + the failed answer + the report');
+  assert.equal(sent[1].body.messages[1].content, task, 'the base program stays in every round');
+  assert.match(sent[1].body.messages[3].content, /RAPID TRAVERSE INTO MATERIAL/);
+
+  // a job without a base program says so
+  mock.reset();
+  mock.script.push({ text: fence(GOOD) });
+  assert.equal((await job({ prompt: 'a slot', model: MODEL })).events[0].data.mode, 'new');
+
+  // refused shapes: nothing goes upstream
+  mock.reset();
+  for (const base_program of [{ text: '  ' }, { name: 'A.H' }, { text: GOOD, extra: 1 }, { text: GOOD, machine: '999' }, { text: GOOD, name: 'N'.repeat(65) }, 'BEGIN PGM A MM']) {
+    const bad = await job({ prompt: 'x', model: MODEL, base_program });
+    assert.equal(bad.status, 400, JSON.stringify(base_program).slice(0, 60));
+    assert.equal(bad.json.error.code, 'bad_request');
+  }
+  assert.equal(mock.chat().length, 0);
+});
+
+/* a job whose client answers each measure-request with the next entry of `answers` ({score, pass?}) */
+async function measured(answers) {
+  mock.reset();
+  for (let i = 0; i < 8; i++) mock.script.push({ text: fence(GOOD) });
+  let n = 0;
+  const r = await job({ prompt: 'a slot', model: MODEL, client_measure: true }, {
+    onEvent: async (ev, j) => {
+      if (ev.type !== 'measure-request') return;
+      const a = answers[Math.min(n++, answers.length - 1)];
+      await api('POST', `/api/v1/ai/jobs/${j.jobId}/measurement`, { body: { request_id: ev.data.request_id, ...a } });
+    },
+  });
+  r.plateau = r.of('status').filter((s) => s.code === 'plateau');
+  return r;
+}
+
+test('plateau: a clean program whose match stops improving ends the refinement instead of burning five rounds', async () => {
+  // the measured case: a correct slot as wide as its cutter scores 88.7 on the comparison grid, every round
+  let r = await measured([{ score: 88.7 }]);
+  assert.equal(mock.chat().length, 2, 'the first program and one refinement, not six requests');
+  assert.deepEqual(r.stages, ['generation', 'validation', 'measurement', 'refinement 1/5', 'validation', 'measurement', 'completion']);
+  assert.equal(r.last.type, 'done');
+  assert.equal(r.last.data.stopped, 'plateau');
+  assert.equal(r.last.data.accepted, true);
+  assert.equal(r.last.data.program, GOOD);
+  assert.equal(r.last.data.measurement.client.score, 88.7);
+  assert.equal(r.plateau.length, 1, 'said in one status line');
+  assert.match(r.plateau[0].message, /stopped improving: best 88\.7 % before, 88\.7 % in round 1 \(a round must gain 1\.0 points\)\. Refinement stopped\./);
+  assert.match(r.plateau[0].message, /matches the intended part to 88\.7 % \(goal 95 %\)/);
+
+  // under the floor: stopped just as early, but never delivered as done
+  r = await measured([{ score: 40 }]);
+  assert.equal(mock.chat().length, 2);
+  assert.equal(r.last.type, 'error');
+  assert.equal(r.last.data.code, 'validation_failed');
+  assert.match(r.last.data.message, /40\.0 % \(goal 95 %\) and round 1 did not improve it\. Stopped early; the draft is kept/);
+  assert.equal(r.last.data.draft.program, GOOD);
+  assert.ok(!r.types.includes('done') && !r.stages.includes('completion'));
+  assert.match(r.plateau[0].message, /40\.0 % is under the 85 %/);
+
+  // a round that gains a point or more keeps going; the first that does not stops it
+  r = await measured([{ score: 60 }, { score: 75 }, { score: 75.5 }]);
+  assert.equal(mock.chat().length, 3);
+  assert.equal(r.last.data.code, 'validation_failed');
+  assert.match(r.plateau[0].message, /best 75\.0 % before, 75\.5 % in round 2/);
+  r = await measured([{ score: 80 }, { score: 84 }, { score: 86 }, { score: 86.2 }]);
+  assert.equal(mock.chat().length, 4);
+  assert.equal(r.last.type, 'done');
+  assert.equal(r.last.data.stopped, 'plateau');
+  assert.equal(r.last.data.round, 3, 'the best round is delivered');
+
+  // reaching the goal is not a plateau; a client that says "pass: false" is never overruled
+  r = await measured([{ score: 61.5 }, { score: 97 }]);
+  assert.equal(r.last.type, 'done');
+  assert.equal(r.last.data.stopped, null);
+  assert.equal(r.plateau.length, 0);
+  r = await measured([{ score: 90, pass: false }]);
+  assert.equal(mock.chat().length, 2);
+  assert.equal(r.last.type, 'error');
+  assert.equal(r.last.data.code, 'validation_failed');
+  // no score, no plateau: the interpreter check alone decides (as before)
+  r = await measured([{}]);
+  assert.equal(mock.chat().length, 1);
+  assert.equal(r.last.type, 'done');
+});
+
 test('bad requests are refused before anything is sent', async () => {
   mock.reset();
   const cases = [

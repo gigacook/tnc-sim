@@ -139,7 +139,8 @@ only those models are listed.
   "tools": [ { "t": 5, "name": "ENDMILL_12", "l": 120, "r": 6 } ],
   "holder": "ISO50",
   "system": "<TNC_AI.system(tools, {plan: true})>",
-  "client_measure": true
+  "client_measure": true,
+  "base_program": { "name": "SLOT.H", "text": "BEGIN PGM SLOT MM\n...\nEND PGM SLOT MM", "machine": "426" }
 }
 ```
 
@@ -152,8 +153,16 @@ only those models are listed.
 | `holder` | no | `"ISO50"` (default) or `"SK40"` |
 | `system` | no | The system prompt, 100000 characters at most. Send `TNC_AI.system(tools, opts)` from `sim/ai.js`; without it the server uses a much shorter built-in prompt |
 | `client_measure` | no | `true`: the client answers `measure-request` events |
+| `base_program` | no | "Change current": the program the job changes. `text` (required, 1 to 200000 characters), `name` (64 characters at most, for the model's orientation), `machine` (used for the check when the job names none). Unknown fields are refused. Absent: a new program is written |
 
 Unknown fields are refused. No reasoning, token or round settings exist: those are the policy.
+
+A job with `base_program` is a change job. Its task to the model is the program in a ```` ```klartext ```` fence, then
+"Change it as follows: <prompt>", then "Keep everything else as it is. Return the COMPLETE changed program". The
+base program stays in the task for every round. Everything after that is the same as for a new program: the
+answer is checked by the interpreter, measured, repaired in refinement rounds, and delivered whole in `done.program`.
+The server never writes to anything: putting the result in place of the original (as one undo step) is the client's
+Load action.
 
 Answers before the stream starts (ordinary JSON, in this order of checking):
 
@@ -178,7 +187,7 @@ every 15 s); skip them. The stream ends after exactly one `done` or one `error`.
 
 | Event | Data | Meaning |
 |---|---|---|
-| `job` | `{id, model, max_rounds, reasoning, client_measure}` | Always first. `id` is for cancel and measurement. `reasoning` is the catalog's reasoning object. |
+| `job` | `{id, model, max_rounds, reasoning, client_measure, mode}` | Always first. `id` is for cancel and measurement. `mode` is `new` or `change` (a job with `base_program`). `reasoning` is the catalog's reasoning object. |
 | `stage` | `{stage, round, max_rounds}` | `stage` is `generation`, `validation`, `measurement`, `refinement` or `completion`. |
 | `delta` | `{round, text}` | The next piece of program text. Program text only: no code fence, no prose, no reasoning. |
 | `status` | `{code, message}` | One short line for the user. |
@@ -212,6 +221,7 @@ generation (round 0) → validation → measurement
 | `validated` | The interpreter's verdict for this round |
 | `measured` | The measurement for this round |
 | `measurement_timeout` | The client did not answer a `measure-request` in time |
+| `plateau` | The match stopped improving and refinement ends here (see the policy). The message gives the best match before, this round's match and the margin |
 
 `done`:
 
@@ -220,6 +230,7 @@ generation (round 0) → validation → measurement
   "program": "BEGIN PGM SLOT MM\n...\nEND PGM SLOT MM",
   "round": 1,
   "accepted": true,
+  "stopped": null,
   "model": "acme/fast-one-v2",
   "validation": { "ok": true, "errors": [], "crashes": [], "warnings": [], "blocks": 11, "summary": "passed" },
   "measurement": {
@@ -236,6 +247,8 @@ generation (round 0) → validation → measurement
   finding is about the whole program; `block` is the TNC block number or `null`).
 - `measurement.client` is `null` when no measurement was asked for or none arrived in time.
 - `usage.requests` counts every generation request sent to OpenRouter, retries included.
+- `stopped` is `null`, or `"plateau"` when refinement ended early and the best checked program is delivered with a
+  match under the goal (`measurement.client.score` holds it). Show that match before Load.
 
 `error`:
 
@@ -331,12 +344,20 @@ One place: `server/crates/tnc-server/src/aigen/policy.rs`.
 | Output cap sent | min(131072, the model's `max_completion_tokens`, `context_length` minus the prompt, the operator's `TNC_AI_MAX_TOKENS` when set). Example: requested 131072, provider cap 32768, 50000 left in the context → 32768 |
 | Prompt size | Estimated as characters / 3 plus 512 tokens of margin (no tokenizer runs on the server) |
 | Repair | Automatic |
-| Rounds | The first generation plus at most 5 refinement rounds; stops at the first program that passes |
-| Accepted | No interpreter error, no crash, cuts material, not cut off, and the client measurement (when there is one) passes |
+| Rounds | The first generation plus at most 5 refinement rounds; stops at the first program that passes, or on a plateau |
+| Plateau stop | A round whose program passes the interpreter's check must raise the best measured match of the earlier clean rounds by at least 1.0 point (`PLATEAU_MIN_GAIN`). The first round that does not ends the refinement, announced by `status plateau`. The best clean program is then delivered (`done`, `stopped: "plateau"`) when its match is at least 85 (`PLATEAU_ACCEPT_FLOOR`) and the client did not say `pass: false`; otherwise the job ends as `validation_failed` with the draft. Rounds without a score, with interpreter errors or crashes, or cut off, never count as a plateau |
+| Accepted | No interpreter error, no crash, cuts material, not cut off, and the client measurement (when there is one) passes, or the plateau stop delivers it |
 | Retries | One, only for a request that failed before any answer (connection refused, HTTP 429 / 5xx), announced by `status retry` first. Nothing is retried once an answer has started |
 | Cut-off answer | Costs one visible refinement round that asks for a shorter complete program. Never continued silently |
 | `temperature` | 0.2, sent only when the model lists the parameter |
 | Budget | The account's monthly budget is checked before every request; every request is written to the usage record |
+
+Why the plateau stop exists: `TNC_PART.compare` scores on a grid (0.8 mm for a 100 mm blank). For a groove exactly as
+wide as its cutter the target counts the grid columns that lie on the groove's two edges (distance to the centre line
+<= w/2) and the cut does not, so a correct 12 mm slot cut with a 12 mm cutter measures 88.7 (measured: 12 mm 88.7,
+11.5 mm 99.5, same program), under the goal of 95, and no round can raise it: without the stop the job spent all
+five rounds and then failed. 85 is the lowest match `tests/part.js` asserts for a correct program. The scoring in
+`sim/part.js` is unchanged.
 
 Timeouts are server settings (`server/.env.example`): idle 120 s, measurement 30 s, whole job 30 min.
 

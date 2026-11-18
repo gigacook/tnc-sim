@@ -137,7 +137,7 @@ const S={
   cmpRef:null, pos:null, seg:null, shake:0, lesson:null, focus:null, focusView:typeof edPref().inspector==='boolean'?!edPref().inspector:(P.focus!==undefined?!!P.focus:true), lock:null, cam:null, cutting:false, sideTab:P.side||'diag', ref:P.ref||'keys', pickPath:null, execB:-1, wiz:null, pick:null, tt:false
 };
 const TEMP='LESSON.H';
-const pg=()=>S.pgms[S.machine]||(S.pgms[S.machine]={});
+const pg=()=>{ if(!S.pgms[S.machine]) S.pgms[S.machine]={}; return S.pgms[S.machine]; };
 
 /* ---------- the operator profile (profile.js): IndexedDB, autosaved, exported by hand ---------- */
 const PSTORE=window.TNC_PROFILE||{ load:()=>Promise.resolve(null), save:()=>Promise.resolve(false), wipe:()=>Promise.resolve(),
@@ -149,7 +149,7 @@ const mset=id=>(S.mset[id||S.machine]=S.mset[id||S.machine]||{holderLen:150,hold
 function holderOpt(id){ const m=mset(id); if(window.TNC_TOOLS3D&&TNC_TOOLS3D.setHolder) TNC_TOOLS3D.setHolder(m.holderType);
   return { stack:r=>window.TNC_TOOLS3D&&TNC_TOOLS3D.holderStack?TNC_TOOLS3D.holderStack(r):(m.holderType==='SK40'?70:100) }; }
 function mtools(id){ id=id||S.machine; const base=(MACHINES[id]&&MACHINES[id].tools)||[], mine=S.tools[id]||[];
-  const by={}; base.forEach(t=>by[t.t]=Object.assign({},t)); mine.forEach(t=>by[t.t]=Object.assign({},t,{mine:true}));
+  const by={}; base.forEach(t=>{ by[t.t]=Object.assign({},t); }); mine.forEach(t=>{ by[t.t]=Object.assign({},t,{mine:true}); });
   return Object.values(by).sort((a,b)=>a.t-b.t); }
 
 function loadStore(){
@@ -188,11 +188,11 @@ function persist(){
 /* ================= undo / redo (per program) ================= */
 const UNDO={}, REDO={};
 const ukey=()=>S.machine+':'+S.pgm;
-function snapshot(){ const k=ukey(); (UNDO[k]=UNDO[k]||[]).push({text:S.text,cursor:S.cursor});
+function snapshot(){ const k=ukey(); if(!UNDO[k]) UNDO[k]=[]; UNDO[k].push({text:S.text,cursor:S.cursor});
   if(UNDO[k].length>200) UNDO[k].shift(); REDO[k]=[]; }
 function setText(t){ S.text=t; pg()[S.pgm]=t; raw.value=t; touchMeta(S.pgm); compile(); persist(); emit('text',{name:S.pgm,machine:S.machine,text:t}); }
-function touchMeta(n,created){ if(!n||n===TEMP) return; const mm=(S.meta[S.machine]=S.meta[S.machine]||{}), now=new Date().toISOString();
-  const e=mm[n]||(mm[n]={c:now,m:now,v:0}); if(created){ e.c=now; e.v=0; } e.m=now; e.v++; }
+function touchMeta(n,created){ if(!n||n===TEMP) return; if(!S.meta[S.machine]) S.meta[S.machine]={}; const mm=S.meta[S.machine], now=new Date().toISOString();
+  if(!mm[n]) mm[n]={c:now,m:now,v:0}; const e=mm[n]; if(created){ e.c=now; e.v=0; } e.m=now; e.v++; }
 function edit(t, cur, msg){
   if(t===S.text) return;
   snapshot(); setText(t);
@@ -201,12 +201,12 @@ function edit(t, cur, msg){
 }
 function undo(){ const k=ukey(), u=UNDO[k];
   if(!u||!u.length){ say('NOTHING TO UNDO'); return; }
-  (REDO[k]=REDO[k]||[]).push({text:S.text,cursor:S.cursor});
+  if(!REDO[k]) REDO[k]=[]; REDO[k].push({text:S.text,cursor:S.cursor});
   const s=u.pop(); setText(s.text); S.cursor=clamp(s.cursor,0,S.res.blocks.length-1); markRows(true);
   say('UNDO · '+u.length+' LEFT'); }
 function redo(){ const k=ukey(), r=REDO[k];
   if(!r||!r.length){ say('NOTHING TO REDO'); return; }
-  (UNDO[k]=UNDO[k]||[]).push({text:S.text,cursor:S.cursor});
+  if(!UNDO[k]) UNDO[k]=[]; UNDO[k].push({text:S.text,cursor:S.cursor});
   const s=r.pop(); setText(s.text); S.cursor=clamp(s.cursor,0,S.res.blocks.length-1); markRows(true);
   say('REDO · '+r.length+' LEFT'); }
 
@@ -251,11 +251,16 @@ const fillL=new THREE.DirectionalLight(0x6fa8ff,.5*LK); fillL.position.set(-200,
 const BUS={};
 const emit=(ev,...a)=>{ (BUS[ev]||[]).forEach(fn=>{ try{ fn(...a); }catch(e){ console.warn('plugin '+ev,e); } }); };
 const UIAPI={ THREE, scene, camera, renderer, controls, lights:{key:keyL,fill:fillL},
-  on:(ev,fn)=>{ (BUS[ev]=BUS[ev]||[]).push(fn); }, render:null,
+  on:(ev,fn)=>{ if(!BUS[ev]) BUS[ev]=[]; BUS[ev].push(fn); }, render:null,
   get state(){ return S; }, surfaceAt:(x,y)=>surfaceAt(x,y), say:m=>say(m),
   get program(){ return {name:S.pgm, machine:S.machine, text:S.text}; },
   open:(name,text,o)=>openExternal(name,text,o||{}),
   addProgram:(name,text)=>addPgm(name,text),            // a new program under a free name, opened: what New program does (aigen.js Load)
+  /* AI "Change current" (aigen.js Load): the named program gets the new text as ONE undo step, Ctrl+Z gives the original back.
+     A program that is gone meanwhile is not recreated over anything: the text opens as a new program instead. */
+  changeProgram:(name,text)=>{ if(pg()[name]==null) return addPgm(name,text);
+    if(S.editing) endEdit(false); if(S.pgm!==name) openPgm(name); if(S.mode!=='edit') setMode('edit');
+    edit(text,0,'AI CHANGED '+name+' — CTRL+Z UNDOES IT'); return name; },
   /* bridge v2 (bridge.js): everything goes through the simulator's own controls */
   exec:cmd=>({start:ncStart,stop:stop,step:stepBlock,reset:reset}[cmd]||(()=>{}))(),
   lock:(on,reason)=>setLock(on,reason), cameraPreset:v=>camPreset(v), setMachine:id=>setMachine(id),
@@ -368,7 +373,7 @@ const fmt=v=>(Math.round(v*100)/100).toString();
 let GR=null;
 function buildHeightField(){
   const st=ST, w=st.x1-st.x0, h=st.y1-st.y0;
-  const g=GR=TNC_STOCK.grid(st,S.segs); NX=g.NX; NY=g.NY; DX=g.DX; DY=g.DY;
+  GR=TNC_STOCK.grid(st,S.segs); const g=GR; NX=g.NX; NY=g.NY; DX=g.DX; DY=g.DY;
   HM=TNC_STOCK.field(st,g);
   const pos=new Float32Array(NX*NY*3), col=new Float32Array(NX*NY*3), idx=[];
   for(let j=0;j<NY;j++)for(let i=0;i<NX;i++){ const k=(j*NX+i)*3; pos[k]=st.x0+i*DX; pos[k+1]=st.y0+j*DY; pos[k+2]=st.z1; }
@@ -563,7 +568,7 @@ function beep(kind){
   if(!S.sound) return;
   try{ AC=AC||new (window.AudioContext||window.webkitAudioContext)();
     const o=AC.createOscillator(), g=AC.createGain(), t=AC.currentTime; o.connect(g); g.connect(AC.destination);
-    if(kind==='crash'){ o.type='square'; [880,660,880,660].forEach((f,i)=>o.frequency.setValueAtTime(f,t+i*.17));
+    if(kind==='crash'){ o.type='square'; [880,660,880,660].forEach((f,i)=>{ o.frequency.setValueAtTime(f,t+i*.17); });
       g.gain.setValueAtTime(.07,t); g.gain.exponentialRampToValueAtTime(.0001,t+.75); o.start(t); o.stop(t+.76); }
     else { o.type='sine'; o.frequency.setValueAtTime(kind==='warn'?990:1320,t);
       g.gain.setValueAtTime(.045,t); g.gain.exponentialRampToValueAtTime(.0001,t+.2); o.start(t); o.stop(t+.21); }
@@ -832,7 +837,7 @@ sks.addEventListener('click',e=>{ const b=e.target.closest('.sk'); if(b&&b.datas
 function act(a){
   if(a.startsWith('w:')){ startWiz(DLG&&DLG.PATH[a.slice(2)]); return; }
   if(a.startsWith('cg:')){ const L=DLG.cycleList(a.slice(3));
-    const G=(DLG.GROUPS.find(g=>g[0]===a.slice(3))||[,''])[1].replace(/\n/g,' ');
+    const G=(DLG.GROUPS.find(g=>g[0]===a.slice(3))||['',''])[1].replace(/\n/g,' ');
     S.pickPath=['PROGRAM','CYCL DEF',G];
     S.pick=L.map(c=>[c.num+'\n'+c.name.split(' ').slice(0,2).join(' '),'cy:'+c.num]).concat([['BACK','cycldef'],['END','pickend']]); renderSK(); return; }
   if(a.startsWith('cy:')){ S.pick=null; startWiz(DLG.cycleSpec(+a.slice(3))); return; }
@@ -918,7 +923,7 @@ function ghostEnsure(){
 }
 function ghostShow(rest,typed){
   const g=ghostEnsure(); if(!rest){ g.innerHTML=''; g.dataset.full=''; return; }
-  const cs=getComputedStyle(dlgIn); ['font','letterSpacing','paddingLeft','paddingTop','paddingRight','paddingBottom','borderLeftWidth','borderTopWidth'].forEach(k=>g.style[k]=cs[k]);
+  const cs=getComputedStyle(dlgIn); ['font','letterSpacing','paddingLeft','paddingTop','paddingRight','paddingBottom','borderLeftWidth','borderTopWidth'].forEach(k=>{ g.style[k]=cs[k]; });
   g.innerHTML=`<span class="gt">${esc(typed)}</span><span class="gs">${esc(rest)}</span>`;
 }
 function ghostUpdate(){
@@ -991,7 +996,7 @@ function deletePgm(name){
   if(!name) return;
   if(S.orig[S.machine][name]!=null){ say('BUILT-IN PROGRAM — USE RESTORE ORIGINAL INSTEAD'); return; }
   if(!confirm(X('Delete {n}? This cannot be undone.',{n:name}))) return;
-  delete pg()[name]; if(S.meta[S.machine]) delete S.meta[S.machine][name]; S.projects.forEach(p=>p.pgms=p.pgms.filter(r=>!(r.m===S.machine&&r.name===name)));
+  delete pg()[name]; if(S.meta[S.machine]) delete S.meta[S.machine][name]; S.projects.forEach(p=>{ p.pgms=p.pgms.filter(r=>!(r.m===S.machine&&r.name===name)); });
   if(S.pgm===name){ S.pgm=Object.keys(pg())[0]; S.text=pg()[S.pgm]; compile(); }
   S.mgtSel=Math.min(S.mgtSel,mgtNames().length-1); persist(); renderMgt(); renderProjects(); say(name+' DELETED');
 }
@@ -1214,7 +1219,7 @@ let helpTab='learn';
 function openHelp(tab){ helpTab=tab||helpTab; openModal('m-help'); renderHelp(); }
 $('help-tabs').addEventListener('click',e=>{ const b=e.target.closest('[data-tab]'); if(b){ helpTab=b.dataset.tab; renderHelp(); } });
 function renderHelp(){
-  [...$('help-tabs').children].forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===helpTab));
+  [...$('help-tabs').children].forEach(b=>{ b.setAttribute('aria-selected',b.dataset.tab===helpTab); });
   const Ls=lessonsOf(), body=$('help-body'); body.onclick=null;
   if(helpTab==='ai'){ body.innerHTML=`<div class="prose"><p>${esc(T('help.ai.body'))}</p></div>`; return; }   // AI lives in New program › AI (aigen.js); the key is on the server
   if(helpTab==='keys'){ body.innerHTML='<div class="klist">'+KEYS.map(([k,d])=>`<div><kbd>${esc(X(k))}</kbd><span>${esc(X(d))}</span></div>`).join('')+'</div>'; return; }
@@ -1253,7 +1258,7 @@ $('ns-go').onclick=()=>{
 /* ---------- DEV ---------- */
 let devTab='features';
 const DEVTXT={features:()=>window.TNC_DEVLOG,history:()=>window.TNC_HISTORY};
-function renderDev(){ [...$('dev-tabs').children].forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===devTab));
+function renderDev(){ [...$('dev-tabs').children].forEach(b=>{ b.setAttribute('aria-selected',b.dataset.tab===devTab); });
   $('dev-pre').textContent=(DEVTXT[devTab]&&DEVTXT[devTab]())||'Not written yet — in progress.'; }
 $('dev-tabs').addEventListener('click',e=>{ const b=e.target.closest('[data-tab]'); if(b){ devTab=b.dataset.tab; renderDev(); } });
 function openDev(){ openModal('m-dev'); renderDev(); }
@@ -1318,7 +1323,7 @@ function wireToolTable(root,rerender){
     S.tools[S.machine]=(S.tools[S.machine]||[]).filter(x=>x.t!==t); persist(); curToolT=null; compile(); rerender(); say('T'+t+' REMOVED FROM YOUR TABLE'); });
 }
 function mergeTools(list,quiet){
-  const mine=(S.tools[S.machine]=S.tools[S.machine]||[]);
+  if(!S.tools[S.machine]) S.tools[S.machine]=[]; const mine=S.tools[S.machine];
   list.forEach(n=>{ const i=mine.findIndex(x=>x.t===n.t); const e={t:n.t,name:String(n.name||'T'+n.t).toUpperCase().slice(0,16),l:+n.l||0,r:+n.r||0}; if(i>=0) mine[i]=e; else mine.push(e); });
   persist(); curToolT=null; compile(); if(openModalEl===$('m-prof')) renderProfile(); if(S.tt) renderTT(); if(!quiet) say(list.length+' TOOL(S) IN YOUR TABLE');
 }
@@ -1326,8 +1331,8 @@ function mergeTools(list,quiet){
 function toolsFor(texts){
   const have=new Set(mtools().map(t=>t.t)), add={};
   texts.forEach(t=>{ const hint={}, def=new Set();
-    t.split(/\r?\n/).forEach(l=>{ let m; if((m=/;\s*T(\d+)\s+D=\s*([+-]?\d+\.?\d*)/i.exec(l))) hint[+m[1]]=Math.abs(parseFloat(m[2]))/2;
-      if((m=/TOOL\s+DEF\s+(\d+)\s+L/i.exec(l))) def.add(+m[1]); });
+    t.split(/\r?\n/).forEach(l=>{ let m=/;\s*T(\d+)\s+D=\s*([+-]?\d+\.?\d*)/i.exec(l); if(m) hint[+m[1]]=Math.abs(parseFloat(m[2]))/2;
+      m=/TOOL\s+DEF\s+(\d+)\s+L/i.exec(l); if(m) def.add(+m[1]); });
     t.split(/\r?\n/).forEach(l=>{ const m=/TOOL\s+CALL\s+(\d+)/i.exec(l); if(!m) return; const n=+m[1];
       if(n&&!have.has(n)&&!def.has(n)&&!add[n]) add[n]={t:n,name:'T'+n+(hint[n]!=null?'_D'+(hint[n]*2):''),l:0,r:hint[n]!=null?hint[n]:3}; }); });
   const list=Object.values(add); if(list.length) mergeTools(list,true); return list.length;
@@ -1516,12 +1521,12 @@ $('sb-chk').onclick=()=>{ inspOpen('diag'); const el=$('elist'); if(el) el.scrol
 
 
 /* ================= right pane: DIAGNOSTICS · REFERENCE · <name>'s PROGRAMS ================= */
-function setSideTab(t){ S.sideTab=t; [...$('stabs').children].forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t));
+function setSideTab(t){ S.sideTab=t; [...$('stabs').children].forEach(b=>{ b.setAttribute('aria-selected',b.dataset.tab===t); });
   ['diag','ref','progs'].forEach(k=>{ const el=$('sp-'+k); if(el) el.hidden=k!==t; }); if(t==='ref') renderRef(); if(t==='progs') renderUserPrograms(); writePrefs(); }
 $('stabs').addEventListener('click',e=>{ const b=e.target.closest('[data-tab]'); if(b) setSideTab(b.dataset.tab); });
 function refOptions(){
   const o=[['keys','Keys'],['cycles','Cycles — CYCL DEF'],['tools','Tool list'],['machine','Machine: '+M().label]], Ls=lessonsOf();
-  (Ls&&Ls.manual||[]).forEach((sec,i)=>o.push(['man:'+i,'Manual · '+sec.title]));
+  (Ls&&Ls.manual||[]).forEach((sec,i)=>{ o.push(['man:'+i,'Manual · '+sec.title]); });
   const sel=$('ref-sel'), cur=S.ref||'keys'; sel.innerHTML=o.map(([v,l])=>`<option value="${v}">${esc(l)}</option>`).join(''); sel.value=o.some(x=>x[0]===cur)?cur:'keys';
 }
 $('ref-sel').addEventListener('change',()=>{ S.ref=$('ref-sel').value; renderRef(); writePrefs(); });
@@ -1585,7 +1590,7 @@ function setMode(m){ if(m!=='edit'){ if(S.wiz) wizCancel(); S.pick=null; } S.mod
   const tps=$('tp-state'); if(tps) tps.textContent=T('tp.'+m); [...document.querySelectorAll('.mode')].forEach(b=>{ b.setAttribute('aria-pressed',b.dataset.m===m); });
   if(!S.mgt) renderSK(); if(m==='edit'){ S.running=false; setState('EDITING'); } else setState('READY'); writePrefs(); }
 $('modes').addEventListener('click',e=>{ const b=e.target.closest('.mode'); if(b) setMode(b.dataset.m); });
-function setSpeed(v,quiet){ S.speed=v; [...$('spd').children].forEach(b=>b.dataset.on=(+b.dataset.s===v)?'1':'0'); writePrefs();
+function setSpeed(v,quiet){ S.speed=v; [...$('spd').children].forEach(b=>{ b.dataset.on=(+b.dataset.s===v)?'1':'0'; }); writePrefs();
   if(v===0&&S.running) runMax(); if(!quiet) say(v?'SPEED '+v+'×':'MAX — RUNS TO THE END OR THE FIRST CRASH'); }
 $('spd').addEventListener('click',e=>{ const b=e.target.closest('button'); if(b) setSpeed(+b.dataset.s); });
 function syncToggles(){ $('b-fx').dataset.on=S.fx?'1':'0'; $('b-cool').dataset.on=S.fxCool?'1':'0'; $('b-fire').dataset.on=S.fxFire?'1':'0';
@@ -1595,7 +1600,7 @@ function tog(k,label){ S[k]=!S[k]; syncToggles(); say(label+(S[k]?' ON':' OFF'))
 $('b-fx').onclick=()=>tog('fx','CHIPS & SPARKS'); $('b-cool').onclick=()=>tog('fxCool','COOLANT');
 $('b-fire').onclick=()=>tog('fxFire','SMOKE & FIRE'); $('b-labels').onclick=()=>tog('labels','LABELS');
 $('b-vice').onclick=()=>{ tog('vice','VICE'); compile(); };   // standard vice (TNC_STOCK.VICE): drawn + crash-checked; off = part on a fixture plate
-if(!window.TNC_FX){ ['b-fx','b-cool','b-fire'].forEach(id=>$(id).hidden=true); }
+if(!window.TNC_FX){ ['b-fx','b-cool','b-fire'].forEach(id=>{ $(id).hidden=true; }); }
 if(!window.TNC_CALLOUTS) $('b-labels').hidden=true;
 $('b-start').onclick=ncStart; $('b-stop').onclick=stop; $('b-reset').onclick=reset;      // run · pause (feed hold) · stop (reset to the start)
 scrub.addEventListener('input',()=>{ S.running=false; seek(+scrub.value/1000*S.total,false); });
@@ -1700,7 +1705,7 @@ document.addEventListener('keydown',e=>{ const list=e.target.closest&&e.target.c
   e.preventDefault(); e.stopPropagation(); const t=tabs[(j+tabs.length)%tabs.length]; t.focus(); t.click(); });
 /* roving tabindex: only the selected tab is in the Tab order */
 function rove(list){ const tabs=[...list.querySelectorAll('[role=tab]')]; if(!tabs.some(t=>t.getAttribute('aria-selected')==='true')) return;
-  tabs.forEach(t=>t.tabIndex=t.getAttribute('aria-selected')==='true'?0:-1); }
+  tabs.forEach(t=>{ t.tabIndex=t.getAttribute('aria-selected')==='true'?0:-1; }); }
 document.querySelectorAll('[role=tablist]').forEach(l=>{ rove(l); new MutationObserver(()=>rove(l)).observe(l,{subtree:true,attributes:true,attributeFilter:['aria-selected']}); });
 
 /* header: program · state, and the check count as a button that opens the checks */
@@ -1725,8 +1730,8 @@ function announce(msg){ const el=$('sr-live'); if(!el||!msg) return; clearTimeou
 var skPage=0, skSig='';
 function pageSK(){ const sks=$('sks'), keys=[...sks.children], pager=$('skpager'), rows=Math.ceil(keys.length/8);
   const sig=keys.map(k=>k.dataset.a).join('|'); if(sig!==skSig){ skSig=sig; skPage=0; }
-  if(!isPhone()||rows<2){ keys.forEach(k=>k.hidden=false); pager.hidden=true; return; }
-  skPage=Math.min(skPage,rows-1); keys.forEach((k,i)=>k.hidden=Math.floor(i/8)!==skPage);
+  if(!isPhone()||rows<2){ keys.forEach(k=>{ k.hidden=false; }); pager.hidden=true; return; }
+  skPage=Math.min(skPage,rows-1); keys.forEach((k,i)=>{ k.hidden=Math.floor(i/8)!==skPage; });
   pager.hidden=false; $('sk-page').textContent=(window.TNC_I18N?TNC_I18N.t('sk.row'):'Row')+' '+(skPage+1)+' / '+rows; }
 $('sk-prev').onclick=()=>{ const rows=Math.ceil(sks.children.length/8); skPage=(skPage-1+rows)%rows; pageSK(); };
 $('sk-next').onclick=()=>{ const rows=Math.ceil(sks.children.length/8); skPage=(skPage+1)%rows; pageSK(); };
@@ -1775,8 +1780,8 @@ onSwipe(hmore,d=>{ if(d<0) closeDrawer(); });
 const pgmCol=document.querySelector('.col-pgm'), dlgEl=document.querySelector('.col-pgm .dlg');
 function layout(){ const phone=isPhone(), dock=$('dock'), act=document.activeElement;
   const parts=[dlgEl,$('dlg-prev'),$('skpath'),sks,$('skpager')];
-  if(phone&&parts[0].parentElement!==dock) parts.forEach(n=>dock.appendChild(n));
-  if(!phone&&parts[0].parentElement===dock) parts.forEach(n=>pgmCol.appendChild(n));
+  if(phone&&parts[0].parentElement!==dock) parts.forEach(n=>{ dock.appendChild(n); });
+  if(!phone&&parts[0].parentElement===dock) parts.forEach(n=>{ pgmCol.appendChild(n); });
   const gear=$('b-gear'), gh=phone?$('gear-row'):$('sbar');                 // the settings gear: bottom bar, or the bottom of the drawer on phones
   if(gear.parentElement!==gh) gh.insertBefore(gear,gh.firstChild);
   const pm=$('b-mgt'), ph=phone?document.querySelector('.col-pgm .ch'):document.querySelector('.bar');   // program access: in the top bar, or in the Program workspace on phones
@@ -2018,8 +2023,8 @@ if(!PROF){ PROF=PSTORE.legacy()||PSTORE.blank(''); fresh=true; }
 loadStore();
 if(fresh) persist();
 raw.value=S.text;
-[...$('spd').children].forEach(b=>b.dataset.on=(+b.dataset.s===S.speed)?'1':'0');
-[...document.querySelectorAll('.mode')].forEach(b=>b.setAttribute('aria-pressed',b.dataset.m===S.mode));
+[...$('spd').children].forEach(b=>{ b.dataset.on=(+b.dataset.s===S.speed)?'1':'0'; });
+[...document.querySelectorAll('.mode')].forEach(b=>{ b.setAttribute('aria-pressed',b.dataset.m===S.mode); });
 inspSync();
 if(window.TNC_I18N) try{ TNC_I18N.set(TNC_I18N.lang||'sv'); }catch{}
 settingsApply();

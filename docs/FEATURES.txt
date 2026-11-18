@@ -285,10 +285,16 @@ the system prompt):
   - Load opens the result as a NEW program under a free name; the program
     that was active stays in the list unchanged. Nothing is loaded without
     the Load button; a failed or cancelled job keeps its draft on screen.
-  - Removed with the old popup: "Change current" (AI edits the open
-    program, Ctrl+Z undoes), the browser-side loop with Continue / Stop,
-    the live block-by-block build in 3-D, the request viewer, the model
-    table with sort and free model id.
+  - Two choices in one control: New, or Change current (the open program
+    is sent as the base; Load replaces its text as one undo step, Ctrl+Z
+    gives the original back; no program is added or lost).
+  - Plateau stop (server policy): a checked-clean round that does not
+    raise the measured match by 1.0 point ends the refinement; the best
+    program is delivered when it matches at least 85, with its match
+    shown before Load.
+  - Removed with the old popup: the browser-side loop with Continue /
+    Stop, the live block-by-block build in 3-D, the request viewer, the
+    model table with sort and free model id.
   - Swedish, English, Serbian. Tested against a mock provider only
     (tests/ai/dialog-state.js, tests/ai/dialog-e2e.mjs). No run against
     the real API.

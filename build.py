@@ -11,9 +11,17 @@ A new module is one line in MODULES. Missing optional files are skipped, never f
 The showcase programs (examples/showcase/manifest.json + its .H files) are embedded as window.TNC_SHOWCASE when the
 folder is there; without it the build is the same page without them.
 """
-import pathlib, urllib.request, json, re, sys
+import base64
+import gzip
+import json
+import pathlib
+import re
+import sys
+import urllib.request
+
 d = pathlib.Path(__file__).parent
-cache = d / '.libcache'; cache.mkdir(exist_ok=True)
+cache = d / '.libcache'
+cache.mkdir(exist_ok=True)
 src = d / 'sim'          # simulator sources (the single-file build's modules + shell)
 T_VER = '0.186.1'   # three.js; bundled with its addons and three.quarks by esbuild (vendor/three-entry.mjs)
 
@@ -21,11 +29,13 @@ def vendor():
     """three + addons + three.quarks as one classic script (window.THREE, window.QUARKS)."""
     out = cache / f'three-vendor-{T_VER}.js'
     if not out.exists():
-        import subprocess, os
+        import os
+        import subprocess
         # root package.json (npm ci) first; the older gitignored .tools/ layout still works
         for nm in (d / 'node_modules', d / '.tools' / 'node_modules'):
             esb = nm / '.bin' / ('esbuild.cmd' if os.name == 'nt' else 'esbuild')
-            if esb.exists(): break
+            if esb.exists():
+                break
         else:
             sys.exit('build: esbuild missing — run: npm ci   (in the repo root; pins three@%s three.quarks@0.17.1 esbuild@0.28.2)' % T_VER)
         subprocess.run([str(esb), str(src / 'vendor' / 'three-entry.mjs'), '--bundle', '--format=iife', '--minify',
@@ -43,7 +53,9 @@ WASM = src / 'engine' / 'tnc_core.wasm'
 
 def build_wasm():
     """server/crates/tnc-core -> sim/engine/tnc_core.wasm (profile wasm: size-optimised, abort on panic)."""
-    import subprocess, os, shutil
+    import os
+    import shutil
+    import subprocess
     subprocess.run(['cargo', 'build', '-p', 'tnc-core', '--target', 'wasm32-unknown-unknown', '--profile', 'wasm'], check=True, cwd=d / 'server')
     target = pathlib.Path(os.environ.get('CARGO_TARGET_DIR') or d / 'server' / 'target')
     WASM.parent.mkdir(exist_ok=True)
@@ -94,10 +106,12 @@ def tag(label, src):
 def env_key():
     # private/.env (gitignored folder) first, then a root .env
     for f in (d / 'private' / '.env', d / '.env'):
-        if not f.exists(): continue
+        if not f.exists():
+            continue
         for line in f.read_text(encoding='utf-8').splitlines():
             m = re.match(r'\s*OPENROUTER_API_KEY\s*=\s*["\']?([^"\'\s#]+)', line)
-            if m: return m.group(1)
+            if m:
+                return m.group(1)
     return None
 
 shell = (src / 'sim-shell.html').read_text(encoding='utf-8')
@@ -132,23 +146,26 @@ sc = showcase()
 if sc:
     scripts += tag('showcase programs (examples/showcase)', 'window.TNC_SHOWCASE = ' + json.dumps(sc, sort_keys=True) + ';')
 included = []
-if '--wasm' in sys.argv or not WASM.exists(): build_wasm()
-import gzip, base64
+if '--wasm' in sys.argv or not WASM.exists():
+    build_wasm()
 for name, label in ENGINE_MODULES:
-    scripts += tag(label, (src / name).read_text(encoding='utf-8')); included.append(name)
+    scripts += tag(label, (src / name).read_text(encoding='utf-8'))
+    included.append(name)
 # gzip + base64; DecompressionStream (all current browsers) restores it, then the deferred modules run in order
 wasm = WASM.read_bytes()
 b64 = base64.b64encode(gzip.compress(wasm, 9, mtime=0)).decode('ascii')
 # zlib and zlib-ng (Windows Python 3.14) compress differently: keep the committed bytes while they hold the same module
 old = re.search(r'window\.TNC_WASM_GZ = "([^"]*)"', (d / 'index.html').read_text(encoding='utf-8')) if (d / 'index.html').exists() else None
-if old and gzip.decompress(base64.b64decode(old.group(1))) == wasm: b64 = old.group(1)
+if old and gzip.decompress(base64.b64decode(old.group(1))) == wasm:
+    b64 = old.group(1)
 scripts += tag('TNC engine module (WebAssembly, gzip, base64)', f'window.TNC_WASM_GZ = "{b64}";')
 deferred = ''
 for name, label in MODULES:
     f = src / name
     if f.exists():
         mod = tag(label, f.read_text(encoding='utf-8'))
-        deferred += mod.replace('<script>', '<script type="text/x-tnc-deferred">', 1); included.append(name)
+        deferred += mod.replace('<script>', '<script type="text/x-tnc-deferred">', 1)
+        included.append(name)
 scripts += deferred
 scripts += tag('start: instantiate the engine, then run the modules above in order', """(function () {
   var b = atob(window.TNC_WASM_GZ), u = new Uint8Array(b.length);
