@@ -17,6 +17,8 @@ private/
 # build output
 server/target/
 web/dist/
+dist/
+web/public/play/pack/
 *.log
 logs/
 

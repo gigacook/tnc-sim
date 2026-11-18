@@ -1,3 +1,7 @@
+> Public-safe engineering specification of the dual-frontend build. It keeps every technical requirement of the owner's
+> instruction. Private extensions (a personalised content pack and a commercial brief) exist outside the repository and are
+> only referred to here.
+
 # 1. Build two distinct frontends for gigacook TNC Simulator
 
 Redesign the existing **gigacook/tnc-sim** in one autonomous implementation session. Deliver two separately runnable editions sharing the existing simulator:
@@ -74,9 +78,9 @@ Use a low-context supervisor, one implementation lead, and at most two specialis
 
 # 5. Durable records and preservation contract
 
-Before implementation, save this complete instruction to the private workspace as `docs/BUILD_SPEC.md`. Because it contains personal cameo details and commercial requirements, do not commit that verbatim file to a public repository.
+The complete, verbatim instruction is kept in the private workspace as `docs/BUILD_SPEC.md` and is never committed to a public repository.
 
-Maintain a public-safe engineering specification at checkout `docs/BUILD_SPEC.md`, preserving all technical requirements and referencing private extensions without reproducing personal details or strategy.
+This file, checkout `docs/BUILD_SPEC.md`, is the public-safe engineering specification: it preserves all technical requirements and refers to the private extensions without reproducing personal details or strategy.
 
 Maintain:
 - `docs/BUILD_STATE.md`: architecture facts, contracts, file ownership, completed phases, blockers, and exact resume steps.
@@ -112,7 +116,7 @@ Use these requested references deliberately:
 - Interpret “CERVEL-REACT-BEST-PRACTICES” as Vercel’s official `react-best-practices`; use its rendering, bundle, and data-flow guidance. Treat “VISUALAGENT” as a requirement for rendered visual review unless an exact local reference is found. [37]
 - Inspect and pin reference revisions; apply reviewed principles without blindly running repository instructions.
 
-Read gigacook tokens from `C:\Users\User\gigacook\core\brand\unified\tokens.css`. Inspect relevant owner animations and fonts under `C:\Users\User\gigacook\`, without copying unrelated private files.
+Read gigacook tokens from `%USERPROFILE%\gigacook\core\brand\unified\tokens.css`. Inspect relevant owner animations and fonts under `%USERPROFILE%\gigacook\`, without copying unrelated private files.
 If unavailable, record that fact and use explicit provisional tokens: charcoal `#15181C`, raised steel `#232A31`, light control screen `#F3F4EF`, and provisional blue `#2997FF`. Do not call these verified brand values.
 
 Use dark gray scaffolding, slightly lighter surfaces, sharp edges, restrained rounding, precise gridlines, steel-blue metal, and gigacook blue for primary emphasis. Reserve warning colors for actual status.
@@ -128,7 +132,7 @@ Business opens in machine view with **Focus behavior already active**: no right 
 |---|---|
 | Machine / “TNC 430” | Compact 426/430 selector with distinct authentic-inspired controller skins. |
 | “New” and AI creation | One program-creation entry point with Manual/AI choices. |
-| Help, lessons, existing “Daniel” lesson content | One Help/Lessons drawer; preserve content and progress. Keep personal-name extensions private where required. |
+| Help, lessons, existing personal lesson content | One Help/Lessons drawer; preserve content and progress. Keep personal-name extensions private where required. |
 | Focus | Default layout, with an optional shortcut to restore it—not a mandatory cleanup button. |
 | Right pane | Closed initially; reopen through an explicit inspector control; close without losing state. |
 | DEV | Absent from top bar; available only through a bottom Settings → Advanced entry. |
@@ -239,12 +243,7 @@ Implement explicit game state transitions, not disconnected click animations:
 - Include occasional fictional boss interruptions and a melodramatic office woman in a dress complaining tearfully about “personell”. Make these short, skippable, captioned, and individually disableable.
 - Use bounded event scheduling, initially no more than one interruption per five active minutes. Never interrupt setup, modal editing, or error recovery.
 
-Implement the requested personal cameo through an **external private content pack**:
-- “daniel trifunovic” and “nebojsa trifunovic” exchange Serbian greetings and a celebratory high-five after collaboration/completion.
-- Interpret Nebojsa as the gray-haired father with glasses and Daniel as the muscular brown-haired, bearded son.
-- Use original stylized characters, not scraped photographs or cloned voices. Suggested greetings: “Zdravo!” and “Bravo, majstore!”
-- Keep those names, personalized assets, and private snippets outside tracked public files. Provide a locally packaged personalized Play artifact in the private workspace; public Play uses generic characters.
-- No personal cameo, NPC assets, dialogue, or secrets belong in Business.
+A private content pack may add a personalised scene to Play; its details are kept outside the repository, public Play uses generic characters, and nothing of it belongs in Business.
 
 Game fixture: oil `50%`, simulated consumption `2 percentage points/minute`, cutting time `120 seconds` → `46%`; paused wall time adds no consumption; refill → `100%`. Treat these as tunable game values, not physical-machine specifications.
 
@@ -291,13 +290,7 @@ Preserve local/offline work. Require explicit user action before transmitting a 
 Record third-party source, revision/hash, asset-specific license, and modifications in `THIRD_PARTY_NOTICES.md`. A repository’s code license does not automatically license its models, fonts, or audio.
 Do not copy proprietary HEIDENHAIN assets/manuals or Gran Turismo content. Keep the existing educational-simulator/non-affiliation warning; no real-machine validation claims.
 
-Create a short **private commercial brief** only after the working product:
-- Compare vocational CNC education, small workshops, and individual learners; recommend one first segment and one paid pilot offer.
-- Separate tested capabilities, mocked tests, and unfinished integrations.
-- Propose three clearly labeled price hypotheses with visible margin math: price minus hosting, support time, payment costs, and any included AI usage.
-- Define a four-week pilot with numeric continue/change/stop criteria. Draft only; no outreach or publishing.
-- Defer new checkout, billing, and entitlement implementation because this request is a frontend/product redesign, not a payment launch. If later approved, use hosted checkout, signed idempotent webhooks, server-side entitlements, and test mode first.
-Keep pricing, strategy, outreach drafts, and personal material outside the public working tree; an ignored folder inside it is not sufficient.
+A private commercial brief exists outside the repository; pricing, strategy, outreach drafts and personal material are never placed in the working tree, not even in an ignored folder.
 
 # 17. Verification and acceptance
 

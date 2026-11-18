@@ -1,0 +1,2559 @@
+{
+  "schema": 1,
+  "generatedOn": "2026-11-18",
+  "node": "v26.2.0",
+  "platform": "win32",
+  "engine": {
+    "path": "sim/engine/tnc_core.wasm via sim/engine.js",
+    "wasmSha256": "dd23cb13e4de38b0423d61d8bc7d1c856249111045b0494b292ecb5a2f112aa7",
+    "holderA": 100,
+    "vice": true
+  },
+  "ok": true,
+  "passed": 16,
+  "total": 16,
+  "native": {
+    "ran": true,
+    "results": {
+      "01_NAMEPLATE@426": {
+        "agree": true,
+        "nativeOk": true,
+        "interpreter": "261e506332f0f6dc",
+        "diffs": []
+      },
+      "01_NAMEPLATE@430": {
+        "agree": true,
+        "nativeOk": true,
+        "interpreter": "261e506332f0f6dc",
+        "diffs": []
+      },
+      "02_STEPPED_POCKET@426": {
+        "agree": true,
+        "nativeOk": true,
+        "interpreter": "261e506332f0f6dc",
+        "diffs": []
+      },
+      "02_STEPPED_POCKET@430": {
+        "agree": true,
+        "nativeOk": true,
+        "interpreter": "261e506332f0f6dc",
+        "diffs": []
+      },
+      "03_SPIRAL_POCKET@426": {
+        "agree": true,
+        "nativeOk": true,
+        "interpreter": "261e506332f0f6dc",
+        "diffs": []
+      },
+      "03_SPIRAL_POCKET@430": {
+        "agree": true,
+        "nativeOk": true,
+        "interpreter": "261e506332f0f6dc",
+        "diffs": []
+      },
+      "04_BOLT_CIRCLE@426": {
+        "agree": true,
+        "nativeOk": true,
+        "interpreter": "261e506332f0f6dc",
+        "diffs": []
+      },
+      "04_BOLT_CIRCLE@430": {
+        "agree": true,
+        "nativeOk": true,
+        "interpreter": "261e506332f0f6dc",
+        "diffs": []
+      },
+      "05_POLAR_STAR@426": {
+        "agree": true,
+        "nativeOk": true,
+        "interpreter": "261e506332f0f6dc",
+        "diffs": []
+      },
+      "05_POLAR_STAR@430": {
+        "agree": true,
+        "nativeOk": true,
+        "interpreter": "261e506332f0f6dc",
+        "diffs": []
+      },
+      "06_ROUNDED_PLATE@426": {
+        "agree": true,
+        "nativeOk": true,
+        "interpreter": "261e506332f0f6dc",
+        "diffs": []
+      },
+      "06_ROUNDED_PLATE@430": {
+        "agree": true,
+        "nativeOk": true,
+        "interpreter": "261e506332f0f6dc",
+        "diffs": []
+      },
+      "07_HELIX_BORE@426": {
+        "agree": true,
+        "nativeOk": true,
+        "interpreter": "261e506332f0f6dc",
+        "diffs": []
+      },
+      "07_HELIX_BORE@430": {
+        "agree": true,
+        "nativeOk": true,
+        "interpreter": "261e506332f0f6dc",
+        "diffs": []
+      },
+      "08_CONTOUR_ISLAND@426": {
+        "agree": true,
+        "nativeOk": true,
+        "interpreter": "261e506332f0f6dc",
+        "diffs": []
+      },
+      "08_CONTOUR_ISLAND@430": {
+        "agree": true,
+        "nativeOk": true,
+        "interpreter": "261e506332f0f6dc",
+        "diffs": []
+      },
+      "09_GEAR_OUTLINE@426": {
+        "agree": true,
+        "nativeOk": true,
+        "interpreter": "261e506332f0f6dc",
+        "diffs": []
+      },
+      "09_GEAR_OUTLINE@430": {
+        "agree": true,
+        "nativeOk": true,
+        "interpreter": "261e506332f0f6dc",
+        "diffs": []
+      },
+      "10_COOLANT_SWEEP@426": {
+        "agree": true,
+        "nativeOk": true,
+        "interpreter": "261e506332f0f6dc",
+        "diffs": []
+      },
+      "10_COOLANT_SWEEP@430": {
+        "agree": true,
+        "nativeOk": true,
+        "interpreter": "261e506332f0f6dc",
+        "diffs": []
+      },
+      "11_Q_PATTERN@426": {
+        "agree": true,
+        "nativeOk": true,
+        "interpreter": "261e506332f0f6dc",
+        "diffs": []
+      },
+      "11_Q_PATTERN@430": {
+        "agree": true,
+        "nativeOk": true,
+        "interpreter": "261e506332f0f6dc",
+        "diffs": []
+      },
+      "12_SUBPROGRAM_GRID@426": {
+        "agree": true,
+        "nativeOk": true,
+        "interpreter": "261e506332f0f6dc",
+        "diffs": []
+      },
+      "12_SUBPROGRAM_GRID@430": {
+        "agree": true,
+        "nativeOk": true,
+        "interpreter": "261e506332f0f6dc",
+        "diffs": []
+      },
+      "13_RADIUS_COMP@426": {
+        "agree": true,
+        "nativeOk": true,
+        "interpreter": "261e506332f0f6dc",
+        "diffs": []
+      },
+      "13_RADIUS_COMP@430": {
+        "agree": true,
+        "nativeOk": true,
+        "interpreter": "261e506332f0f6dc",
+        "diffs": []
+      },
+      "14_MULTI_TOOL@426": {
+        "agree": true,
+        "nativeOk": true,
+        "interpreter": "261e506332f0f6dc",
+        "diffs": []
+      },
+      "14_MULTI_TOOL@430": {
+        "agree": true,
+        "nativeOk": true,
+        "interpreter": "261e506332f0f6dc",
+        "diffs": []
+      },
+      "15_430_SWIVEL@430": {
+        "agree": true,
+        "nativeOk": true,
+        "interpreter": "261e506332f0f6dc",
+        "diffs": []
+      },
+      "16_5511_SHOWCASE@426": {
+        "agree": true,
+        "nativeOk": true,
+        "interpreter": "261e506332f0f6dc",
+        "diffs": []
+      },
+      "16_5511_SHOWCASE@430": {
+        "agree": true,
+        "nativeOk": true,
+        "interpreter": "261e506332f0f6dc",
+        "diffs": []
+      }
+    },
+    "date": "2026-11-18",
+    "wasmSha256": "dd23cb13e4de38b0423d61d8bc7d1c856249111045b0494b292ecb5a2f112aa7"
+  },
+  "programs": [
+    {
+      "id": "01_NAMEPLATE",
+      "file": "01_NAMEPLATE.H",
+      "sha256": "063fa321353b8a808c3be638969115865f7bb1c92adf6a9bc1aee658ccf445ad",
+      "ok": true,
+      "failures": [],
+      "runs": {
+        "426": {
+          "ok": true,
+          "failures": [],
+          "checks": {
+            "units": true,
+            "blkForm": true,
+            "noErrors": true,
+            "stock": true,
+            "completed": true,
+            "toolsDeclared": true,
+            "toolsUsed": true,
+            "toolsBuiltIn": true,
+            "noCollision": true,
+            "noWarnings": true,
+            "noThroughCut": true,
+            "safeTravel": true,
+            "insideBlankDepth": true,
+            "insideTravel": true,
+            "expectedDepth": true,
+            "expectedEnvelope": true,
+            "removal": true,
+            "cycleTime": true
+          },
+          "metrics": {
+            "errors": [],
+            "toolsUsed": [
+              9,
+              4
+            ],
+            "events": [],
+            "cutMinZ": -1.5,
+            "cutEnvelope": {
+              "x": [
+                6,
+                174
+              ],
+              "y": [
+                6,
+                54
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                174
+              ],
+              "y": [
+                0,
+                54
+              ],
+              "z": [
+                -1.5,
+                150
+              ]
+            },
+            "removedCm3": 4.45,
+            "removedShare": 0.0412,
+            "engineRemovedEstimateCm3": 5.83,
+            "cycleTimeS": 307,
+            "animationTimeS": 307,
+            "blocks": 117,
+            "moves": 167,
+            "pathFeedMm": 1501.6,
+            "pathRapidMm": 1347.3,
+            "cutShareOfFeed": 0.895,
+            "grid": [
+              241,
+              81
+            ]
+          }
+        },
+        "430": {
+          "ok": true,
+          "failures": [],
+          "checks": {
+            "units": true,
+            "blkForm": true,
+            "noErrors": true,
+            "stock": true,
+            "completed": true,
+            "toolsDeclared": true,
+            "toolsUsed": true,
+            "toolsBuiltIn": true,
+            "noCollision": true,
+            "noWarnings": true,
+            "noThroughCut": true,
+            "safeTravel": true,
+            "insideBlankDepth": true,
+            "insideTravel": true,
+            "expectedDepth": true,
+            "expectedEnvelope": true,
+            "removal": true,
+            "cycleTime": true
+          },
+          "metrics": {
+            "errors": [],
+            "toolsUsed": [
+              9,
+              4
+            ],
+            "events": [],
+            "cutMinZ": -1.5,
+            "cutEnvelope": {
+              "x": [
+                6,
+                174
+              ],
+              "y": [
+                6,
+                54
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                174
+              ],
+              "y": [
+                0,
+                54
+              ],
+              "z": [
+                -1.5,
+                150
+              ]
+            },
+            "removedCm3": 4.45,
+            "removedShare": 0.0412,
+            "engineRemovedEstimateCm3": 5.83,
+            "cycleTimeS": 330.2,
+            "animationTimeS": 330.2,
+            "blocks": 117,
+            "moves": 167,
+            "pathFeedMm": 1501.6,
+            "pathRapidMm": 1347.3,
+            "cutShareOfFeed": 0.895,
+            "grid": [
+              241,
+              81
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "02_STEPPED_POCKET",
+      "file": "02_STEPPED_POCKET.H",
+      "sha256": "cc1d8e5ac28c432c3b6cacd73e5bff25c79067acb5ca7e8dd4fe70a9829ffe8d",
+      "ok": true,
+      "failures": [],
+      "runs": {
+        "426": {
+          "ok": true,
+          "failures": [],
+          "checks": {
+            "units": true,
+            "blkForm": true,
+            "noErrors": true,
+            "stock": true,
+            "completed": true,
+            "toolsDeclared": true,
+            "toolsUsed": true,
+            "toolsBuiltIn": true,
+            "noCollision": true,
+            "noWarnings": true,
+            "noThroughCut": true,
+            "safeTravel": true,
+            "insideBlankDepth": true,
+            "insideTravel": true,
+            "expectedDepth": true,
+            "expectedEnvelope": true,
+            "removal": true,
+            "cycleTime": true
+          },
+          "metrics": {
+            "errors": [],
+            "toolsUsed": [
+              5
+            ],
+            "events": [],
+            "cutMinZ": -18,
+            "cutEnvelope": {
+              "x": [
+                16,
+                84
+              ],
+              "y": [
+                16,
+                84
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                84
+              ],
+              "y": [
+                0,
+                84
+              ],
+              "z": [
+                -18,
+                150
+              ]
+            },
+            "removedCm3": 62.81,
+            "removedShare": 0.2094,
+            "engineRemovedEstimateCm3": 348.66,
+            "cycleTimeS": 311.1,
+            "animationTimeS": 311.1,
+            "blocks": 42,
+            "moves": 209,
+            "pathFeedMm": 4065.1,
+            "pathRapidMm": 557.4,
+            "cutShareOfFeed": 0.912,
+            "grid": [
+              126,
+              126
+            ]
+          }
+        },
+        "430": {
+          "ok": true,
+          "failures": [],
+          "checks": {
+            "units": true,
+            "blkForm": true,
+            "noErrors": true,
+            "stock": true,
+            "completed": true,
+            "toolsDeclared": true,
+            "toolsUsed": true,
+            "toolsBuiltIn": true,
+            "noCollision": true,
+            "noWarnings": true,
+            "noThroughCut": true,
+            "safeTravel": true,
+            "insideBlankDepth": true,
+            "insideTravel": true,
+            "expectedDepth": true,
+            "expectedEnvelope": true,
+            "removal": true,
+            "cycleTime": true
+          },
+          "metrics": {
+            "errors": [],
+            "toolsUsed": [
+              5
+            ],
+            "events": [],
+            "cutMinZ": -18,
+            "cutEnvelope": {
+              "x": [
+                16,
+                84
+              ],
+              "y": [
+                16,
+                84
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                84
+              ],
+              "y": [
+                0,
+                84
+              ],
+              "z": [
+                -18,
+                150
+              ]
+            },
+            "removedCm3": 62.81,
+            "removedShare": 0.2094,
+            "engineRemovedEstimateCm3": 251.43,
+            "cycleTimeS": 234.1,
+            "animationTimeS": 234.1,
+            "blocks": 42,
+            "moves": 149,
+            "pathFeedMm": 2874.7,
+            "pathRapidMm": 557.4,
+            "cutShareOfFeed": 0.915,
+            "grid": [
+              126,
+              126
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "03_SPIRAL_POCKET",
+      "file": "03_SPIRAL_POCKET.H",
+      "sha256": "b2b27210addec4f0a1647ac304f0d7f5b96f1cc8a2cbf3424a753c5784069c0f",
+      "ok": true,
+      "failures": [],
+      "runs": {
+        "426": {
+          "ok": true,
+          "failures": [],
+          "checks": {
+            "units": true,
+            "blkForm": true,
+            "noErrors": true,
+            "stock": true,
+            "completed": true,
+            "toolsDeclared": true,
+            "toolsUsed": true,
+            "toolsBuiltIn": true,
+            "noCollision": true,
+            "noWarnings": true,
+            "noThroughCut": true,
+            "safeTravel": true,
+            "insideBlankDepth": true,
+            "insideTravel": true,
+            "expectedDepth": true,
+            "expectedEnvelope": true,
+            "removal": true,
+            "cycleTime": true
+          },
+          "metrics": {
+            "errors": [],
+            "toolsUsed": [
+              5
+            ],
+            "events": [],
+            "cutMinZ": -8,
+            "cutEnvelope": {
+              "x": [
+                21,
+                79
+              ],
+              "y": [
+                21,
+                79
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                79
+              ],
+              "y": [
+                0,
+                79
+              ],
+              "z": [
+                -8,
+                150
+              ]
+            },
+            "removedCm3": 30.74,
+            "removedShare": 0.1537,
+            "engineRemovedEstimateCm3": 111.36,
+            "cycleTimeS": 138.1,
+            "animationTimeS": 138.1,
+            "blocks": 24,
+            "moves": 477,
+            "pathFeedMm": 1556.7,
+            "pathRapidMm": 361.7,
+            "cutShareOfFeed": 0.691,
+            "grid": [
+              126,
+              126
+            ]
+          }
+        },
+        "430": {
+          "ok": true,
+          "failures": [],
+          "checks": {
+            "units": true,
+            "blkForm": true,
+            "noErrors": true,
+            "stock": true,
+            "completed": true,
+            "toolsDeclared": true,
+            "toolsUsed": true,
+            "toolsBuiltIn": true,
+            "noCollision": true,
+            "noWarnings": true,
+            "noThroughCut": true,
+            "safeTravel": true,
+            "insideBlankDepth": true,
+            "insideTravel": true,
+            "expectedDepth": true,
+            "expectedEnvelope": true,
+            "removal": true,
+            "cycleTime": true
+          },
+          "metrics": {
+            "errors": [],
+            "toolsUsed": [
+              5
+            ],
+            "events": [],
+            "cutMinZ": -8,
+            "cutEnvelope": {
+              "x": [
+                21,
+                79
+              ],
+              "y": [
+                21,
+                79
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                79
+              ],
+              "y": [
+                0,
+                79
+              ],
+              "z": [
+                -8,
+                150
+              ]
+            },
+            "removedCm3": 30.74,
+            "removedShare": 0.1537,
+            "engineRemovedEstimateCm3": 111.36,
+            "cycleTimeS": 156.3,
+            "animationTimeS": 156.3,
+            "blocks": 24,
+            "moves": 477,
+            "pathFeedMm": 1556.7,
+            "pathRapidMm": 361.7,
+            "cutShareOfFeed": 0.691,
+            "grid": [
+              126,
+              126
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "04_BOLT_CIRCLE",
+      "file": "04_BOLT_CIRCLE.H",
+      "sha256": "bcade12d905796f279531d162989a2eb86a55cf512d15a8d400eb7318093e418",
+      "ok": true,
+      "failures": [],
+      "runs": {
+        "426": {
+          "ok": true,
+          "failures": [],
+          "checks": {
+            "units": true,
+            "blkForm": true,
+            "noErrors": true,
+            "stock": true,
+            "completed": true,
+            "toolsDeclared": true,
+            "toolsUsed": true,
+            "toolsBuiltIn": true,
+            "noCollision": true,
+            "noWarnings": true,
+            "noThroughCut": true,
+            "safeTravel": true,
+            "insideBlankDepth": true,
+            "insideTravel": true,
+            "expectedDepth": true,
+            "expectedEnvelope": true,
+            "removal": true,
+            "cycleTime": true
+          },
+          "metrics": {
+            "errors": [],
+            "toolsUsed": [
+              1,
+              2,
+              5
+            ],
+            "events": [],
+            "cutMinZ": -16,
+            "cutEnvelope": {
+              "x": [
+                18,
+                102
+              ],
+              "y": [
+                18,
+                102
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                102
+              ],
+              "y": [
+                0,
+                102
+              ],
+              "z": [
+                -16,
+                150
+              ]
+            },
+            "removedCm3": 15.24,
+            "removedShare": 0.0529,
+            "engineRemovedEstimateCm3": 35.87,
+            "cycleTimeS": 141.8,
+            "animationTimeS": 141.7,
+            "blocks": 74,
+            "moves": 150,
+            "pathFeedMm": 644.8,
+            "pathRapidMm": 2627.7,
+            "cutShareOfFeed": 0.497,
+            "grid": [
+              151,
+              151
+            ]
+          }
+        },
+        "430": {
+          "ok": true,
+          "failures": [],
+          "checks": {
+            "units": true,
+            "blkForm": true,
+            "noErrors": true,
+            "stock": true,
+            "completed": true,
+            "toolsDeclared": true,
+            "toolsUsed": true,
+            "toolsBuiltIn": true,
+            "noCollision": true,
+            "noWarnings": true,
+            "noThroughCut": true,
+            "safeTravel": true,
+            "insideBlankDepth": true,
+            "insideTravel": true,
+            "expectedDepth": true,
+            "expectedEnvelope": true,
+            "removal": true,
+            "cycleTime": true
+          },
+          "metrics": {
+            "errors": [],
+            "toolsUsed": [
+              1,
+              2,
+              5
+            ],
+            "events": [],
+            "cutMinZ": -16,
+            "cutEnvelope": {
+              "x": [
+                18,
+                102
+              ],
+              "y": [
+                18,
+                102
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                102
+              ],
+              "y": [
+                0,
+                102
+              ],
+              "z": [
+                -16,
+                150
+              ]
+            },
+            "removedCm3": 15.24,
+            "removedShare": 0.0529,
+            "engineRemovedEstimateCm3": 35.87,
+            "cycleTimeS": 185.4,
+            "animationTimeS": 185.4,
+            "blocks": 74,
+            "moves": 150,
+            "pathFeedMm": 644.8,
+            "pathRapidMm": 2627.7,
+            "cutShareOfFeed": 0.497,
+            "grid": [
+              151,
+              151
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "05_POLAR_STAR",
+      "file": "05_POLAR_STAR.H",
+      "sha256": "564e725ddb3955ac7da6ddbc46836347148651983b49fe7688e94e7f5c7b5748",
+      "ok": true,
+      "failures": [],
+      "runs": {
+        "426": {
+          "ok": true,
+          "failures": [],
+          "checks": {
+            "units": true,
+            "blkForm": true,
+            "noErrors": true,
+            "stock": true,
+            "completed": true,
+            "toolsDeclared": true,
+            "toolsUsed": true,
+            "toolsBuiltIn": true,
+            "noCollision": true,
+            "noWarnings": true,
+            "noThroughCut": true,
+            "safeTravel": true,
+            "insideBlankDepth": true,
+            "insideTravel": true,
+            "expectedDepth": true,
+            "expectedEnvelope": true,
+            "removal": true,
+            "cycleTime": true
+          },
+          "metrics": {
+            "errors": [],
+            "toolsUsed": [
+              4
+            ],
+            "events": [],
+            "cutMinZ": -3,
+            "cutEnvelope": {
+              "x": [
+                4,
+                96
+              ],
+              "y": [
+                4,
+                96
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                96
+              ],
+              "y": [
+                0,
+                96
+              ],
+              "z": [
+                -3,
+                150
+              ]
+            },
+            "removedCm3": 10.83,
+            "removedShare": 0.0722,
+            "engineRemovedEstimateCm3": 16.96,
+            "cycleTimeS": 162.6,
+            "animationTimeS": 162.6,
+            "blocks": 41,
+            "moves": 47,
+            "pathFeedMm": 1278.2,
+            "pathRapidMm": 623.2,
+            "cutShareOfFeed": 0.818,
+            "grid": [
+              126,
+              126
+            ]
+          }
+        },
+        "430": {
+          "ok": true,
+          "failures": [],
+          "checks": {
+            "units": true,
+            "blkForm": true,
+            "noErrors": true,
+            "stock": true,
+            "completed": true,
+            "toolsDeclared": true,
+            "toolsUsed": true,
+            "toolsBuiltIn": true,
+            "noCollision": true,
+            "noWarnings": true,
+            "noThroughCut": true,
+            "safeTravel": true,
+            "insideBlankDepth": true,
+            "insideTravel": true,
+            "expectedDepth": true,
+            "expectedEnvelope": true,
+            "removal": true,
+            "cycleTime": true
+          },
+          "metrics": {
+            "errors": [],
+            "toolsUsed": [
+              4
+            ],
+            "events": [],
+            "cutMinZ": -3,
+            "cutEnvelope": {
+              "x": [
+                4,
+                96
+              ],
+              "y": [
+                4,
+                96
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                96
+              ],
+              "y": [
+                0,
+                96
+              ],
+              "z": [
+                -3,
+                150
+              ]
+            },
+            "removedCm3": 10.83,
+            "removedShare": 0.0722,
+            "engineRemovedEstimateCm3": 16.96,
+            "cycleTimeS": 170.8,
+            "animationTimeS": 170.8,
+            "blocks": 41,
+            "moves": 47,
+            "pathFeedMm": 1278.2,
+            "pathRapidMm": 623.2,
+            "cutShareOfFeed": 0.818,
+            "grid": [
+              126,
+              126
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "06_ROUNDED_PLATE",
+      "file": "06_ROUNDED_PLATE.H",
+      "sha256": "8066bf43f272445ebc07d3f979d57baf8c2e18a3243b02223b037fc4a084b1ff",
+      "ok": true,
+      "failures": [],
+      "runs": {
+        "426": {
+          "ok": true,
+          "failures": [],
+          "checks": {
+            "units": true,
+            "blkForm": true,
+            "noErrors": true,
+            "stock": true,
+            "completed": true,
+            "toolsDeclared": true,
+            "toolsUsed": true,
+            "toolsBuiltIn": true,
+            "noCollision": true,
+            "noWarnings": true,
+            "noThroughCut": true,
+            "safeTravel": true,
+            "insideBlankDepth": true,
+            "insideTravel": true,
+            "expectedDepth": true,
+            "expectedEnvelope": true,
+            "removal": true,
+            "cycleTime": true
+          },
+          "metrics": {
+            "errors": [],
+            "toolsUsed": [
+              6,
+              5,
+              2
+            ],
+            "events": [],
+            "cutMinZ": -12.5,
+            "cutEnvelope": {
+              "x": [
+                -30,
+                150
+              ],
+              "y": [
+                0,
+                80
+              ]
+            },
+            "travel": {
+              "x": [
+                -30,
+                150
+              ],
+              "y": [
+                0,
+                80
+              ],
+              "z": [
+                -12.5,
+                150
+              ]
+            },
+            "removedCm3": 27.74,
+            "removedShare": 0.1445,
+            "engineRemovedEstimateCm3": 75.12,
+            "cycleTimeS": 131.7,
+            "animationTimeS": 131.7,
+            "blocks": 57,
+            "moves": 83,
+            "pathFeedMm": 1241.2,
+            "pathRapidMm": 1119.4,
+            "cutShareOfFeed": 0.774,
+            "grid": [
+              151,
+              101
+            ]
+          }
+        },
+        "430": {
+          "ok": true,
+          "failures": [],
+          "checks": {
+            "units": true,
+            "blkForm": true,
+            "noErrors": true,
+            "stock": true,
+            "completed": true,
+            "toolsDeclared": true,
+            "toolsUsed": true,
+            "toolsBuiltIn": true,
+            "noCollision": true,
+            "noWarnings": true,
+            "noThroughCut": true,
+            "safeTravel": true,
+            "insideBlankDepth": true,
+            "insideTravel": true,
+            "expectedDepth": true,
+            "expectedEnvelope": true,
+            "removal": true,
+            "cycleTime": true
+          },
+          "metrics": {
+            "errors": [],
+            "toolsUsed": [
+              6,
+              5,
+              2
+            ],
+            "events": [],
+            "cutMinZ": -12.5,
+            "cutEnvelope": {
+              "x": [
+                -30,
+                150
+              ],
+              "y": [
+                0,
+                80
+              ]
+            },
+            "travel": {
+              "x": [
+                -30,
+                150
+              ],
+              "y": [
+                0,
+                80
+              ],
+              "z": [
+                -12.5,
+                150
+              ]
+            },
+            "removedCm3": 27.74,
+            "removedShare": 0.1445,
+            "engineRemovedEstimateCm3": 75.12,
+            "cycleTimeS": 149.1,
+            "animationTimeS": 149.1,
+            "blocks": 57,
+            "moves": 83,
+            "pathFeedMm": 1241.2,
+            "pathRapidMm": 1119.4,
+            "cutShareOfFeed": 0.774,
+            "grid": [
+              151,
+              101
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "07_HELIX_BORE",
+      "file": "07_HELIX_BORE.H",
+      "sha256": "0c0eb97b28bec57624969d53d68f5b10cfe367d49cbf2aec2e3c98ce38979c41",
+      "ok": true,
+      "failures": [],
+      "runs": {
+        "426": {
+          "ok": true,
+          "failures": [],
+          "checks": {
+            "units": true,
+            "blkForm": true,
+            "noErrors": true,
+            "stock": true,
+            "completed": true,
+            "toolsDeclared": true,
+            "toolsUsed": true,
+            "toolsBuiltIn": true,
+            "noCollision": true,
+            "noWarnings": true,
+            "noThroughCut": true,
+            "safeTravel": true,
+            "insideBlankDepth": true,
+            "insideTravel": true,
+            "expectedDepth": true,
+            "expectedEnvelope": true,
+            "removal": true,
+            "cycleTime": true
+          },
+          "metrics": {
+            "errors": [],
+            "toolsUsed": [
+              5
+            ],
+            "events": [],
+            "cutMinZ": -18,
+            "cutEnvelope": {
+              "x": [
+                18,
+                62
+              ],
+              "y": [
+                18,
+                62
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                62
+              ],
+              "y": [
+                0,
+                62
+              ],
+              "z": [
+                -18,
+                150
+              ]
+            },
+            "removedCm3": 27.25,
+            "removedShare": 0.1419,
+            "engineRemovedEstimateCm3": 167.22,
+            "cycleTimeS": 222.8,
+            "animationTimeS": 222.8,
+            "blocks": 34,
+            "moves": 23,
+            "pathFeedMm": 1846,
+            "pathRapidMm": 393.6,
+            "cutShareOfFeed": 0.485,
+            "grid": [
+              101,
+              101
+            ]
+          }
+        },
+        "430": {
+          "ok": true,
+          "failures": [],
+          "checks": {
+            "units": true,
+            "blkForm": true,
+            "noErrors": true,
+            "stock": true,
+            "completed": true,
+            "toolsDeclared": true,
+            "toolsUsed": true,
+            "toolsBuiltIn": true,
+            "noCollision": true,
+            "noWarnings": true,
+            "noThroughCut": true,
+            "safeTravel": true,
+            "insideBlankDepth": true,
+            "insideTravel": true,
+            "expectedDepth": true,
+            "expectedEnvelope": true,
+            "removal": true,
+            "cycleTime": true
+          },
+          "metrics": {
+            "errors": [],
+            "toolsUsed": [
+              5
+            ],
+            "events": [],
+            "cutMinZ": -18,
+            "cutEnvelope": {
+              "x": [
+                18,
+                62
+              ],
+              "y": [
+                18,
+                62
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                62
+              ],
+              "y": [
+                0,
+                62
+              ],
+              "z": [
+                -18,
+                150
+              ]
+            },
+            "removedCm3": 27.25,
+            "removedShare": 0.1419,
+            "engineRemovedEstimateCm3": 167.22,
+            "cycleTimeS": 228.8,
+            "animationTimeS": 228.8,
+            "blocks": 34,
+            "moves": 23,
+            "pathFeedMm": 1846,
+            "pathRapidMm": 393.6,
+            "cutShareOfFeed": 0.485,
+            "grid": [
+              101,
+              101
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "08_CONTOUR_ISLAND",
+      "file": "08_CONTOUR_ISLAND.H",
+      "sha256": "27c7db1b379f6a9db3aa9859bc95bc2a9d9da54ac7985afce33350f9783ec01a",
+      "ok": true,
+      "failures": [],
+      "runs": {
+        "426": {
+          "ok": true,
+          "failures": [],
+          "checks": {
+            "units": true,
+            "blkForm": true,
+            "noErrors": true,
+            "stock": true,
+            "completed": true,
+            "toolsDeclared": true,
+            "toolsUsed": true,
+            "toolsBuiltIn": true,
+            "noCollision": true,
+            "noWarnings": true,
+            "noThroughCut": true,
+            "safeTravel": true,
+            "insideBlankDepth": true,
+            "insideTravel": true,
+            "expectedDepth": true,
+            "expectedEnvelope": true,
+            "removal": true,
+            "cycleTime": true
+          },
+          "metrics": {
+            "errors": [],
+            "toolsUsed": [
+              5,
+              4
+            ],
+            "events": [],
+            "cutMinZ": -8,
+            "cutEnvelope": {
+              "x": [
+                11,
+                89
+              ],
+              "y": [
+                18,
+                82
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                89
+              ],
+              "y": [
+                0,
+                82
+              ],
+              "z": [
+                -8,
+                150
+              ]
+            },
+            "removedCm3": 42.92,
+            "removedShare": 0.2146,
+            "engineRemovedEstimateCm3": 234.07,
+            "cycleTimeS": 508.5,
+            "animationTimeS": 508.5,
+            "blocks": 70,
+            "moves": 5902,
+            "pathFeedMm": 4409.9,
+            "pathRapidMm": 1870.2,
+            "cutShareOfFeed": 0.492,
+            "grid": [
+              126,
+              126
+            ]
+          }
+        },
+        "430": {
+          "ok": true,
+          "failures": [],
+          "checks": {
+            "units": true,
+            "blkForm": true,
+            "noErrors": true,
+            "stock": true,
+            "completed": true,
+            "toolsDeclared": true,
+            "toolsUsed": true,
+            "toolsBuiltIn": true,
+            "noCollision": true,
+            "noWarnings": true,
+            "noThroughCut": true,
+            "safeTravel": true,
+            "insideBlankDepth": true,
+            "insideTravel": true,
+            "expectedDepth": true,
+            "expectedEnvelope": true,
+            "removal": true,
+            "cycleTime": true
+          },
+          "metrics": {
+            "errors": [],
+            "toolsUsed": [
+              5,
+              4
+            ],
+            "events": [],
+            "cutMinZ": -8,
+            "cutEnvelope": {
+              "x": [
+                11,
+                89
+              ],
+              "y": [
+                18,
+                82
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                89
+              ],
+              "y": [
+                0,
+                82
+              ],
+              "z": [
+                -8,
+                150
+              ]
+            },
+            "removedCm3": 42.92,
+            "removedShare": 0.2146,
+            "engineRemovedEstimateCm3": 235.57,
+            "cycleTimeS": 659.2,
+            "animationTimeS": 659.2,
+            "blocks": 70,
+            "moves": 5896,
+            "pathFeedMm": 4421.1,
+            "pathRapidMm": 1618.9,
+            "cutShareOfFeed": 0.493,
+            "grid": [
+              126,
+              126
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "09_GEAR_OUTLINE",
+      "file": "09_GEAR_OUTLINE.H",
+      "sha256": "7921d9df3f7b9f959caeb424d2760310a76a540f9ff004612cb6fa980f35a5f5",
+      "ok": true,
+      "failures": [],
+      "runs": {
+        "426": {
+          "ok": true,
+          "failures": [],
+          "checks": {
+            "units": true,
+            "blkForm": true,
+            "noErrors": true,
+            "stock": true,
+            "completed": true,
+            "toolsDeclared": true,
+            "toolsUsed": true,
+            "toolsBuiltIn": true,
+            "noCollision": true,
+            "noWarnings": true,
+            "noThroughCut": true,
+            "safeTravel": true,
+            "insideBlankDepth": true,
+            "insideTravel": true,
+            "expectedDepth": true,
+            "expectedEnvelope": true,
+            "removal": true,
+            "cycleTime": true
+          },
+          "metrics": {
+            "errors": [],
+            "toolsUsed": [
+              5,
+              4
+            ],
+            "events": [],
+            "cutMinZ": -6,
+            "cutEnvelope": {
+              "x": [
+                2,
+                118
+              ],
+              "y": [
+                2,
+                118
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                118
+              ],
+              "y": [
+                0,
+                118
+              ],
+              "z": [
+                -6,
+                150
+              ]
+            },
+            "removedCm3": 39.77,
+            "removedShare": 0.1381,
+            "engineRemovedEstimateCm3": 71.65,
+            "cycleTimeS": 215.9,
+            "animationTimeS": 215.8,
+            "blocks": 96,
+            "moves": 177,
+            "pathFeedMm": 1905.3,
+            "pathRapidMm": 664.1,
+            "cutShareOfFeed": 0.72,
+            "grid": [
+              151,
+              151
+            ]
+          }
+        },
+        "430": {
+          "ok": true,
+          "failures": [],
+          "checks": {
+            "units": true,
+            "blkForm": true,
+            "noErrors": true,
+            "stock": true,
+            "completed": true,
+            "toolsDeclared": true,
+            "toolsUsed": true,
+            "toolsBuiltIn": true,
+            "noCollision": true,
+            "noWarnings": true,
+            "noThroughCut": true,
+            "safeTravel": true,
+            "insideBlankDepth": true,
+            "insideTravel": true,
+            "expectedDepth": true,
+            "expectedEnvelope": true,
+            "removal": true,
+            "cycleTime": true
+          },
+          "metrics": {
+            "errors": [],
+            "toolsUsed": [
+              5,
+              4
+            ],
+            "events": [],
+            "cutMinZ": -6,
+            "cutEnvelope": {
+              "x": [
+                2,
+                118
+              ],
+              "y": [
+                2,
+                118
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                118
+              ],
+              "y": [
+                0,
+                118
+              ],
+              "z": [
+                -6,
+                150
+              ]
+            },
+            "removedCm3": 39.77,
+            "removedShare": 0.1381,
+            "engineRemovedEstimateCm3": 71.65,
+            "cycleTimeS": 224.2,
+            "animationTimeS": 224.2,
+            "blocks": 96,
+            "moves": 177,
+            "pathFeedMm": 1905.3,
+            "pathRapidMm": 664.1,
+            "cutShareOfFeed": 0.72,
+            "grid": [
+              151,
+              151
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "10_COOLANT_SWEEP",
+      "file": "10_COOLANT_SWEEP.H",
+      "sha256": "ca3d79ecca786a2fdf6422d3aaf65de723a371d9abe904a245ae4c455bc81ea1",
+      "ok": true,
+      "failures": [],
+      "runs": {
+        "426": {
+          "ok": true,
+          "failures": [],
+          "checks": {
+            "units": true,
+            "blkForm": true,
+            "noErrors": true,
+            "stock": true,
+            "completed": true,
+            "toolsDeclared": true,
+            "toolsUsed": true,
+            "toolsBuiltIn": true,
+            "noCollision": true,
+            "noWarnings": true,
+            "noThroughCut": true,
+            "safeTravel": true,
+            "insideBlankDepth": true,
+            "insideTravel": true,
+            "expectedDepth": true,
+            "expectedEnvelope": true,
+            "removal": true,
+            "cycleTime": true
+          },
+          "metrics": {
+            "errors": [],
+            "toolsUsed": [
+              6,
+              22
+            ],
+            "events": [],
+            "cutMinZ": -3.5,
+            "cutEnvelope": {
+              "x": [
+                -30,
+                170
+              ],
+              "y": [
+                15,
+                65
+              ]
+            },
+            "travel": {
+              "x": [
+                -30,
+                170
+              ],
+              "y": [
+                0,
+                65
+              ],
+              "z": [
+                -3.5,
+                150
+              ]
+            },
+            "removedCm3": 10.62,
+            "removedShare": 0.0474,
+            "engineRemovedEstimateCm3": 23.68,
+            "cycleTimeS": 90.1,
+            "animationTimeS": 90.1,
+            "blocks": 37,
+            "moves": 22,
+            "pathFeedMm": 1010.3,
+            "pathRapidMm": 545.4,
+            "cutShareOfFeed": 0.777,
+            "grid": [
+              176,
+              101
+            ]
+          }
+        },
+        "430": {
+          "ok": true,
+          "failures": [],
+          "checks": {
+            "units": true,
+            "blkForm": true,
+            "noErrors": true,
+            "stock": true,
+            "completed": true,
+            "toolsDeclared": true,
+            "toolsUsed": true,
+            "toolsBuiltIn": true,
+            "noCollision": true,
+            "noWarnings": true,
+            "noThroughCut": true,
+            "safeTravel": true,
+            "insideBlankDepth": true,
+            "insideTravel": true,
+            "expectedDepth": true,
+            "expectedEnvelope": true,
+            "removal": true,
+            "cycleTime": true
+          },
+          "metrics": {
+            "errors": [],
+            "toolsUsed": [
+              6,
+              22
+            ],
+            "events": [],
+            "cutMinZ": -3.5,
+            "cutEnvelope": {
+              "x": [
+                -30,
+                170
+              ],
+              "y": [
+                15,
+                65
+              ]
+            },
+            "travel": {
+              "x": [
+                -30,
+                170
+              ],
+              "y": [
+                0,
+                65
+              ],
+              "z": [
+                -3.5,
+                150
+              ]
+            },
+            "removedCm3": 10.62,
+            "removedShare": 0.0474,
+            "engineRemovedEstimateCm3": 23.68,
+            "cycleTimeS": 96.4,
+            "animationTimeS": 96.4,
+            "blocks": 37,
+            "moves": 22,
+            "pathFeedMm": 1010.3,
+            "pathRapidMm": 545.4,
+            "cutShareOfFeed": 0.777,
+            "grid": [
+              176,
+              101
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "11_Q_PATTERN",
+      "file": "11_Q_PATTERN.H",
+      "sha256": "2cadc73485aaf2c0730c9d41b30a1a87816d47365a2e3254a00c1b1355170a3e",
+      "ok": true,
+      "failures": [],
+      "runs": {
+        "426": {
+          "ok": true,
+          "failures": [],
+          "checks": {
+            "units": true,
+            "blkForm": true,
+            "noErrors": true,
+            "stock": true,
+            "completed": true,
+            "toolsDeclared": true,
+            "toolsUsed": true,
+            "toolsBuiltIn": true,
+            "noCollision": true,
+            "noWarnings": true,
+            "noThroughCut": true,
+            "safeTravel": true,
+            "insideBlankDepth": true,
+            "insideTravel": true,
+            "expectedDepth": true,
+            "expectedEnvelope": true,
+            "removal": true,
+            "cycleTime": true
+          },
+          "metrics": {
+            "errors": [],
+            "toolsUsed": [
+              9
+            ],
+            "events": [],
+            "cutMinZ": -1,
+            "cutEnvelope": {
+              "x": [
+                10,
+                90
+              ],
+              "y": [
+                14.71,
+                85.29
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                90
+              ],
+              "y": [
+                0,
+                85.29
+              ],
+              "z": [
+                -1,
+                150
+              ]
+            },
+            "removedCm3": 1.73,
+            "removedShare": 0.0115,
+            "engineRemovedEstimateCm3": 1.74,
+            "cycleTimeS": 130,
+            "animationTimeS": 130,
+            "blocks": 45,
+            "moves": 373,
+            "pathFeedMm": 588.9,
+            "pathRapidMm": 385,
+            "cutShareOfFeed": 0.741,
+            "grid": [
+              134,
+              134
+            ]
+          }
+        },
+        "430": {
+          "ok": true,
+          "failures": [],
+          "checks": {
+            "units": true,
+            "blkForm": true,
+            "noErrors": true,
+            "stock": true,
+            "completed": true,
+            "toolsDeclared": true,
+            "toolsUsed": true,
+            "toolsBuiltIn": true,
+            "noCollision": true,
+            "noWarnings": true,
+            "noThroughCut": true,
+            "safeTravel": true,
+            "insideBlankDepth": true,
+            "insideTravel": true,
+            "expectedDepth": true,
+            "expectedEnvelope": true,
+            "removal": true,
+            "cycleTime": true
+          },
+          "metrics": {
+            "errors": [],
+            "toolsUsed": [
+              9
+            ],
+            "events": [],
+            "cutMinZ": -1,
+            "cutEnvelope": {
+              "x": [
+                10,
+                90
+              ],
+              "y": [
+                14.71,
+                85.29
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                90
+              ],
+              "y": [
+                0,
+                85.29
+              ],
+              "z": [
+                -1,
+                150
+              ]
+            },
+            "removedCm3": 1.73,
+            "removedShare": 0.0115,
+            "engineRemovedEstimateCm3": 1.74,
+            "cycleTimeS": 139,
+            "animationTimeS": 139,
+            "blocks": 45,
+            "moves": 373,
+            "pathFeedMm": 588.9,
+            "pathRapidMm": 385,
+            "cutShareOfFeed": 0.741,
+            "grid": [
+              134,
+              134
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "12_SUBPROGRAM_GRID",
+      "file": "12_SUBPROGRAM_GRID.H",
+      "sha256": "bc1c505c8fe2725250d221f406d179bcf9c281b59f46df23528faf583d7cf2ab",
+      "ok": true,
+      "failures": [],
+      "runs": {
+        "426": {
+          "ok": true,
+          "failures": [],
+          "checks": {
+            "units": true,
+            "blkForm": true,
+            "noErrors": true,
+            "stock": true,
+            "completed": true,
+            "toolsDeclared": true,
+            "toolsUsed": true,
+            "toolsBuiltIn": true,
+            "noCollision": true,
+            "noWarnings": true,
+            "noThroughCut": true,
+            "safeTravel": true,
+            "insideBlankDepth": true,
+            "insideTravel": true,
+            "expectedDepth": true,
+            "expectedEnvelope": true,
+            "removal": true,
+            "cycleTime": true
+          },
+          "metrics": {
+            "errors": [],
+            "toolsUsed": [
+              4
+            ],
+            "events": [],
+            "cutMinZ": -3,
+            "cutEnvelope": {
+              "x": [
+                15,
+                125
+              ],
+              "y": [
+                15,
+                75
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                125
+              ],
+              "y": [
+                0,
+                75
+              ],
+              "z": [
+                -3,
+                150
+              ]
+            },
+            "removedCm3": 9,
+            "removedShare": 0.0476,
+            "engineRemovedEstimateCm3": 11.41,
+            "cycleTimeS": 107.4,
+            "animationTimeS": 107.4,
+            "blocks": 37,
+            "moves": 94,
+            "pathFeedMm": 696.2,
+            "pathRapidMm": 855.4,
+            "cutShareOfFeed": 0.452,
+            "grid": [
+              176,
+              114
+            ]
+          }
+        },
+        "430": {
+          "ok": true,
+          "failures": [],
+          "checks": {
+            "units": true,
+            "blkForm": true,
+            "noErrors": true,
+            "stock": true,
+            "completed": true,
+            "toolsDeclared": true,
+            "toolsUsed": true,
+            "toolsBuiltIn": true,
+            "noCollision": true,
+            "noWarnings": true,
+            "noThroughCut": true,
+            "safeTravel": true,
+            "insideBlankDepth": true,
+            "insideTravel": true,
+            "expectedDepth": true,
+            "expectedEnvelope": true,
+            "removal": true,
+            "cycleTime": true
+          },
+          "metrics": {
+            "errors": [],
+            "toolsUsed": [
+              4
+            ],
+            "events": [],
+            "cutMinZ": -3,
+            "cutEnvelope": {
+              "x": [
+                15,
+                125
+              ],
+              "y": [
+                15,
+                75
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                125
+              ],
+              "y": [
+                0,
+                75
+              ],
+              "z": [
+                -3,
+                150
+              ]
+            },
+            "removedCm3": 9,
+            "removedShare": 0.0476,
+            "engineRemovedEstimateCm3": 11.41,
+            "cycleTimeS": 121.4,
+            "animationTimeS": 121.4,
+            "blocks": 37,
+            "moves": 94,
+            "pathFeedMm": 696.2,
+            "pathRapidMm": 855.4,
+            "cutShareOfFeed": 0.452,
+            "grid": [
+              176,
+              114
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "13_RADIUS_COMP",
+      "file": "13_RADIUS_COMP.H",
+      "sha256": "38af17362eafbf244ebde70df6271ebe2a4262d85e9d4ee15e0edb884a0ea5f2",
+      "ok": true,
+      "failures": [],
+      "runs": {
+        "426": {
+          "ok": true,
+          "failures": [],
+          "checks": {
+            "units": true,
+            "blkForm": true,
+            "noErrors": true,
+            "stock": true,
+            "completed": true,
+            "toolsDeclared": true,
+            "toolsUsed": true,
+            "toolsBuiltIn": true,
+            "noCollision": true,
+            "noWarnings": true,
+            "noThroughCut": true,
+            "safeTravel": true,
+            "insideBlankDepth": true,
+            "insideTravel": true,
+            "expectedDepth": true,
+            "expectedEnvelope": true,
+            "removal": true,
+            "cycleTime": true
+          },
+          "metrics": {
+            "errors": [],
+            "toolsUsed": [
+              4
+            ],
+            "events": [],
+            "cutMinZ": -6,
+            "cutEnvelope": {
+              "x": [
+                27,
+                73
+              ],
+              "y": [
+                27,
+                73
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                73
+              ],
+              "y": [
+                0,
+                73
+              ],
+              "z": [
+                -6,
+                150
+              ]
+            },
+            "removedCm3": 8.52,
+            "removedShare": 0.0426,
+            "engineRemovedEstimateCm3": 12.04,
+            "cycleTimeS": 65.4,
+            "animationTimeS": 65.4,
+            "blocks": 41,
+            "moves": 31,
+            "pathFeedMm": 492.8,
+            "pathRapidMm": 361.3,
+            "cutShareOfFeed": 0.883,
+            "grid": [
+              126,
+              126
+            ]
+          }
+        },
+        "430": {
+          "ok": true,
+          "failures": [],
+          "checks": {
+            "units": true,
+            "blkForm": true,
+            "noErrors": true,
+            "stock": true,
+            "completed": true,
+            "toolsDeclared": true,
+            "toolsUsed": true,
+            "toolsBuiltIn": true,
+            "noCollision": true,
+            "noWarnings": true,
+            "noThroughCut": true,
+            "safeTravel": true,
+            "insideBlankDepth": true,
+            "insideTravel": true,
+            "expectedDepth": true,
+            "expectedEnvelope": true,
+            "removal": true,
+            "cycleTime": true
+          },
+          "metrics": {
+            "errors": [],
+            "toolsUsed": [
+              4
+            ],
+            "events": [],
+            "cutMinZ": -6,
+            "cutEnvelope": {
+              "x": [
+                27,
+                73
+              ],
+              "y": [
+                27,
+                73
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                73
+              ],
+              "y": [
+                0,
+                73
+              ],
+              "z": [
+                -6,
+                150
+              ]
+            },
+            "removedCm3": 8.52,
+            "removedShare": 0.0426,
+            "engineRemovedEstimateCm3": 12.04,
+            "cycleTimeS": 70.5,
+            "animationTimeS": 70.5,
+            "blocks": 41,
+            "moves": 31,
+            "pathFeedMm": 492.8,
+            "pathRapidMm": 361.3,
+            "cutShareOfFeed": 0.883,
+            "grid": [
+              126,
+              126
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "14_MULTI_TOOL",
+      "file": "14_MULTI_TOOL.H",
+      "sha256": "a5f1a62752c7c91768de3a5e141bfdfc1ca122c45044414a78e75c00896dae8a",
+      "ok": true,
+      "failures": [],
+      "runs": {
+        "426": {
+          "ok": true,
+          "failures": [],
+          "checks": {
+            "units": true,
+            "blkForm": true,
+            "noErrors": true,
+            "stock": true,
+            "completed": true,
+            "toolsDeclared": true,
+            "toolsUsed": true,
+            "toolsBuiltIn": true,
+            "noCollision": true,
+            "noWarnings": true,
+            "noThroughCut": true,
+            "safeTravel": true,
+            "insideBlankDepth": true,
+            "insideTravel": true,
+            "expectedDepth": true,
+            "expectedEnvelope": true,
+            "removal": true,
+            "cycleTime": true
+          },
+          "metrics": {
+            "errors": [],
+            "toolsUsed": [
+              6,
+              5,
+              4,
+              1,
+              2,
+              3,
+              8
+            ],
+            "events": [],
+            "cutMinZ": -18.5,
+            "cutEnvelope": {
+              "x": [
+                -30,
+                150
+              ],
+              "y": [
+                0,
+                80
+              ]
+            },
+            "travel": {
+              "x": [
+                -30,
+                150
+              ],
+              "y": [
+                0,
+                80
+              ],
+              "z": [
+                -18.5,
+                150
+              ]
+            },
+            "removedCm3": 34.25,
+            "removedShare": 0.1427,
+            "engineRemovedEstimateCm3": 140.62,
+            "cycleTimeS": 249.5,
+            "animationTimeS": 249.5,
+            "blocks": 133,
+            "moves": 194,
+            "pathFeedMm": 2532.4,
+            "pathRapidMm": 2960.8,
+            "cutShareOfFeed": 0.773,
+            "grid": [
+              151,
+              101
+            ]
+          }
+        },
+        "430": {
+          "ok": true,
+          "failures": [],
+          "checks": {
+            "units": true,
+            "blkForm": true,
+            "noErrors": true,
+            "stock": true,
+            "completed": true,
+            "toolsDeclared": true,
+            "toolsUsed": true,
+            "toolsBuiltIn": true,
+            "noCollision": true,
+            "noWarnings": true,
+            "noThroughCut": true,
+            "safeTravel": true,
+            "insideBlankDepth": true,
+            "insideTravel": true,
+            "expectedDepth": true,
+            "expectedEnvelope": true,
+            "removal": true,
+            "cycleTime": true
+          },
+          "metrics": {
+            "errors": [],
+            "toolsUsed": [
+              6,
+              5,
+              4,
+              1,
+              2,
+              3,
+              8
+            ],
+            "events": [],
+            "cutMinZ": -18.5,
+            "cutEnvelope": {
+              "x": [
+                -30,
+                150
+              ],
+              "y": [
+                0,
+                80
+              ]
+            },
+            "travel": {
+              "x": [
+                -30,
+                150
+              ],
+              "y": [
+                0,
+                80
+              ],
+              "z": [
+                -18.5,
+                150
+              ]
+            },
+            "removedCm3": 34.25,
+            "removedShare": 0.1427,
+            "engineRemovedEstimateCm3": 112.93,
+            "cycleTimeS": 264.3,
+            "animationTimeS": 264.3,
+            "blocks": 133,
+            "moves": 178,
+            "pathFeedMm": 2177.3,
+            "pathRapidMm": 2960.8,
+            "cutShareOfFeed": 0.787,
+            "grid": [
+              151,
+              101
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "15_430_SWIVEL",
+      "file": "15_430_SWIVEL.H",
+      "sha256": "4a9561e9cd82be578de365a99e5b856644398297caf990c06a76750058ed16a9",
+      "ok": true,
+      "failures": [],
+      "runs": {
+        "430": {
+          "ok": true,
+          "failures": [],
+          "checks": {
+            "units": true,
+            "blkForm": true,
+            "noErrors": true,
+            "stock": true,
+            "completed": true,
+            "toolsDeclared": true,
+            "toolsUsed": true,
+            "toolsBuiltIn": true,
+            "noCollision": true,
+            "noWarnings": true,
+            "noThroughCut": true,
+            "safeTravel": true,
+            "insideBlankDepth": true,
+            "insideTravel": true,
+            "expectedDepth": true,
+            "expectedEnvelope": true,
+            "removal": true,
+            "cycleTime": true
+          },
+          "metrics": {
+            "errors": [],
+            "toolsUsed": [
+              15,
+              2
+            ],
+            "events": [],
+            "cutMinZ": -21,
+            "cutEnvelope": {
+              "x": [
+                70.56,
+                108.48
+              ],
+              "y": [
+                -12,
+                92
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                121.73
+              ],
+              "y": [
+                -12,
+                92
+              ],
+              "z": [
+                -21,
+                150
+              ]
+            },
+            "removedCm3": 30.73,
+            "removedShare": 0.096,
+            "engineRemovedEstimateCm3": 195.78,
+            "cycleTimeS": 205.7,
+            "animationTimeS": 205.7,
+            "blocks": 69,
+            "moves": 66,
+            "pathFeedMm": 1692.8,
+            "pathRapidMm": 1085.1,
+            "cutShareOfFeed": 0.569,
+            "grid": [
+              126,
+              101
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "16_5511_SHOWCASE",
+      "file": "16_5511_SHOWCASE.H",
+      "sha256": "8127126e27510398284fbf9bdcc4ed46aee416833a383432d230a9bf2346e877",
+      "ok": true,
+      "failures": [],
+      "runs": {
+        "426": {
+          "ok": true,
+          "failures": [],
+          "checks": {
+            "units": true,
+            "blkForm": true,
+            "noErrors": true,
+            "stock": true,
+            "completed": true,
+            "toolsDeclared": true,
+            "toolsUsed": true,
+            "toolsBuiltIn": true,
+            "noCollision": true,
+            "noWarnings": true,
+            "noThroughCut": true,
+            "safeTravel": true,
+            "insideBlankDepth": true,
+            "insideTravel": true,
+            "expectedDepth": true,
+            "expectedEnvelope": true,
+            "removal": true,
+            "cycleTime": true
+          },
+          "metrics": {
+            "errors": [],
+            "toolsUsed": [
+              5,
+              4,
+              9,
+              1
+            ],
+            "events": [],
+            "cutMinZ": -4,
+            "cutEnvelope": {
+              "x": [
+                -14,
+                161
+              ],
+              "y": [
+                -1,
+                111
+              ]
+            },
+            "travel": {
+              "x": [
+                -14,
+                161
+              ],
+              "y": [
+                -1,
+                111
+              ],
+              "z": [
+                -4,
+                150
+              ]
+            },
+            "removedCm3": 19.37,
+            "removedShare": 0.0734,
+            "engineRemovedEstimateCm3": 36.61,
+            "cycleTimeS": 292.6,
+            "animationTimeS": 292.6,
+            "blocks": 152,
+            "moves": 160,
+            "pathFeedMm": 1831.7,
+            "pathRapidMm": 1973.3,
+            "cutShareOfFeed": 0.876,
+            "grid": [
+              214,
+              148
+            ]
+          }
+        },
+        "430": {
+          "ok": true,
+          "failures": [],
+          "checks": {
+            "units": true,
+            "blkForm": true,
+            "noErrors": true,
+            "stock": true,
+            "completed": true,
+            "toolsDeclared": true,
+            "toolsUsed": true,
+            "toolsBuiltIn": true,
+            "noCollision": true,
+            "noWarnings": true,
+            "noThroughCut": true,
+            "safeTravel": true,
+            "insideBlankDepth": true,
+            "insideTravel": true,
+            "expectedDepth": true,
+            "expectedEnvelope": true,
+            "removal": true,
+            "cycleTime": true
+          },
+          "metrics": {
+            "errors": [],
+            "toolsUsed": [
+              5,
+              4,
+              9,
+              1
+            ],
+            "events": [],
+            "cutMinZ": -4,
+            "cutEnvelope": {
+              "x": [
+                -14,
+                161
+              ],
+              "y": [
+                -1,
+                111
+              ]
+            },
+            "travel": {
+              "x": [
+                -14,
+                161
+              ],
+              "y": [
+                -1,
+                111
+              ],
+              "z": [
+                -4,
+                150
+              ]
+            },
+            "removedCm3": 19.37,
+            "removedShare": 0.0734,
+            "engineRemovedEstimateCm3": 36.61,
+            "cycleTimeS": 318.1,
+            "animationTimeS": 318.1,
+            "blocks": 152,
+            "moves": 160,
+            "pathFeedMm": 1831.7,
+            "pathRapidMm": 1973.3,
+            "cutShareOfFeed": 0.876,
+            "grid": [
+              214,
+              148
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,2758 @@
+{
+  "schema": 1,
+  "generator": "scripts/showcase-gen.mjs",
+  "verifier": "scripts/showcase-verify.mjs",
+  "thumbnails": "scripts/showcase-thumbs.mjs",
+  "note": "Sixteen original showcase programs for the TNC 426/430 simulator. Educational examples for the simulator, not verified on a real control.",
+  "toolTable": "Every tool is an entry of the simulator's built-in table (sim/engine.js TNC.TOOLS); holder ISO 50, A = 100 mm.",
+  "programs": [
+    {
+      "id": "01_NAMEPLATE",
+      "file": "01_NAMEPLATE.H",
+      "title": {
+        "sv": "Namnskylt",
+        "en": "Nameplate"
+      },
+      "description": {
+        "sv": "Graverar KLARTEXT med raka streck i två skär och fräser en ram med rundade hörn.",
+        "en": "Engraves KLARTEXT in single strokes in two passes and mills a frame with rounded corners."
+      },
+      "machines": [
+        "426",
+        "430"
+      ],
+      "machine": "426",
+      "units": "MM",
+      "stock": {
+        "x": [
+          0,
+          180
+        ],
+        "y": [
+          0,
+          60
+        ],
+        "z": [
+          -10,
+          0
+        ],
+        "form": "BLK FORM 0.1 Z / 0.2, blank top at Z+0, datum at the lower left corner"
+      },
+      "tools": [
+        {
+          "t": 9,
+          "name": "ENDMILL_3",
+          "l": 58,
+          "r": 1.5
+        },
+        {
+          "t": 4,
+          "name": "ENDMILL_6",
+          "l": 64.1,
+          "r": 3
+        }
+      ],
+      "cycles": [],
+      "techniques": [
+        "L",
+        "RND",
+        "LBL / CALL LBL REP",
+        "FN 0",
+        "FN 1",
+        "Q in a coordinate"
+      ],
+      "substitutions": [
+        "Lettering: the control has no text cycle, so each letter is written as straight L strokes from the generator's own single-stroke glyphs."
+      ],
+      "placeholders": [],
+      "expected": {
+        "cutMinZ": -1.5,
+        "cutEnvelope": {
+          "x": [
+            6,
+            174
+          ],
+          "y": [
+            6,
+            54
+          ]
+        },
+        "minRemovedCm3": 2,
+        "features": [
+          "8 letters, 12 x 20 mm cells, 1.5 mm deep, 3 mm stroke",
+          "underline at Y+14",
+          "frame groove 6 mm wide, 1 mm deep, corner radius 5 on the centre line"
+        ]
+      },
+      "thumbnail": "thumbs/01-nameplate.png",
+      "sha256": "063fa321353b8a808c3be638969115865f7bb1c92adf6a9bc1aee658ccf445ad",
+      "validation": {
+        "ok": true,
+        "verifiedOn": "2026-11-18",
+        "engineWasmSha256": "dd23cb13e4de38b0423d61d8bc7d1c856249111045b0494b292ecb5a2f112aa7",
+        "report": "artifacts/showcase/report.json",
+        "failures": [],
+        "native": {
+          "compared": true,
+          "date": "2026-11-18",
+          "agree": true
+        },
+        "machines": {
+          "426": {
+            "ok": true,
+            "errors": 0,
+            "collisions": 0,
+            "warnings": 0,
+            "cycleTimeS": 307,
+            "removedCm3": 4.45,
+            "cutMinZ": -1.5,
+            "cutEnvelope": {
+              "x": [
+                6,
+                174
+              ],
+              "y": [
+                6,
+                54
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                174
+              ],
+              "y": [
+                0,
+                54
+              ],
+              "z": [
+                -1.5,
+                150
+              ]
+            },
+            "moves": 167,
+            "toolsUsed": [
+              9,
+              4
+            ]
+          },
+          "430": {
+            "ok": true,
+            "errors": 0,
+            "collisions": 0,
+            "warnings": 0,
+            "cycleTimeS": 330.2,
+            "removedCm3": 4.45,
+            "cutMinZ": -1.5,
+            "cutEnvelope": {
+              "x": [
+                6,
+                174
+              ],
+              "y": [
+                6,
+                54
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                174
+              ],
+              "y": [
+                0,
+                54
+              ],
+              "z": [
+                -1.5,
+                150
+              ]
+            },
+            "moves": 167,
+            "toolsUsed": [
+              9,
+              4
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "02_STEPPED_POCKET",
+      "file": "02_STEPPED_POCKET.H",
+      "title": {
+        "sv": "Trappficka",
+        "en": "Stepped pocket"
+      },
+      "description": {
+        "sv": "Tre rektangulära fickor i varandra med cykel 4, varje steg 6 mm djupare.",
+        "en": "Three nested rectangular pockets with cycle 4, each step 6 mm deeper."
+      },
+      "machines": [
+        "426",
+        "430"
+      ],
+      "machine": "426",
+      "units": "MM",
+      "stock": {
+        "x": [
+          0,
+          100
+        ],
+        "y": [
+          0,
+          100
+        ],
+        "z": [
+          -30,
+          0
+        ],
+        "form": "BLK FORM 0.1 Z / 0.2, blank top at Z+0, datum at the lower left corner"
+      },
+      "tools": [
+        {
+          "t": 5,
+          "name": "ENDMILL_12",
+          "l": 88.75,
+          "r": 6
+        }
+      ],
+      "cycles": [
+        4
+      ],
+      "techniques": [
+        "CYCL DEF 4 POCKET MILLING",
+        "CYCL CALL",
+        "pre-positioning in Z sets the cycle surface"
+      ],
+      "substitutions": [],
+      "placeholders": [],
+      "expected": {
+        "cutMinZ": -18,
+        "cutEnvelope": {
+          "x": [
+            16,
+            84
+          ],
+          "y": [
+            16,
+            84
+          ]
+        },
+        "minRemovedCm3": 60,
+        "features": [
+          "pocket 80 x 80 to Z-6",
+          "pocket 56 x 56 to Z-12",
+          "pocket 32 x 32 to Z-18",
+          "corner radius 6 = the cutter"
+        ]
+      },
+      "thumbnail": "thumbs/02-stepped-pocket.png",
+      "sha256": "cc1d8e5ac28c432c3b6cacd73e5bff25c79067acb5ca7e8dd4fe70a9829ffe8d",
+      "validation": {
+        "ok": true,
+        "verifiedOn": "2026-11-18",
+        "engineWasmSha256": "dd23cb13e4de38b0423d61d8bc7d1c856249111045b0494b292ecb5a2f112aa7",
+        "report": "artifacts/showcase/report.json",
+        "failures": [],
+        "native": {
+          "compared": true,
+          "date": "2026-11-18",
+          "agree": true
+        },
+        "machines": {
+          "426": {
+            "ok": true,
+            "errors": 0,
+            "collisions": 0,
+            "warnings": 0,
+            "cycleTimeS": 311.1,
+            "removedCm3": 62.81,
+            "cutMinZ": -18,
+            "cutEnvelope": {
+              "x": [
+                16,
+                84
+              ],
+              "y": [
+                16,
+                84
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                84
+              ],
+              "y": [
+                0,
+                84
+              ],
+              "z": [
+                -18,
+                150
+              ]
+            },
+            "moves": 209,
+            "toolsUsed": [
+              5
+            ]
+          },
+          "430": {
+            "ok": true,
+            "errors": 0,
+            "collisions": 0,
+            "warnings": 0,
+            "cycleTimeS": 234.1,
+            "removedCm3": 62.81,
+            "cutMinZ": -18,
+            "cutEnvelope": {
+              "x": [
+                16,
+                84
+              ],
+              "y": [
+                16,
+                84
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                84
+              ],
+              "y": [
+                0,
+                84
+              ],
+              "z": [
+                -18,
+                150
+              ]
+            },
+            "moves": 149,
+            "toolsUsed": [
+              5
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "03_SPIRAL_POCKET",
+      "file": "03_SPIRAL_POCKET.H",
+      "title": {
+        "sv": "Spiralficka",
+        "en": "Spiral pocket"
+      },
+      "description": {
+        "sv": "Rund ficka Ø70 som fräses inifrån och ut i en spiral av inkrementala polära block, två djup.",
+        "en": "Round pocket Ø70 milled from the centre outwards along a spiral of incremental polar blocks, two depths."
+      },
+      "machines": [
+        "426",
+        "430"
+      ],
+      "machine": "426",
+      "units": "MM",
+      "stock": {
+        "x": [
+          0,
+          100
+        ],
+        "y": [
+          0,
+          100
+        ],
+        "z": [
+          -20,
+          0
+        ],
+        "form": "BLK FORM 0.1 Z / 0.2, blank top at Z+0, datum at the lower left corner"
+      },
+      "tools": [
+        {
+          "t": 5,
+          "name": "ENDMILL_12",
+          "l": 88.75,
+          "r": 6
+        }
+      ],
+      "cycles": [],
+      "techniques": [
+        "CC",
+        "LP IPR IPA",
+        "CP IPA",
+        "LBL / CALL LBL REP (nested)",
+        "FN 0",
+        "FN 2"
+      ],
+      "substitutions": [
+        "Spiral: the control has no spiral interpolation; the spiral is 232 short LP blocks (IPR+0.125, IPA+10 = 4.5 mm per turn) closed by one full circle."
+      ],
+      "placeholders": [],
+      "expected": {
+        "cutMinZ": -8,
+        "cutEnvelope": {
+          "x": [
+            21,
+            79
+          ],
+          "y": [
+            21,
+            79
+          ]
+        },
+        "minRemovedCm3": 28,
+        "features": [
+          "round pocket Ø70 at X+50 Y+50",
+          "floor Z-8 in two infeeds of 4 mm"
+        ]
+      },
+      "thumbnail": "thumbs/03-spiral-pocket.png",
+      "sha256": "b2b27210addec4f0a1647ac304f0d7f5b96f1cc8a2cbf3424a753c5784069c0f",
+      "validation": {
+        "ok": true,
+        "verifiedOn": "2026-11-18",
+        "engineWasmSha256": "dd23cb13e4de38b0423d61d8bc7d1c856249111045b0494b292ecb5a2f112aa7",
+        "report": "artifacts/showcase/report.json",
+        "failures": [],
+        "native": {
+          "compared": true,
+          "date": "2026-11-18",
+          "agree": true
+        },
+        "machines": {
+          "426": {
+            "ok": true,
+            "errors": 0,
+            "collisions": 0,
+            "warnings": 0,
+            "cycleTimeS": 138.1,
+            "removedCm3": 30.74,
+            "cutMinZ": -8,
+            "cutEnvelope": {
+              "x": [
+                21,
+                79
+              ],
+              "y": [
+                21,
+                79
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                79
+              ],
+              "y": [
+                0,
+                79
+              ],
+              "z": [
+                -8,
+                150
+              ]
+            },
+            "moves": 477,
+            "toolsUsed": [
+              5
+            ]
+          },
+          "430": {
+            "ok": true,
+            "errors": 0,
+            "collisions": 0,
+            "warnings": 0,
+            "cycleTimeS": 156.3,
+            "removedCm3": 30.74,
+            "cutMinZ": -8,
+            "cutEnvelope": {
+              "x": [
+                21,
+                79
+              ],
+              "y": [
+                21,
+                79
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                79
+              ],
+              "y": [
+                0,
+                79
+              ],
+              "z": [
+                -8,
+                150
+              ]
+            },
+            "moves": 477,
+            "toolsUsed": [
+              5
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "04_BOLT_CIRCLE",
+      "file": "04_BOLT_CIRCLE.H",
+      "title": {
+        "sv": "Hålcirkel",
+        "en": "Bolt circle"
+      },
+      "description": {
+        "sv": "Åtta hål på en delningscirkel Ø84 (centrumborr, borr Ø8,5) och ett fräst centrumhål Ø32.",
+        "en": "Eight holes on a Ø84 pitch circle (spot drill, Ø8.5 drill) and a milled Ø32 centre bore."
+      },
+      "machines": [
+        "426",
+        "430"
+      ],
+      "machine": "426",
+      "units": "MM",
+      "stock": {
+        "x": [
+          0,
+          120
+        ],
+        "y": [
+          0,
+          120
+        ],
+        "z": [
+          -20,
+          0
+        ],
+        "form": "BLK FORM 0.1 Z / 0.2, blank top at Z+0, datum at the lower left corner"
+      },
+      "tools": [
+        {
+          "t": 1,
+          "name": "SPOT_DRILL_90",
+          "l": 72.4,
+          "r": 3
+        },
+        {
+          "t": 2,
+          "name": "DRILL_8.5",
+          "l": 118.2,
+          "r": 4.25
+        },
+        {
+          "t": 5,
+          "name": "ENDMILL_12",
+          "l": 88.75,
+          "r": 6
+        }
+      ],
+      "cycles": [
+        200,
+        208,
+        220
+      ],
+      "techniques": [
+        "CYCL DEF 200 DRILLING",
+        "CYCL DEF 220 POLAR PATTERN",
+        "CYCL DEF 208 BORE MILLING",
+        "CYCL CALL"
+      ],
+      "substitutions": [],
+      "placeholders": [],
+      "expected": {
+        "cutMinZ": -16,
+        "cutEnvelope": {
+          "x": [
+            18,
+            102
+          ],
+          "y": [
+            18,
+            102
+          ]
+        },
+        "minRemovedCm3": 12,
+        "features": [
+          "8 holes Ø8.5 x 16 deep on Ø84 at X+60 Y+60, first at 0 degrees",
+          "spot marks 2.5 deep",
+          "centre bore Ø32 x 10 deep"
+        ]
+      },
+      "thumbnail": "thumbs/04-bolt-circle.png",
+      "sha256": "bcade12d905796f279531d162989a2eb86a55cf512d15a8d400eb7318093e418",
+      "validation": {
+        "ok": true,
+        "verifiedOn": "2026-11-18",
+        "engineWasmSha256": "dd23cb13e4de38b0423d61d8bc7d1c856249111045b0494b292ecb5a2f112aa7",
+        "report": "artifacts/showcase/report.json",
+        "failures": [],
+        "native": {
+          "compared": true,
+          "date": "2026-11-18",
+          "agree": true
+        },
+        "machines": {
+          "426": {
+            "ok": true,
+            "errors": 0,
+            "collisions": 0,
+            "warnings": 0,
+            "cycleTimeS": 141.8,
+            "removedCm3": 15.24,
+            "cutMinZ": -16,
+            "cutEnvelope": {
+              "x": [
+                18,
+                102
+              ],
+              "y": [
+                18,
+                102
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                102
+              ],
+              "y": [
+                0,
+                102
+              ],
+              "z": [
+                -16,
+                150
+              ]
+            },
+            "moves": 150,
+            "toolsUsed": [
+              1,
+              2,
+              5
+            ]
+          },
+          "430": {
+            "ok": true,
+            "errors": 0,
+            "collisions": 0,
+            "warnings": 0,
+            "cycleTimeS": 185.4,
+            "removedCm3": 15.24,
+            "cutMinZ": -16,
+            "cutEnvelope": {
+              "x": [
+                18,
+                102
+              ],
+              "y": [
+                18,
+                102
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                102
+              ],
+              "y": [
+                0,
+                102
+              ],
+              "z": [
+                -16,
+                150
+              ]
+            },
+            "moves": 150,
+            "toolsUsed": [
+              1,
+              2,
+              5
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "05_POLAR_STAR",
+      "file": "05_POLAR_STAR.H",
+      "title": {
+        "sv": "Polär stjärna",
+        "en": "Polar star"
+      },
+      "description": {
+        "sv": "Femuddig stjärna skriven helt med polära block (CC, LP PR/PA) inuti en ring, två skär.",
+        "en": "Five-pointed star written entirely with polar blocks (CC, LP PR/PA) inside a ring, two passes."
+      },
+      "machines": [
+        "426",
+        "430"
+      ],
+      "machine": "426",
+      "units": "MM",
+      "stock": {
+        "x": [
+          0,
+          100
+        ],
+        "y": [
+          0,
+          100
+        ],
+        "z": [
+          -15,
+          0
+        ],
+        "form": "BLK FORM 0.1 Z / 0.2, blank top at Z+0, datum at the lower left corner"
+      },
+      "tools": [
+        {
+          "t": 4,
+          "name": "ENDMILL_6",
+          "l": 64.1,
+          "r": 3
+        }
+      ],
+      "cycles": [],
+      "techniques": [
+        "CC",
+        "LP PR PA",
+        "CP IPA",
+        "LBL / CALL LBL REP",
+        "FN 0",
+        "FN 2"
+      ],
+      "substitutions": [],
+      "placeholders": [],
+      "expected": {
+        "cutMinZ": -3,
+        "cutEnvelope": {
+          "x": [
+            4,
+            96
+          ],
+          "y": [
+            4,
+            96
+          ]
+        },
+        "minRemovedCm3": 5,
+        "features": [
+          "star: tips PR 42 at PA 90 + n x 72, notches PR 17",
+          "ring PR 46",
+          "centre ring PR 6",
+          "groove 6 mm wide, 3 mm deep"
+        ]
+      },
+      "thumbnail": "thumbs/05-polar-star.png",
+      "sha256": "564e725ddb3955ac7da6ddbc46836347148651983b49fe7688e94e7f5c7b5748",
+      "validation": {
+        "ok": true,
+        "verifiedOn": "2026-11-18",
+        "engineWasmSha256": "dd23cb13e4de38b0423d61d8bc7d1c856249111045b0494b292ecb5a2f112aa7",
+        "report": "artifacts/showcase/report.json",
+        "failures": [],
+        "native": {
+          "compared": true,
+          "date": "2026-11-18",
+          "agree": true
+        },
+        "machines": {
+          "426": {
+            "ok": true,
+            "errors": 0,
+            "collisions": 0,
+            "warnings": 0,
+            "cycleTimeS": 162.6,
+            "removedCm3": 10.83,
+            "cutMinZ": -3,
+            "cutEnvelope": {
+              "x": [
+                4,
+                96
+              ],
+              "y": [
+                4,
+                96
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                96
+              ],
+              "y": [
+                0,
+                96
+              ],
+              "z": [
+                -3,
+                150
+              ]
+            },
+            "moves": 47,
+            "toolsUsed": [
+              4
+            ]
+          },
+          "430": {
+            "ok": true,
+            "errors": 0,
+            "collisions": 0,
+            "warnings": 0,
+            "cycleTimeS": 170.8,
+            "removedCm3": 10.83,
+            "cutMinZ": -3,
+            "cutEnvelope": {
+              "x": [
+                4,
+                96
+              ],
+              "y": [
+                4,
+                96
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                96
+              ],
+              "y": [
+                0,
+                96
+              ],
+              "z": [
+                -3,
+                150
+              ]
+            },
+            "moves": 47,
+            "toolsUsed": [
+              4
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "06_ROUNDED_PLATE",
+      "file": "06_ROUNDED_PLATE.H",
+      "title": {
+        "sv": "Rundad platta",
+        "en": "Rounded plate"
+      },
+      "description": {
+        "sv": "Planfräst platta 108 x 68 med hörnradie 12, konturfräst med radiekompensering, och fyra hål.",
+        "en": "Faced plate 108 x 68 with corner radius 12, contour-milled with radius compensation, and four holes."
+      },
+      "machines": [
+        "426",
+        "430"
+      ],
+      "machine": "426",
+      "units": "MM",
+      "stock": {
+        "x": [
+          0,
+          120
+        ],
+        "y": [
+          0,
+          80
+        ],
+        "z": [
+          -20,
+          0
+        ],
+        "form": "BLK FORM 0.1 Z / 0.2, blank top at Z+0, datum at the lower left corner"
+      },
+      "tools": [
+        {
+          "t": 6,
+          "name": "FACEMILL_50",
+          "l": 52.3,
+          "r": 25
+        },
+        {
+          "t": 5,
+          "name": "ENDMILL_12",
+          "l": 88.75,
+          "r": 6
+        },
+        {
+          "t": 2,
+          "name": "DRILL_8.5",
+          "l": 118.2,
+          "r": 4.25
+        }
+      ],
+      "cycles": [
+        200
+      ],
+      "techniques": [
+        "RL",
+        "APPR LCT",
+        "DEP LCT",
+        "RND",
+        "LBL / CALL LBL REP",
+        "CYCL DEF 200 DRILLING",
+        "M99"
+      ],
+      "substitutions": [],
+      "placeholders": [],
+      "expected": {
+        "cutMinZ": -12.5,
+        "cutEnvelope": {
+          "x": [
+            -30,
+            150
+          ],
+          "y": [
+            0,
+            80
+          ]
+        },
+        "minRemovedCm3": 20,
+        "features": [
+          "top faced 0.5 mm",
+          "outline 108 x 68, corner radius 12, wall to Z-8.5",
+          "4 holes Ø8.5 to Z-12.5 at 20 mm from the plate corners"
+        ]
+      },
+      "thumbnail": "thumbs/06-rounded-plate.png",
+      "sha256": "8066bf43f272445ebc07d3f979d57baf8c2e18a3243b02223b037fc4a084b1ff",
+      "validation": {
+        "ok": true,
+        "verifiedOn": "2026-11-18",
+        "engineWasmSha256": "dd23cb13e4de38b0423d61d8bc7d1c856249111045b0494b292ecb5a2f112aa7",
+        "report": "artifacts/showcase/report.json",
+        "failures": [],
+        "native": {
+          "compared": true,
+          "date": "2026-11-18",
+          "agree": true
+        },
+        "machines": {
+          "426": {
+            "ok": true,
+            "errors": 0,
+            "collisions": 0,
+            "warnings": 0,
+            "cycleTimeS": 131.7,
+            "removedCm3": 27.74,
+            "cutMinZ": -12.5,
+            "cutEnvelope": {
+              "x": [
+                -30,
+                150
+              ],
+              "y": [
+                0,
+                80
+              ]
+            },
+            "travel": {
+              "x": [
+                -30,
+                150
+              ],
+              "y": [
+                0,
+                80
+              ],
+              "z": [
+                -12.5,
+                150
+              ]
+            },
+            "moves": 83,
+            "toolsUsed": [
+              6,
+              5,
+              2
+            ]
+          },
+          "430": {
+            "ok": true,
+            "errors": 0,
+            "collisions": 0,
+            "warnings": 0,
+            "cycleTimeS": 149.1,
+            "removedCm3": 27.74,
+            "cutMinZ": -12.5,
+            "cutEnvelope": {
+              "x": [
+                -30,
+                150
+              ],
+              "y": [
+                0,
+                80
+              ]
+            },
+            "travel": {
+              "x": [
+                -30,
+                150
+              ],
+              "y": [
+                0,
+                80
+              ],
+              "z": [
+                -12.5,
+                150
+              ]
+            },
+            "moves": 83,
+            "toolsUsed": [
+              6,
+              5,
+              2
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "07_HELIX_BORE",
+      "file": "07_HELIX_BORE.H",
+      "title": {
+        "sv": "Spiralborrning",
+        "en": "Helix bore"
+      },
+      "description": {
+        "sv": "Hål Ø40 x 18 fräst med skruvlinje (CP med IZ) i två radier, och en försänkning Ø56 x 4.",
+        "en": "Bore Ø40 x 18 milled with helical interpolation (CP with IZ) at two radii, plus a Ø56 x 4 counterbore."
+      },
+      "machines": [
+        "426",
+        "430"
+      ],
+      "machine": "426",
+      "units": "MM",
+      "stock": {
+        "x": [
+          0,
+          80
+        ],
+        "y": [
+          0,
+          80
+        ],
+        "z": [
+          -30,
+          0
+        ],
+        "form": "BLK FORM 0.1 Z / 0.2, blank top at Z+0, datum at the lower left corner"
+      },
+      "tools": [
+        {
+          "t": 5,
+          "name": "ENDMILL_12",
+          "l": 88.75,
+          "r": 6
+        }
+      ],
+      "cycles": [],
+      "techniques": [
+        "CC",
+        "LP PR PA",
+        "CP IPA IZ (helix)",
+        "CP IPA (full circle)"
+      ],
+      "substitutions": [
+        "Bore: written as explicit CP helix blocks instead of cycle 208, to show the helix itself (04_BOLT_CIRCLE uses cycle 208)."
+      ],
+      "placeholders": [],
+      "expected": {
+        "cutMinZ": -18,
+        "cutEnvelope": {
+          "x": [
+            18,
+            62
+          ],
+          "y": [
+            18,
+            62
+          ]
+        },
+        "minRemovedCm3": 24,
+        "features": [
+          "bore Ø40 to Z-18 at X+40 Y+40",
+          "counterbore Ø56 to Z-4",
+          "helix pitch 2 mm per turn"
+        ]
+      },
+      "thumbnail": "thumbs/07-helix-bore.png",
+      "sha256": "0c0eb97b28bec57624969d53d68f5b10cfe367d49cbf2aec2e3c98ce38979c41",
+      "validation": {
+        "ok": true,
+        "verifiedOn": "2026-11-18",
+        "engineWasmSha256": "dd23cb13e4de38b0423d61d8bc7d1c856249111045b0494b292ecb5a2f112aa7",
+        "report": "artifacts/showcase/report.json",
+        "failures": [],
+        "native": {
+          "compared": true,
+          "date": "2026-11-18",
+          "agree": true
+        },
+        "machines": {
+          "426": {
+            "ok": true,
+            "errors": 0,
+            "collisions": 0,
+            "warnings": 0,
+            "cycleTimeS": 222.8,
+            "removedCm3": 27.25,
+            "cutMinZ": -18,
+            "cutEnvelope": {
+              "x": [
+                18,
+                62
+              ],
+              "y": [
+                18,
+                62
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                62
+              ],
+              "y": [
+                0,
+                62
+              ],
+              "z": [
+                -18,
+                150
+              ]
+            },
+            "moves": 23,
+            "toolsUsed": [
+              5
+            ]
+          },
+          "430": {
+            "ok": true,
+            "errors": 0,
+            "collisions": 0,
+            "warnings": 0,
+            "cycleTimeS": 228.8,
+            "removedCm3": 27.25,
+            "cutMinZ": -18,
+            "cutEnvelope": {
+              "x": [
+                18,
+                62
+              ],
+              "y": [
+                18,
+                62
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                62
+              ],
+              "y": [
+                0,
+                62
+              ],
+              "z": [
+                -18,
+                150
+              ]
+            },
+            "moves": 23,
+            "toolsUsed": [
+              5
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "08_CONTOUR_ISLAND",
+      "file": "08_CONTOUR_ISLAND.H",
+      "title": {
+        "sv": "Kontur med öar",
+        "en": "Contour with islands"
+      },
+      "description": {
+        "sv": "SL-cykler: ficka med rundade hörn och två öar (rund och romb), grovfräst, sedan botten och sida finfräst.",
+        "en": "SL cycles: a pocket with rounded corners and two islands (round and diamond), roughed out, then floor and side finished."
+      },
+      "machines": [
+        "426",
+        "430"
+      ],
+      "machine": "426",
+      "units": "MM",
+      "stock": {
+        "x": [
+          0,
+          100
+        ],
+        "y": [
+          0,
+          100
+        ],
+        "z": [
+          -20,
+          0
+        ],
+        "form": "BLK FORM 0.1 Z / 0.2, blank top at Z+0, datum at the lower left corner"
+      },
+      "tools": [
+        {
+          "t": 5,
+          "name": "ENDMILL_12",
+          "l": 88.75,
+          "r": 6
+        },
+        {
+          "t": 4,
+          "name": "ENDMILL_6",
+          "l": 64.1,
+          "r": 3
+        }
+      ],
+      "cycles": [
+        14,
+        20,
+        22,
+        23,
+        24
+      ],
+      "techniques": [
+        "CYCL DEF 14 CONTOUR GEOMETRY",
+        "CYCL DEF 20 CONTOUR DATA",
+        "CYCL DEF 22 ROUGH-OUT",
+        "CYCL DEF 23 FLOOR FINISHING",
+        "CYCL DEF 24 SIDE FINISHING",
+        "subcontours as LBL, RR pocket / RL island",
+        "RND",
+        "CC + C"
+      ],
+      "substitutions": [],
+      "placeholders": [
+        "SL3",
+        "SL4",
+        "SL8",
+        "SL9",
+        "SL11",
+        "SL13",
+        "SL14"
+      ],
+      "expected": {
+        "cutMinZ": -8,
+        "cutEnvelope": {
+          "x": [
+            11,
+            89
+          ],
+          "y": [
+            18,
+            82
+          ]
+        },
+        "minRemovedCm3": 30,
+        "features": [
+          "pocket X+8..92 Y+15..85, corner radius 10, floor Z-8",
+          "round island Ø18 at X+35 Y+50",
+          "diamond island 18 across at X+68 Y+50"
+        ]
+      },
+      "thumbnail": "thumbs/08-contour-island.png",
+      "sha256": "27c7db1b379f6a9db3aa9859bc95bc2a9d9da54ac7985afce33350f9783ec01a",
+      "validation": {
+        "ok": true,
+        "verifiedOn": "2026-11-18",
+        "engineWasmSha256": "dd23cb13e4de38b0423d61d8bc7d1c856249111045b0494b292ecb5a2f112aa7",
+        "report": "artifacts/showcase/report.json",
+        "failures": [],
+        "native": {
+          "compared": true,
+          "date": "2026-11-18",
+          "agree": true
+        },
+        "machines": {
+          "426": {
+            "ok": true,
+            "errors": 0,
+            "collisions": 0,
+            "warnings": 0,
+            "cycleTimeS": 508.5,
+            "removedCm3": 42.92,
+            "cutMinZ": -8,
+            "cutEnvelope": {
+              "x": [
+                11,
+                89
+              ],
+              "y": [
+                18,
+                82
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                89
+              ],
+              "y": [
+                0,
+                82
+              ],
+              "z": [
+                -8,
+                150
+              ]
+            },
+            "moves": 5902,
+            "toolsUsed": [
+              5,
+              4
+            ]
+          },
+          "430": {
+            "ok": true,
+            "errors": 0,
+            "collisions": 0,
+            "warnings": 0,
+            "cycleTimeS": 659.2,
+            "removedCm3": 42.92,
+            "cutMinZ": -8,
+            "cutEnvelope": {
+              "x": [
+                11,
+                89
+              ],
+              "y": [
+                18,
+                82
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                89
+              ],
+              "y": [
+                0,
+                82
+              ],
+              "z": [
+                -8,
+                150
+              ]
+            },
+            "moves": 5896,
+            "toolsUsed": [
+              5,
+              4
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "09_GEAR_OUTLINE",
+      "file": "09_GEAR_OUTLINE.H",
+      "title": {
+        "sv": "Kugghjulskontur",
+        "en": "Gear outline"
+      },
+      "description": {
+        "sv": "Kugghjulsliknande kontur med 12 raka kuggar i polära block. En visuell demonstration, inte ett certifierat evolventkugghjul.",
+        "en": "Gear-like outline with 12 straight-flanked teeth in polar blocks. A visual demonstration, not a certified involute gear."
+      },
+      "machines": [
+        "426",
+        "430"
+      ],
+      "machine": "426",
+      "units": "MM",
+      "stock": {
+        "x": [
+          0,
+          120
+        ],
+        "y": [
+          0,
+          120
+        ],
+        "z": [
+          -20,
+          0
+        ],
+        "form": "BLK FORM 0.1 Z / 0.2, blank top at Z+0, datum at the lower left corner"
+      },
+      "tools": [
+        {
+          "t": 5,
+          "name": "ENDMILL_12",
+          "l": 88.75,
+          "r": 6
+        },
+        {
+          "t": 4,
+          "name": "ENDMILL_6",
+          "l": 64.1,
+          "r": 3
+        }
+      ],
+      "cycles": [
+        208
+      ],
+      "techniques": [
+        "CC",
+        "LP PR PA",
+        "RR",
+        "APPR PLCT",
+        "DEP PLCT",
+        "CP IPA",
+        "LBL / CALL LBL REP",
+        "CYCL DEF 208 BORE MILLING"
+      ],
+      "substitutions": [
+        "Tooth form: straight flanks between a root circle (PR 38) and a tip circle (PR 48) instead of involute flanks; the control has no gear cycle and the engine no FK. Not a certified involute gear."
+      ],
+      "placeholders": [],
+      "expected": {
+        "cutMinZ": -6,
+        "cutEnvelope": {
+          "x": [
+            2,
+            118
+          ],
+          "y": [
+            2,
+            118
+          ]
+        },
+        "minRemovedCm3": 20,
+        "features": [
+          "12 teeth, tip Ø96, root Ø76, 6 mm high",
+          "clearance ring out to Ø128",
+          "hub bore Ø20 x 6"
+        ]
+      },
+      "thumbnail": "thumbs/09-gear-outline.png",
+      "sha256": "7921d9df3f7b9f959caeb424d2760310a76a540f9ff004612cb6fa980f35a5f5",
+      "validation": {
+        "ok": true,
+        "verifiedOn": "2026-11-18",
+        "engineWasmSha256": "dd23cb13e4de38b0423d61d8bc7d1c856249111045b0494b292ecb5a2f112aa7",
+        "report": "artifacts/showcase/report.json",
+        "failures": [],
+        "native": {
+          "compared": true,
+          "date": "2026-11-18",
+          "agree": true
+        },
+        "machines": {
+          "426": {
+            "ok": true,
+            "errors": 0,
+            "collisions": 0,
+            "warnings": 0,
+            "cycleTimeS": 215.9,
+            "removedCm3": 39.77,
+            "cutMinZ": -6,
+            "cutEnvelope": {
+              "x": [
+                2,
+                118
+              ],
+              "y": [
+                2,
+                118
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                118
+              ],
+              "y": [
+                0,
+                118
+              ],
+              "z": [
+                -6,
+                150
+              ]
+            },
+            "moves": 177,
+            "toolsUsed": [
+              5,
+              4
+            ]
+          },
+          "430": {
+            "ok": true,
+            "errors": 0,
+            "collisions": 0,
+            "warnings": 0,
+            "cycleTimeS": 224.2,
+            "removedCm3": 39.77,
+            "cutMinZ": -6,
+            "cutEnvelope": {
+              "x": [
+                2,
+                118
+              ],
+              "y": [
+                2,
+                118
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                118
+              ],
+              "y": [
+                0,
+                118
+              ],
+              "z": [
+                -6,
+                150
+              ]
+            },
+            "moves": 177,
+            "toolsUsed": [
+              5,
+              4
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "10_COOLANT_SWEEP",
+      "file": "10_COOLANT_SWEEP.H",
+      "title": {
+        "sv": "Kylvätskesvep",
+        "en": "Coolant sweep"
+      },
+      "description": {
+        "sv": "Planfräsning med cykel 230 och ett slingrande spår med kulfräs och tangentiella bågar, allt med kylvätska (M8).",
+        "en": "Face milling with cycle 230 and a serpentine groove with a ball cutter and tangential arcs, all under coolant (M8)."
+      },
+      "machines": [
+        "426",
+        "430"
+      ],
+      "machine": "426",
+      "units": "MM",
+      "stock": {
+        "x": [
+          0,
+          140
+        ],
+        "y": [
+          0,
+          80
+        ],
+        "z": [
+          -20,
+          0
+        ],
+        "form": "BLK FORM 0.1 Z / 0.2, blank top at Z+0, datum at the lower left corner"
+      },
+      "tools": [
+        {
+          "t": 6,
+          "name": "FACEMILL_50",
+          "l": 52.3,
+          "r": 25
+        },
+        {
+          "t": 22,
+          "name": "BALL_6",
+          "l": 150,
+          "r": 3
+        }
+      ],
+      "cycles": [
+        230
+      ],
+      "techniques": [
+        "CYCL DEF 230 MULTIPASS MILLING",
+        "CT (tangential arc)",
+        "M8 / M9"
+      ],
+      "substitutions": [
+        "Coolant: M8 / M9 switch the simulator's coolant spray; there is no fluid model, so the sweep is the tool path under coolant."
+      ],
+      "placeholders": [],
+      "expected": {
+        "cutMinZ": -3.5,
+        "cutEnvelope": {
+          "x": [
+            -30,
+            170
+          ],
+          "y": [
+            15,
+            65
+          ]
+        },
+        "minRemovedCm3": 6,
+        "features": [
+          "top faced 0.5 mm in 3 cuts",
+          "serpentine groove, ball Ø6, 3 mm below the faced top, three runs joined by R10 arcs"
+        ]
+      },
+      "thumbnail": "thumbs/10-coolant-sweep.png",
+      "sha256": "ca3d79ecca786a2fdf6422d3aaf65de723a371d9abe904a245ae4c455bc81ea1",
+      "validation": {
+        "ok": true,
+        "verifiedOn": "2026-11-18",
+        "engineWasmSha256": "dd23cb13e4de38b0423d61d8bc7d1c856249111045b0494b292ecb5a2f112aa7",
+        "report": "artifacts/showcase/report.json",
+        "failures": [],
+        "native": {
+          "compared": true,
+          "date": "2026-11-18",
+          "agree": true
+        },
+        "machines": {
+          "426": {
+            "ok": true,
+            "errors": 0,
+            "collisions": 0,
+            "warnings": 0,
+            "cycleTimeS": 90.1,
+            "removedCm3": 10.62,
+            "cutMinZ": -3.5,
+            "cutEnvelope": {
+              "x": [
+                -30,
+                170
+              ],
+              "y": [
+                15,
+                65
+              ]
+            },
+            "travel": {
+              "x": [
+                -30,
+                170
+              ],
+              "y": [
+                0,
+                65
+              ],
+              "z": [
+                -3.5,
+                150
+              ]
+            },
+            "moves": 22,
+            "toolsUsed": [
+              6,
+              22
+            ]
+          },
+          "430": {
+            "ok": true,
+            "errors": 0,
+            "collisions": 0,
+            "warnings": 0,
+            "cycleTimeS": 96.4,
+            "removedCm3": 10.62,
+            "cutMinZ": -3.5,
+            "cutEnvelope": {
+              "x": [
+                -30,
+                170
+              ],
+              "y": [
+                15,
+                65
+              ]
+            },
+            "travel": {
+              "x": [
+                -30,
+                170
+              ],
+              "y": [
+                0,
+                65
+              ],
+              "z": [
+                -3.5,
+                150
+              ]
+            },
+            "moves": 22,
+            "toolsUsed": [
+              6,
+              22
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "11_Q_PATTERN",
+      "file": "11_Q_PATTERN.H",
+      "title": {
+        "sv": "Q-parametermönster",
+        "en": "Q-parameter pattern"
+      },
+      "description": {
+        "sv": "Tre rosetter räknade med Q-parametrar: radie = Q4 + Q5 x cos(6 x vinkel), med hopp och underprogram.",
+        "en": "Three rosettes computed with Q parameters: radius = Q4 + Q5 x cos(6 x angle), with jumps and a subprogram."
+      },
+      "machines": [
+        "426",
+        "430"
+      ],
+      "machine": "426",
+      "units": "MM",
+      "stock": {
+        "x": [
+          0,
+          100
+        ],
+        "y": [
+          0,
+          100
+        ],
+        "z": [
+          -15,
+          0
+        ],
+        "form": "BLK FORM 0.1 Z / 0.2, blank top at Z+0, datum at the lower left corner"
+      },
+      "tools": [
+        {
+          "t": 9,
+          "name": "ENDMILL_3",
+          "l": 58,
+          "r": 1.5
+        }
+      ],
+      "cycles": [],
+      "techniques": [
+        "FN 0",
+        "FN 1",
+        "FN 2",
+        "FN 3",
+        "FN 6 SIN",
+        "FN 7 COS",
+        "FN 11 / FN 12 conditional jumps",
+        "LBL / CALL LBL",
+        "Q in coordinates"
+      ],
+      "substitutions": [],
+      "placeholders": [],
+      "expected": {
+        "cutMinZ": -1,
+        "cutEnvelope": {
+          "x": [
+            10,
+            90
+          ],
+          "y": [
+            10,
+            90
+          ]
+        },
+        "minRemovedCm3": 1,
+        "features": [
+          "rosette radius 32 +/- 8",
+          "rosette radius 21 +/- 5.5",
+          "rosette radius 10 +/- 3",
+          "6 lobes each, 3 degree steps, 1 mm deep, 3 mm stroke"
+        ]
+      },
+      "thumbnail": "thumbs/11-q-pattern.png",
+      "sha256": "2cadc73485aaf2c0730c9d41b30a1a87816d47365a2e3254a00c1b1355170a3e",
+      "validation": {
+        "ok": true,
+        "verifiedOn": "2026-11-18",
+        "engineWasmSha256": "dd23cb13e4de38b0423d61d8bc7d1c856249111045b0494b292ecb5a2f112aa7",
+        "report": "artifacts/showcase/report.json",
+        "failures": [],
+        "native": {
+          "compared": true,
+          "date": "2026-11-18",
+          "agree": true
+        },
+        "machines": {
+          "426": {
+            "ok": true,
+            "errors": 0,
+            "collisions": 0,
+            "warnings": 0,
+            "cycleTimeS": 130,
+            "removedCm3": 1.73,
+            "cutMinZ": -1,
+            "cutEnvelope": {
+              "x": [
+                10,
+                90
+              ],
+              "y": [
+                14.71,
+                85.29
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                90
+              ],
+              "y": [
+                0,
+                85.29
+              ],
+              "z": [
+                -1,
+                150
+              ]
+            },
+            "moves": 373,
+            "toolsUsed": [
+              9
+            ]
+          },
+          "430": {
+            "ok": true,
+            "errors": 0,
+            "collisions": 0,
+            "warnings": 0,
+            "cycleTimeS": 139,
+            "removedCm3": 1.73,
+            "cutMinZ": -1,
+            "cutEnvelope": {
+              "x": [
+                10,
+                90
+              ],
+              "y": [
+                14.71,
+                85.29
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                90
+              ],
+              "y": [
+                0,
+                85.29
+              ],
+              "z": [
+                -1,
+                150
+              ]
+            },
+            "moves": 373,
+            "toolsUsed": [
+              9
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "12_SUBPROGRAM_GRID",
+      "file": "12_SUBPROGRAM_GRID.H",
+      "title": {
+        "sv": "Underprogram i rutnät",
+        "en": "Subprogram grid"
+      },
+      "description": {
+        "sv": "Ett underprogram (rund ficka Ø16) anropas 15 gånger i ett 5 x 3-rutnät med nollpunktsförskjutning (cykel 7).",
+        "en": "One subprogram (round pocket Ø16) is called 15 times on a 5 x 3 grid with datum shift (cycle 7)."
+      },
+      "machines": [
+        "426",
+        "430"
+      ],
+      "machine": "426",
+      "units": "MM",
+      "stock": {
+        "x": [
+          0,
+          140
+        ],
+        "y": [
+          0,
+          90
+        ],
+        "z": [
+          -15,
+          0
+        ],
+        "form": "BLK FORM 0.1 Z / 0.2, blank top at Z+0, datum at the lower left corner"
+      },
+      "tools": [
+        {
+          "t": 4,
+          "name": "ENDMILL_6",
+          "l": 64.1,
+          "r": 3
+        }
+      ],
+      "cycles": [
+        7
+      ],
+      "techniques": [
+        "LBL subprogram + CALL LBL",
+        "CYCL DEF 7 DATUM SHIFT with Q",
+        "FN 0",
+        "FN 1",
+        "FN 12 conditional jumps",
+        "CC + C"
+      ],
+      "substitutions": [],
+      "placeholders": [],
+      "expected": {
+        "cutMinZ": -3,
+        "cutEnvelope": {
+          "x": [
+            15,
+            125
+          ],
+          "y": [
+            15,
+            75
+          ]
+        },
+        "minRemovedCm3": 8,
+        "features": [
+          "15 round pockets Ø16 x 3 deep",
+          "columns X+20 .. X+120 pitch 25",
+          "rows Y+20, Y+45, Y+70"
+        ]
+      },
+      "thumbnail": "thumbs/12-subprogram-grid.png",
+      "sha256": "bc1c505c8fe2725250d221f406d179bcf9c281b59f46df23528faf583d7cf2ab",
+      "validation": {
+        "ok": true,
+        "verifiedOn": "2026-11-18",
+        "engineWasmSha256": "dd23cb13e4de38b0423d61d8bc7d1c856249111045b0494b292ecb5a2f112aa7",
+        "report": "artifacts/showcase/report.json",
+        "failures": [],
+        "native": {
+          "compared": true,
+          "date": "2026-11-18",
+          "agree": true
+        },
+        "machines": {
+          "426": {
+            "ok": true,
+            "errors": 0,
+            "collisions": 0,
+            "warnings": 0,
+            "cycleTimeS": 107.4,
+            "removedCm3": 9,
+            "cutMinZ": -3,
+            "cutEnvelope": {
+              "x": [
+                15,
+                125
+              ],
+              "y": [
+                15,
+                75
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                125
+              ],
+              "y": [
+                0,
+                75
+              ],
+              "z": [
+                -3,
+                150
+              ]
+            },
+            "moves": 94,
+            "toolsUsed": [
+              4
+            ]
+          },
+          "430": {
+            "ok": true,
+            "errors": 0,
+            "collisions": 0,
+            "warnings": 0,
+            "cycleTimeS": 121.4,
+            "removedCm3": 9,
+            "cutMinZ": -3,
+            "cutEnvelope": {
+              "x": [
+                15,
+                125
+              ],
+              "y": [
+                15,
+                75
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                125
+              ],
+              "y": [
+                0,
+                75
+              ],
+              "z": [
+                -3,
+                150
+              ]
+            },
+            "moves": 94,
+            "toolsUsed": [
+              4
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "13_RADIUS_COMP",
+      "file": "13_RADIUS_COMP.H",
+      "title": {
+        "sv": "Radiekompensering",
+        "en": "Radius compensation"
+      },
+      "description": {
+        "sv": "Samma kvadrat 40 x 40 körs tre gånger: RR (utanför), R0 (på linjen) och RL (innanför). Resultatet är en trappa som visar förskjutningen.",
+        "en": "The same 40 x 40 square is run three times: RR (outside), R0 (on the line) and RL (inside). The result is a staircase that shows the offset."
+      },
+      "machines": [
+        "426",
+        "430"
+      ],
+      "machine": "426",
+      "units": "MM",
+      "stock": {
+        "x": [
+          0,
+          100
+        ],
+        "y": [
+          0,
+          100
+        ],
+        "z": [
+          -20,
+          0
+        ],
+        "form": "BLK FORM 0.1 Z / 0.2, blank top at Z+0, datum at the lower left corner"
+      },
+      "tools": [
+        {
+          "t": 4,
+          "name": "ENDMILL_6",
+          "l": 64.1,
+          "r": 3
+        }
+      ],
+      "cycles": [],
+      "techniques": [
+        "RL",
+        "RR",
+        "R0",
+        "compensation switched on and off in L blocks",
+        "transition arcs at outside corners"
+      ],
+      "substitutions": [
+        "Approach: each compensated pass plunges on its own offset path and switches RL / RR on in the first L block, so no lead-in mark is left; APPR / DEP are shown in 06, 09 and 16."
+      ],
+      "placeholders": [],
+      "expected": {
+        "cutMinZ": -6,
+        "cutEnvelope": {
+          "x": [
+            27,
+            73
+          ],
+          "y": [
+            27,
+            73
+          ]
+        },
+        "minRemovedCm3": 5,
+        "features": [
+          "programmed square X+30..70 Y+30..70, counter-clockwise",
+          "RR pass: band 6 mm outside the line at Z-6",
+          "R0 pass: band 3 mm each side at Z-4",
+          "RL pass: band 6 mm inside the line at Z-2"
+        ]
+      },
+      "thumbnail": "thumbs/13-radius-comp.png",
+      "sha256": "38af17362eafbf244ebde70df6271ebe2a4262d85e9d4ee15e0edb884a0ea5f2",
+      "validation": {
+        "ok": true,
+        "verifiedOn": "2026-11-18",
+        "engineWasmSha256": "dd23cb13e4de38b0423d61d8bc7d1c856249111045b0494b292ecb5a2f112aa7",
+        "report": "artifacts/showcase/report.json",
+        "failures": [],
+        "native": {
+          "compared": true,
+          "date": "2026-11-18",
+          "agree": true
+        },
+        "machines": {
+          "426": {
+            "ok": true,
+            "errors": 0,
+            "collisions": 0,
+            "warnings": 0,
+            "cycleTimeS": 65.4,
+            "removedCm3": 8.52,
+            "cutMinZ": -6,
+            "cutEnvelope": {
+              "x": [
+                27,
+                73
+              ],
+              "y": [
+                27,
+                73
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                73
+              ],
+              "y": [
+                0,
+                73
+              ],
+              "z": [
+                -6,
+                150
+              ]
+            },
+            "moves": 31,
+            "toolsUsed": [
+              4
+            ]
+          },
+          "430": {
+            "ok": true,
+            "errors": 0,
+            "collisions": 0,
+            "warnings": 0,
+            "cycleTimeS": 70.5,
+            "removedCm3": 8.52,
+            "cutMinZ": -6,
+            "cutEnvelope": {
+              "x": [
+                27,
+                73
+              ],
+              "y": [
+                27,
+                73
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                73
+              ],
+              "y": [
+                0,
+                73
+              ],
+              "z": [
+                -6,
+                150
+              ]
+            },
+            "moves": 31,
+            "toolsUsed": [
+              4
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "14_MULTI_TOOL",
+      "file": "14_MULTI_TOOL.H",
+      "title": {
+        "sv": "Flera verktyg",
+        "en": "Multi tool"
+      },
+      "description": {
+        "sv": "Sju verktyg i en körning: planfräs, grovficka, finficka, centrumborr, borr, gängtapp M10 och fasfräs.",
+        "en": "Seven tools in one run: face mill, pocket roughing, pocket finishing, spot drill, drill, M10 tap and chamfer mill."
+      },
+      "machines": [
+        "426",
+        "430"
+      ],
+      "machine": "426",
+      "units": "MM",
+      "stock": {
+        "x": [
+          0,
+          120
+        ],
+        "y": [
+          0,
+          80
+        ],
+        "z": [
+          -25,
+          0
+        ],
+        "form": "BLK FORM 0.1 Z / 0.2, blank top at Z+0, datum at the lower left corner"
+      },
+      "tools": [
+        {
+          "t": 6,
+          "name": "FACEMILL_50",
+          "l": 52.3,
+          "r": 25
+        },
+        {
+          "t": 5,
+          "name": "ENDMILL_12",
+          "l": 88.75,
+          "r": 6
+        },
+        {
+          "t": 4,
+          "name": "ENDMILL_6",
+          "l": 64.1,
+          "r": 3
+        },
+        {
+          "t": 1,
+          "name": "SPOT_DRILL_90",
+          "l": 72.4,
+          "r": 3
+        },
+        {
+          "t": 2,
+          "name": "DRILL_8.5",
+          "l": 118.2,
+          "r": 4.25
+        },
+        {
+          "t": 3,
+          "name": "TAP_M10",
+          "l": 96,
+          "r": 5
+        },
+        {
+          "t": 8,
+          "name": "CHAMFER_45",
+          "l": 58.9,
+          "r": 5
+        }
+      ],
+      "cycles": [
+        4,
+        212,
+        200,
+        207,
+        221
+      ],
+      "techniques": [
+        "TOOL CALL x 7",
+        "CYCL DEF 4 POCKET MILLING",
+        "CYCL DEF 212 POCKET FINISHING",
+        "CYCL DEF 200 DRILLING",
+        "CYCL DEF 207 RIGID TAPPING NEW",
+        "CYCL DEF 221 CARTESIAN PATTERN"
+      ],
+      "substitutions": [],
+      "placeholders": [],
+      "expected": {
+        "cutMinZ": -18.5,
+        "cutEnvelope": {
+          "x": [
+            -30,
+            150
+          ],
+          "y": [
+            0,
+            80
+          ]
+        },
+        "minRemovedCm3": 30,
+        "features": [
+          "top faced 0.5 mm",
+          "pocket 72 x 42, corner radius 6, floor Z-8.5",
+          "4 holes Ø8.5 to Z-18.5 at X+12/108 Y+12/68, tapped M10 x 1.5 to Z-14.5",
+          "edge break around the top"
+        ]
+      },
+      "thumbnail": "thumbs/14-multi-tool.png",
+      "sha256": "a5f1a62752c7c91768de3a5e141bfdfc1ca122c45044414a78e75c00896dae8a",
+      "validation": {
+        "ok": true,
+        "verifiedOn": "2026-11-18",
+        "engineWasmSha256": "dd23cb13e4de38b0423d61d8bc7d1c856249111045b0494b292ecb5a2f112aa7",
+        "report": "artifacts/showcase/report.json",
+        "failures": [],
+        "native": {
+          "compared": true,
+          "date": "2026-11-18",
+          "agree": true
+        },
+        "machines": {
+          "426": {
+            "ok": true,
+            "errors": 0,
+            "collisions": 0,
+            "warnings": 0,
+            "cycleTimeS": 249.5,
+            "removedCm3": 34.25,
+            "cutMinZ": -18.5,
+            "cutEnvelope": {
+              "x": [
+                -30,
+                150
+              ],
+              "y": [
+                0,
+                80
+              ]
+            },
+            "travel": {
+              "x": [
+                -30,
+                150
+              ],
+              "y": [
+                0,
+                80
+              ],
+              "z": [
+                -18.5,
+                150
+              ]
+            },
+            "moves": 194,
+            "toolsUsed": [
+              6,
+              5,
+              4,
+              1,
+              2,
+              3,
+              8
+            ]
+          },
+          "430": {
+            "ok": true,
+            "errors": 0,
+            "collisions": 0,
+            "warnings": 0,
+            "cycleTimeS": 264.3,
+            "removedCm3": 34.25,
+            "cutMinZ": -18.5,
+            "cutEnvelope": {
+              "x": [
+                -30,
+                150
+              ],
+              "y": [
+                0,
+                80
+              ]
+            },
+            "travel": {
+              "x": [
+                -30,
+                150
+              ],
+              "y": [
+                0,
+                80
+              ],
+              "z": [
+                -18.5,
+                150
+              ]
+            },
+            "moves": 178,
+            "toolsUsed": [
+              6,
+              5,
+              4,
+              1,
+              2,
+              3,
+              8
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "15_430_SWIVEL",
+      "file": "15_430_SWIVEL.H",
+      "title": {
+        "sv": "430 svänghuvud",
+        "en": "430 swivel head"
+      },
+      "description": {
+        "sv": "Endast TNC 430: cykel 19 lutar svänghuvudet 30 grader, en sned yta fräses och två hål borras vinkelrätt mot den.",
+        "en": "TNC 430 only: cycle 19 tilts the swivel head 30 degrees, a sloped face is milled and two holes are drilled square to it."
+      },
+      "machines": [
+        "430"
+      ],
+      "machine": "430",
+      "units": "MM",
+      "stock": {
+        "x": [
+          0,
+          100
+        ],
+        "y": [
+          0,
+          80
+        ],
+        "z": [
+          -40,
+          0
+        ],
+        "form": "BLK FORM 0.1 Z / 0.2, blank top at Z+0, datum at the lower left corner"
+      },
+      "tools": [
+        {
+          "t": 15,
+          "name": "ENDMILL_16",
+          "l": 180,
+          "r": 8
+        },
+        {
+          "t": 2,
+          "name": "DRILL_8.5",
+          "l": 118.2,
+          "r": 4.25
+        }
+      ],
+      "cycles": [
+        7,
+        19,
+        200
+      ],
+      "techniques": [
+        "CYCL DEF 19 WORKING PLANE",
+        "CYCL DEF 7 DATUM SHIFT",
+        "CYCL DEF 200 DRILLING in the tilted plane",
+        "M99"
+      ],
+      "substitutions": [
+        "Radius compensation in the tilted plane is approximate in the engine (docs/FEATURES.txt), so the sloped face is milled with R0 centre-line passes."
+      ],
+      "placeholders": [
+        "V2"
+      ],
+      "expected": {
+        "cutMinZ": -21,
+        "cutEnvelope": {
+          "x": [
+            70,
+            109
+          ],
+          "y": [
+            -12,
+            92
+          ]
+        },
+        "minRemovedCm3": 24,
+        "features": [
+          "face sloped 30 degrees about Y along the X+100 edge, from X+65.4 on the top to Z-20 on the side",
+          "2 holes Ø8.5 x 12 square to the sloped face, 40 mm apart"
+        ]
+      },
+      "thumbnail": "thumbs/15-430-swivel.png",
+      "thumbnailView": [
+        0.72,
+        -0.5,
+        0.62
+      ],
+      "sha256": "4a9561e9cd82be578de365a99e5b856644398297caf990c06a76750058ed16a9",
+      "validation": {
+        "ok": true,
+        "verifiedOn": "2026-11-18",
+        "engineWasmSha256": "dd23cb13e4de38b0423d61d8bc7d1c856249111045b0494b292ecb5a2f112aa7",
+        "report": "artifacts/showcase/report.json",
+        "failures": [],
+        "native": {
+          "compared": true,
+          "date": "2026-11-18",
+          "agree": true
+        },
+        "machines": {
+          "430": {
+            "ok": true,
+            "errors": 0,
+            "collisions": 0,
+            "warnings": 0,
+            "cycleTimeS": 205.7,
+            "removedCm3": 30.73,
+            "cutMinZ": -21,
+            "cutEnvelope": {
+              "x": [
+                70.56,
+                108.48
+              ],
+              "y": [
+                -12,
+                92
+              ]
+            },
+            "travel": {
+              "x": [
+                0,
+                121.73
+              ],
+              "y": [
+                -12,
+                92
+              ],
+              "z": [
+                -21,
+                150
+              ]
+            },
+            "moves": 66,
+            "toolsUsed": [
+              15,
+              2
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "16_5511_SHOWCASE",
+      "file": "16_5511_SHOWCASE.H",
+      "title": {
+        "sv": "5511-märket",
+        "en": "The 5511 badge"
+      },
+      "description": {
+        "sv": "Ett lekfullt verkstadsmärke: rundad bricka, stora siffror 5511, tunn ram, två polära stjärnor och fyra nitmärken.",
+        "en": "A playful shop badge: rounded plate, big 5511 numerals, a thin frame, two polar stars and four rivet marks."
+      },
+      "machines": [
+        "426",
+        "430"
+      ],
+      "machine": "426",
+      "units": "MM",
+      "stock": {
+        "x": [
+          0,
+          160
+        ],
+        "y": [
+          0,
+          110
+        ],
+        "z": [
+          -15,
+          0
+        ],
+        "form": "BLK FORM 0.1 Z / 0.2, blank top at Z+0, datum at the lower left corner"
+      },
+      "tools": [
+        {
+          "t": 5,
+          "name": "ENDMILL_12",
+          "l": 88.75,
+          "r": 6
+        },
+        {
+          "t": 4,
+          "name": "ENDMILL_6",
+          "l": 64.1,
+          "r": 3
+        },
+        {
+          "t": 9,
+          "name": "ENDMILL_3",
+          "l": 58,
+          "r": 1.5
+        },
+        {
+          "t": 1,
+          "name": "SPOT_DRILL_90",
+          "l": 72.4,
+          "r": 3
+        }
+      ],
+      "cycles": [
+        200
+      ],
+      "techniques": [
+        "RL",
+        "APPR LCT",
+        "DEP LCT",
+        "RND",
+        "LBL / CALL LBL REP",
+        "CC",
+        "LP PR PA",
+        "CYCL DEF 7 DATUM SHIFT",
+        "CYCL DEF 200 DRILLING",
+        "M99"
+      ],
+      "substitutions": [
+        "Numerals: written as straight L strokes from the generator's own single-stroke glyphs (no text cycle on the control).",
+        "\"5511\" is treated as a shop badge text only; it stands for no part number, standard or certification."
+      ],
+      "placeholders": [],
+      "expected": {
+        "cutMinZ": -4,
+        "cutEnvelope": {
+          "x": [
+            -14,
+            161
+          ],
+          "y": [
+            -1,
+            111
+          ]
+        },
+        "minRemovedCm3": 12,
+        "features": [
+          "badge outline 150 x 100, corner radius 15, wall to Z-4",
+          "numerals 5511: 22 x 40 mm cells, 6 mm stroke, 3 mm deep",
+          "frame 1 mm deep",
+          "2 five-pointed stars and an underline",
+          "4 rivet marks"
+        ]
+      },
+      "thumbnail": "thumbs/16-5511-showcase.png",
+      "sha256": "8127126e27510398284fbf9bdcc4ed46aee416833a383432d230a9bf2346e877",
+      "validation": {
+        "ok": true,
+        "verifiedOn": "2026-11-18",
+        "engineWasmSha256": "dd23cb13e4de38b0423d61d8bc7d1c856249111045b0494b292ecb5a2f112aa7",
+        "report": "artifacts/showcase/report.json",
+        "failures": [],
+        "native": {
+          "compared": true,
+          "date": "2026-11-18",
+          "agree": true
+        },
+        "machines": {
+          "426": {
+            "ok": true,
+            "errors": 0,
+            "collisions": 0,
+            "warnings": 0,
+            "cycleTimeS": 292.6,
+            "removedCm3": 19.37,
+            "cutMinZ": -4,
+            "cutEnvelope": {
+              "x": [
+                -14,
+                161
+              ],
+              "y": [
+                -1,
+                111
+              ]
+            },
+            "travel": {
+              "x": [
+                -14,
+                161
+              ],
+              "y": [
+                -1,
+                111
+              ],
+              "z": [
+                -4,
+                150
+              ]
+            },
+            "moves": 160,
+            "toolsUsed": [
+              5,
+              4,
+              9,
+              1
+            ]
+          },
+          "430": {
+            "ok": true,
+            "errors": 0,
+            "collisions": 0,
+            "warnings": 0,
+            "cycleTimeS": 318.1,
+            "removedCm3": 19.37,
+            "cutMinZ": -4,
+            "cutEnvelope": {
+              "x": [
+                -14,
+                161
+              ],
+              "y": [
+                -1,
+                111
+              ]
+            },
+            "travel": {
+              "x": [
+                -14,
+                161
+              ],
+              "y": [
+                -1,
+                111
+              ],
+              "z": [
+                -4,
+                150
+              ]
+            },
+            "moves": 160,
+            "toolsUsed": [
+              5,
+              4,
+              9,
+              1
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

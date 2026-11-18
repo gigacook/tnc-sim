@@ -1,0 +1,44 @@
+BEGIN PGM 11_Q_PATTERN MM
+BLK FORM 0.1 Z X+0 Y+0 Z-15
+BLK FORM 0.2 X+100 Y+100 Z+0
+; Q-PARAMETER PATTERN
+TOOL CALL 9 Z S2500
+L Z+50 R0 FMAX M3
+FN 0: Q1 = +50               ; CENTRE X
+FN 0: Q2 = +50               ; CENTRE Y
+FN 0: Q4 = +32               ; MEAN RADIUS
+FN 0: Q5 = +8                ; AMPLITUDE
+FN 0: Q6 = +6                ; LOBES
+FN 0: Q7 = +3                ; ANGLE STEP
+FN 0: Q8 = -1                ; DEPTH
+LBL 10
+FN 0: Q10 = +0               ; ANGLE
+CALL LBL 20
+L X+Q21 Y+Q22 R0 FMAX M8
+L Z+2 R0 FMAX
+L Z+Q8 R0 F120
+LBL 11
+FN 1: Q10 = +Q10 + +Q7
+CALL LBL 20
+L X+Q21 Y+Q22 R0 F280
+FN 12: IF +Q10 LT +360 GOTO LBL 11
+L Z+2 R0 FMAX
+FN 2: Q4 = +Q4 - +11
+FN 2: Q5 = +Q5 - +2.5
+FN 11: IF +Q4 GT +9 GOTO LBL 10
+L Z+100 R0 FMAX M5 M9
+L Z+150 R0 FMAX M2
+; ---------- POINT ON THE ROSETTE AT ANGLE Q10 -> Q21, Q22 ----------
+LBL 20
+FN 3: Q11 = +Q6 * +Q10
+FN 7: Q12 = COS +Q11
+FN 3: Q12 = +Q12 * +Q5
+FN 1: Q13 = +Q4 + +Q12       ; RADIUS
+FN 7: Q14 = COS +Q10
+FN 6: Q15 = SIN +Q10
+FN 3: Q21 = +Q13 * +Q14
+FN 1: Q21 = +Q21 + +Q1
+FN 3: Q22 = +Q13 * +Q15
+FN 1: Q22 = +Q22 + +Q2
+LBL 0
+END PGM 11_Q_PATTERN MM
