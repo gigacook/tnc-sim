@@ -105,7 +105,7 @@ Notes under the table:
   values under the name `@hyperframes/cli`. The README also lists FFmpeg as a requirement. Node on this machine is
   v26.2.0, which meets `>=22`. The package is not installed in this checkout.
   Later the same day: `hyperframes@0.9.65` is pinned exactly and installed project-locally in
-  `cinematic/landing-hyperframes/` (own `package.json` and `package-lock.json`; `npx hyperframes --version` there
+  `media/landing-hyperframes/` (own `package.json` and `package-lock.json`; `npx hyperframes --version` there
   prints 0.9.65). 0.9.65 is the `latest` dist-tag, eleven patch releases after the 0.9.54 the brief had seen;
   same licence and engine range.
 - `shorepine/kenney`: the repository is a re-organised copy of Kenney's asset library made by a third party
@@ -144,7 +144,7 @@ Showcase decisions taken while writing the programs (2026-11-18):
 | Linear travel is checked as a span against `sim/machines.js` limits, not as absolute positions | The engine enforces limits for the rotary axes only (`LIMIT SWITCH A / B`); the X / Y / Z limits are machine coordinates with no datum offset modelled | 2026-11-18, read in `server/crates/tnc-core/src/lib.rs` |
 | Thumbnails move the simulator's own camera to frame the blank and copy the WebGL canvas | The default view frames the retracted tool as well, and the canvas shape depends on the layout being redesigned | 2026-11-18, 16 pictures viewed |
 
-Hero film decisions (`cinematic/landing-hyperframes/`, 2026-11-18):
+Hero film decisions (`media/landing-hyperframes/`, 2026-11-18):
 
 | Decision | Why | Verified / decided on |
 |---|---|---|

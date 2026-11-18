@@ -105,14 +105,14 @@ sections 1, 3 and 4.
 |---|---|---|
 | Icons (`assets/tnc-sim.ico`, `tnc-sim.ico`, `desktop/src-tauri/icons/*`, `web/public/favicon.svg`) and screenshots (`docs/shots/*`) | this repository | own work, MIT |
 | Showcase programs, manifest and thumbnails (`examples/showcase/`) | written by `scripts/showcase-gen.mjs`, pictures taken from this simulator by `scripts/showcase-thumbs.mjs` | own work, MIT. The lettering uses the generator's own single-stroke glyphs, no font file |
-| Play landing hero film (`web/public/play/hero.mp4`, `hero.webm`, `hero-poster.jpg`, `hero-poster.webp`), its source (`cinematic/landing-hyperframes/`) and proof frames (`artifacts/hero/`) | rendered on this machine by `cinematic/landing-hyperframes/render.mjs` from the composition in that folder; every shape, texture and screen in it is drawn by that code (no stock footage, no product artwork, no game material, no sound) | own work, MIT. The rendered pictures contain glyphs of two fonts, see the next table; no font file is in the repository |
+| Play landing hero film (`web/public/play/hero.mp4`, `hero.webm`, `hero-poster.jpg`, `hero-poster.webp`), its source (`media/landing-hyperframes/`) and proof frames (`artifacts/hero/`) | rendered on this machine by `media/landing-hyperframes/render.mjs` from the composition in that folder; every shape, texture and screen in it is drawn by that code (no stock footage, no product artwork, no game material, no sound) | own work, MIT. The rendered pictures contain glyphs of two fonts, see the next table; no font file is in the repository |
 
 At the starting commit the repository tracks no third-party font, 3-D model, audio or video file
 (`git ls-files` holds no `.woff`, `.woff2`, `.ttf`, `.otf`, `.glb`, `.gltf`, `.mp3`, `.ogg`, `.wav`, `.mp4`, `.webm`).
 
-### Hero film tooling (`cinematic/landing-hyperframes/package.json`, pinned exactly, not shipped)
+### Hero film tooling (`media/landing-hyperframes/package.json`, pinned exactly, not shipped)
 
-Installed only in `cinematic/landing-hyperframes/node_modules` (ignored). `render.mjs` copies the files it needs into
+Installed only in `media/landing-hyperframes/node_modules` (ignored). `render.mjs` copies the files it needs into
 `assets/vendor/` and `assets/fonts/` there (both ignored), so none of them is tracked or served by the app.
 
 | Item | Version | Source | Licence | Modifications |

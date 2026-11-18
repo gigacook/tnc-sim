@@ -6,7 +6,7 @@
 //   4. FFmpeg: hero.mp4 (H.264), hero.webm (VP9), hero-poster.jpg, hero-poster.webp
 //   5. copy the four files to web/public/play/ and six proof frames to artifacts/hero/
 //
-// Use:  npm ci && node render.mjs        (from cinematic/landing-hyperframes)
+// Use:  npm ci && node render.mjs        (from media/landing-hyperframes)
 // Flags: --skip-check   render without the check gate (never for a delivery)
 //        --keep-master  leave out/hero-master.mp4 in place after the run
 // Needs Node 22+, FFmpeg and ffprobe on PATH. No cloud render, no account, no publish.
@@ -71,7 +71,7 @@ const size = (p) => statSync(p).size;
 const mb = (n) => `${(n / 1e6).toFixed(2)} MB`;
 
 // ---- 1. local assets -------------------------------------------------------
-if (!existsSync(cli)) fail('node_modules is missing: run "npm ci" in cinematic/landing-hyperframes first');
+if (!existsSync(cli)) fail('node_modules is missing: run "npm ci" in media/landing-hyperframes first');
 const copies = [
   ['node_modules/three/build/three.module.js', 'assets/vendor/three.module.js'],
   ['node_modules/three/build/three.core.js', 'assets/vendor/three.core.js'],
