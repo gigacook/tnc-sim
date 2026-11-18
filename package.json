@@ -10,7 +10,15 @@
     "test:ui": "node tests/ui/run.mjs",
     "tauri": "tauri",
     "lint:autosave": "node scripts/autosave-lint.mjs index.html docs/index.html sim",
-    "test:autosave": "node tests/ui/autosave.mjs"
+    "test:autosave": "node tests/ui/autosave.mjs",
+    "dev:business": "npm --prefix web run dev:business",
+    "dev:play": "npm --prefix web run dev:play",
+    "build:business": "npm --prefix web run build:business",
+    "build:play": "npm --prefix web run build:play",
+    "test:play": "node --test tests/play/",
+    "test:e2e": "node tests/e2e/business-isolation.mjs && node tests/e2e/core.mjs && node tests/e2e/play.mjs",
+    "desktop:business": "tauri build --config desktop/src-tauri/tauri.business.conf.json",
+    "desktop:play": "tauri build --config desktop/src-tauri/tauri.play.conf.json"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",

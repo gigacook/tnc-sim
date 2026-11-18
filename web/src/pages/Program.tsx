@@ -25,7 +25,7 @@ export function Program() {
     return (
       <div className="panel-empty">
         <div className="error">{detail.error.message}</div>
-        <Link to="/">Back to the library</Link>
+        <Link to="/library">Back to the library</Link>
       </div>
     );
   // remount the workspace per program so drafts never leak between programs
@@ -125,7 +125,7 @@ function Workspace({ program, onSaved }: { program: ProgramDetail; onSaved: (p: 
     <div className="workspace">
       <div className="ws-head">
         <div className="ws-title">
-          <Link to="/" className="muted">
+          <Link to="/library" className="muted">
             Programs
           </Link>
           <span className="muted">/</span>

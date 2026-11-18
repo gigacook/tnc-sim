@@ -1,0 +1,18 @@
+/* Business: the machine workspace, full-bleed (/work). Colours and sizes are brand tokens (tokens.css). */
+.work { position: fixed; inset: 0; color-scheme: dark; background: var(--gc-canvas); }
+.work > iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
+
+/* one compact menu, only when a server answers: a tab on the right edge, clear of the simulator's own bars */
+.work-menu { position: absolute; right: 0; top: 50%; transform: translateY(-50%); display: flex; flex-direction: row-reverse; align-items: flex-start; font: var(--gc-text-base) / var(--gc-leading-base) var(--gc-font-sans); color: var(--gc-ink); }
+.work-menu-toggle { width: 44px; height: 44px; padding: 0; border: 1px solid var(--gc-line-strong); border-right: 0; border-radius: var(--gc-radius-md); background: var(--gc-elevated); color: var(--gc-ink); font-size: var(--gc-text-md); opacity: 0.74; cursor: pointer; }
+.work-menu-toggle:hover, .work-menu-toggle:focus-visible, .work-menu-toggle[aria-expanded='true'] { opacity: 1; }
+.work-menu-list { display: flex; flex-direction: column; gap: var(--gc-space-1); min-width: 220px; margin-right: var(--gc-space-2); padding: var(--gc-space-2); background: var(--gc-elevated); border: 1px solid var(--gc-line-strong); border-radius: var(--gc-radius-md); box-shadow: var(--gc-shadow-2); }
+.work-menu-list a, .work-menu-list button { display: flex; align-items: center; min-height: 44px; padding: 0 var(--gc-space-3); border: 0; border-radius: var(--gc-radius-btn); background: none; color: var(--gc-ink); font: inherit; text-align: left; text-decoration: none; cursor: pointer; }
+.work-menu-list a:hover { background: var(--gc-hover); }
+.work-menu-list button.primary { justify-content: center; background: var(--gc-accent-fill); color: var(--gc-on-accent); font-weight: 600; }
+.work-menu-list button.primary:hover:not(:disabled) { background: var(--gc-accent-fill-hover); }
+.work-menu-list button:disabled { opacity: 0.6; cursor: default; }
+.work-menu-list p { margin: var(--gc-space-1) var(--gc-space-1) 0; font-size: var(--gc-text-sm); color: var(--gc-ink-2); }
+.work-menu-list p.error { color: var(--gc-danger); }
+.work-menu-list p:empty { display: none; }
+.work-menu :focus-visible { outline: 2px solid var(--gc-focus); outline-offset: 2px; }

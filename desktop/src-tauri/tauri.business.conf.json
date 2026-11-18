@@ -1,0 +1,15 @@
+{
+  "productName": "TNC 426-430 Business",
+  "identifier": "io.github.gigacook.tnc426simulator.business",
+  "build": {
+    "beforeDevCommand": { "script": "node desktop/prepare-assets.mjs business", "cwd": "../.." },
+    "beforeBuildCommand": { "script": "node desktop/prepare-assets.mjs business", "cwd": "../.." }
+  },
+  "bundle": {
+    "shortDescription": "TNC 426/430 Klartext simulator: the machine workspace",
+    "resources": {
+      "../../web/dist/": null,
+      "../../dist/business/": "web/"
+    }
+  }
+}

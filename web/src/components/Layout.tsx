@@ -27,7 +27,7 @@ export function Layout() {
         Skip to content
       </a>
       <header className="topbar">
-        <NavLink to="/" className="brand">
+        <NavLink to="/library" className="brand">
           <img src="/favicon.svg" alt="" width={22} height={22} />
           <span>TNC Library</span>
         </NavLink>
@@ -42,10 +42,10 @@ export function Layout() {
           <span aria-hidden="true">☰</span> Menu
         </button>
         <nav id="site-nav" aria-label="Pages" className={open ? 'open' : undefined}>
-          <NavLink to="/" end>
+          <NavLink to="/library" end>
             Programs
           </NavLink>
-          <NavLink to="/simulator">Simulator</NavLink>
+          <NavLink to="/work">Machine</NavLink>
           <NavLink to="/tools">Tool tables</NavLink>
           <NavLink to="/account">Account</NavLink>
           {user?.role === 'admin' && <NavLink to="/admin">Users</NavLink>}

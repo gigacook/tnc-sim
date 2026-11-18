@@ -23,7 +23,7 @@ export function SharePage() {
         <div className="card">
           <h2>Link not available</h2>
           <p className="muted">It was revoked, it expired, or the program was deleted.</p>
-          <Link to="/">TNC Library</Link>
+          <Link to="/library">TNC Library</Link>
         </div>
       </div>
     );
@@ -31,7 +31,7 @@ export function SharePage() {
   return (
     <div className="shell">
       <header className="topbar">
-        <Link to="/" className="brand">
+        <Link to="/library" className="brand">
           <img src="/favicon.svg" alt="" width={22} height={22} />
           <span>TNC Library</span>
         </Link>
@@ -62,7 +62,7 @@ export function SharePage() {
                   Copy to my library
                 </button>
               ) : (
-                <Link className="button primary" to="/">
+                <Link className="button primary" to="/library">
                   Sign in to copy
                 </Link>
               )}

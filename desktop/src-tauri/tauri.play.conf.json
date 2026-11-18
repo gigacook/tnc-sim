@@ -1,0 +1,15 @@
+{
+  "productName": "TNC 5511 Play",
+  "identifier": "io.github.gigacook.tnc426simulator.play",
+  "build": {
+    "beforeDevCommand": { "script": "node desktop/prepare-assets.mjs play", "cwd": "../.." },
+    "beforeBuildCommand": { "script": "node desktop/prepare-assets.mjs play", "cwd": "../.." }
+  },
+  "bundle": {
+    "shortDescription": "TNC 426/430 Klartext simulator: the workshop",
+    "resources": {
+      "../../web/dist/": null,
+      "../../dist/play/": "web/"
+    }
+  }
+}
