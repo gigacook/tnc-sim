@@ -35,6 +35,9 @@ async function open(ctx) {
 }
 const out = shots('play');
 const NAME = 'PLAY_E2E';
+// How long a state may take to show on the slowest machine (CI draws a frame in two seconds, and every step of the
+// page waits for one). These waits are for something to happen; how fast it happens is checked where it matters.
+const WAIT = 30000;
 
 /** In-page stopwatch from the page receiving the next `trigger` event to the machine view being on screen. Read with
  *  `window.__sw`. The page's own clock leaves out how long this script and the browser take to deliver the input. */
@@ -57,7 +60,7 @@ const stopwatch = (pg, trigger) =>
     }).observe(shop, { attributes: true, attributeFilter: ['data-mode'] });
   }, trigger);
 /** the list's "go there" has arrived when the prompt names the station (the walk there is a camera move) */
-const promptNames = (pg, station) => pg.waitForFunction((n) => (document.querySelector('.hud-prompt')?.textContent ?? '').includes(n), station, { timeout: 15000 }).then(() => true, () => false);
+const promptNames = (pg, station) => pg.waitForFunction((n) => (document.querySelector('.hud-prompt')?.textContent ?? '').includes(n), station, { timeout: WAIT }).then(() => true, () => false);
 const stored = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('tnc.settings.v1') || '{}').lang);
 const htmlLang = (page) => page.evaluate(() => document.documentElement.lang);
 
@@ -70,7 +73,7 @@ try {
     const errors = [];
     page.on('pageerror', (e) => errors.push(e.message));
     await page.goto(server.url + '/play');
-    await page.waitForSelector('.land-start', { timeout: 15000 });
+    await page.waitForSelector('.land-start', { timeout: WAIT });
     const offered = await page.locator('.land-lang .land-ctl').allInnerTexts();
     c.ok(offered.map((x) => x.trim()).join(' / ') === 'Svenska / English / Srpski', 'landing: the switch offers Svenska / English / Srpski', offered.join(' / '));
     const before = await page.locator('.land-hero').innerText();
@@ -82,7 +85,7 @@ try {
     c.ok((await page.locator('.land-start').innerText()).startsWith('START'), 'Srpski: START stays START');
 
     await page.reload();
-    await page.waitForSelector('.land-start', { timeout: 15000 });
+    await page.waitForSelector('.land-start', { timeout: WAIT });
     c.ok((await page.locator('.land-hero h1').innerText()).includes('ŠPON') && (await page.locator('.land-lang .land-ctl[aria-pressed="true"]').getAttribute('lang')) === 'sr-Latn' && (await htmlLang(page)) === 'sr-Latn', 'Srpski survives a reload of the landing');
     c.ok((await page.evaluate(() => document.activeElement?.className)) === 'land-start', 'Srpski: START has the focus after the reload');
     await page.keyboard.press('Enter');
@@ -101,7 +104,7 @@ try {
     await page.waitForTimeout(500);
     // end to end: the shell sent tnc:present {lang:'sr'}; the simulator's own labels are Serbian (sim/i18n.js: btn.insp, btn.new)
     const simLabels = () => sim.evaluate(() => ({ lang: window.TNC_UI.lang, insp: document.querySelector('#b-insp [data-i18n="btn.insp"]')?.textContent.trim(), neu: document.querySelector('#b-new [data-i18n="btn.new"]')?.textContent.trim() }));
-    await sim.waitForFunction(() => window.TNC_UI.lang === 'sr', null, { timeout: 8000 }).catch(() => {});
+    await sim.waitForFunction(() => window.TNC_UI.lang === 'sr', null, { timeout: WAIT }).catch(() => {});
     let labels = await simLabels();
     c.ok(labels.lang === 'sr' && labels.insp === 'Inspektor' && labels.neu === 'Novi program', 'Srpski end to end: the simulator shows "sr", its own controls read "Inspektor" and "Novi program"', JSON.stringify(labels));
     // a save of the shared key by the simulator itself (the user flips a switch in its settings panel, twice)
@@ -116,13 +119,13 @@ try {
     c.ok(/vrata zatvorena, spremna · Ulje 100 %/.test(await fil15.locator('p').innerText()), 'Srpski: the station list states are in Serbian', await fil15.locator('p').innerText());
     // the interlock follows the station whose control was opened last: go to fil15's control and come back
     await fil15.locator('.st-acts .hud-btn', { hasText: 'Otvori upravljanje' }).click();
-    c.ok(await page.waitForSelector('.shop[data-mode="machine"]', { timeout: 8000 }).then(() => true, () => false), 'Srpski: "Otvori upravljanje" opens the control of fil15');
+    c.ok(await page.waitForSelector('.shop[data-mode="machine"]', { timeout: WAIT }).then(() => true, () => false), 'Srpski: "Otvori upravljanje" opens the control of fil15');
     await sim.evaluate(() => document.getElementById('b-exit').click());
-    await page.waitForSelector('.shop[data-mode="floor"]', { timeout: 8000 }).catch(() => {});
+    await page.waitForSelector('.shop[data-mode="floor"]', { timeout: WAIT }).catch(() => {});
     await page.waitForTimeout(1300);
     await page.locator('.hud-rail .hud-btn').first().click();
     await fil15.locator('.st-acts .hud-btn', { hasText: 'Otvori vrata' }).click();
-    await sim.waitForFunction(() => window.TNC_UI.runState().locked === true, null, { timeout: 3000 }).catch(() => {});
+    await sim.waitForFunction(() => window.TNC_UI.runState().locked === true, null, { timeout: WAIT }).catch(() => {});
     c.ok((await sim.evaluate(() => window.TNC_UI.runState().locked)) === true, 'Srpski: "Otvori vrata" locks NC start in the simulator');
     await fil15.locator('.st-acts .hud-btn', { hasText: 'Zaustavi i zaključaj' }).click();
     await fil15.locator('.st-acts .hud-btn', { hasText: 'Otpusti alat' }).click();
@@ -133,12 +136,12 @@ try {
     c.ok((await page.locator('.pc .seg').first().locator('button').allInnerTexts()).join(' / ') === 'Svenska / English / Srpski' && (await page.locator('.pc .seg').first().locator('[aria-pressed="true"]').innerText()) === 'Srpski', 'computer: the language setting offers Svenska / English / Srpski, Srpski chosen');
     await page.keyboard.press('Escape');
     await page.evaluate(() => window.__tncPlay.visit('office'));
-    await page.waitForSelector('.npc', { timeout: 3000 }).catch(() => {});
+    await page.waitForSelector('.npc', { timeout: WAIT }).catch(() => {});
     c.ok(/personal(?!l)/.test(await page.locator('.npc p').innerText().catch(() => '')) && /^kancelarija$/i.test(await page.locator('.npc b').innerText()), 'Srpski: the office character complains about "personal", captioned');
     await page.keyboard.press('Escape');
 
     await page.reload();
-    await page.waitForSelector('.land-start', { timeout: 15000 });
+    await page.waitForSelector('.land-start', { timeout: WAIT });
     c.ok((await page.locator('.land-hero h1').innerText()).includes('ŠPON') && (await stored(page)) === 'sr', 'Srpski survives a reload after the workshop and the simulator ran');
     await page.keyboard.press('Enter');
     await page.waitForSelector('.shop-canvas', { timeout: 30000 });
@@ -161,7 +164,7 @@ try {
 
   /* ---- landing and START ---- */
   await page.goto(server.url + '/play');
-  await page.waitForSelector('.land-start', { timeout: 15000 });
+  await page.waitForSelector('.land-start', { timeout: WAIT });
   c.ok((await page.evaluate(() => document.activeElement?.className)) === 'land-start', 'landing: START has the focus as soon as the page is there');
   c.ok((await page.evaluate(() => document.documentElement.lang)) === 'sv', 'landing: Swedish by default');
   c.ok((await page.locator('iframe').count()) === 0, 'landing: the simulator is not loaded before START');
@@ -199,7 +202,7 @@ try {
   };
   async function enter(station) {
     await list(station, 'Öppna styrningen');
-    return page.waitForSelector('.shop[data-mode="machine"]', { timeout: 8000 }).then(() => true, () => false);
+    return page.waitForSelector('.shop[data-mode="machine"]', { timeout: WAIT }).then(() => true, () => false);
   }
   async function leave() {
     // the simulator's own "to the workshop" control (it answers with tnc:exit); the shell's button when the simulator has none
@@ -207,7 +210,7 @@ try {
     if ((await own.count()) && (await own.isVisible())) await own.click();
     else if (await page.locator('.shop-simbar .hud-btn').count()) await page.locator('.shop-simbar .hud-btn').click();
     else await sim.evaluate(() => document.getElementById('b-exit').click());
-    return page.waitForSelector('.shop[data-mode="floor"]', { timeout: 8000 }).then(() => true, () => false);
+    return page.waitForSelector('.shop[data-mode="floor"]', { timeout: WAIT }).then(() => true, () => false);
   }
 
   /* ---- walking: WASD moves, machines and walls stop the player ---- */
@@ -245,13 +248,13 @@ try {
   await page.locator('.shop-canvas').focus();
   await stopwatch(page, 'keydown');
   await page.keyboard.press('KeyE');
-  const in1 = await page.waitForSelector('.shop[data-mode="machine"]', { timeout: 8000 }).then(() => true, () => false);
+  const in1 = await page.waitForSelector('.shop[data-mode="machine"]', { timeout: WAIT }).then(() => true, () => false);
   const sw = await page.evaluate(() => ({ ...window.__sw, frame: window.__tncPlay.stats().maxMs }));
   const sweep = Math.round(sw.t1 - sw.t0);
   const most = Math.round(1900 + 2 * sw.frame);
   c.ok(in1, 'E at fil15 opens its control');
   c.ok(in1 && sweep >= 800 && sweep <= most, `the sweep into the machine view takes about a second (${sweep} ms from the key to the view; bound 0.8 to 1.5 s plus the fade plus two frames of ${Math.round(sw.frame)} ms = ${most} ms)`, JSON.stringify(sw));
-  await sim.waitForFunction(() => window.TNC_UI.state.machine === '426', null, { timeout: 5000 }).catch(() => {});
+  await sim.waitForFunction(() => window.TNC_UI.state.machine === '426', null, { timeout: WAIT }).catch(() => {});
   let s = await simState();
   c.ok(s.machine === '426', 'fil15 selects machine 426 in the simulator', s.machine);
   c.ok(s.run.locked === false, 'fil15 is ready: the simulator is not locked');
@@ -262,7 +265,7 @@ try {
   await sim.evaluate((n) => window.TNC_UI.open(n, `BEGIN PGM ${n} MM\nBLK FORM 0.1 Z X+0 Y+0 Z-20\nBLK FORM 0.2 X+100 Y+100 Z+0\nEND PGM ${n} MM`), NAME);
   await sim.click('#modes [data-m="edit"]');
   await sim.locator('body').press('i');
-  await sim.waitForFunction(() => !document.getElementById('dlg-in').disabled, null, { timeout: 3000 }).catch(() => {});
+  await sim.waitForFunction(() => !document.getElementById('dlg-in').disabled, null, { timeout: WAIT }).catch(() => {});
   await sim.fill('#dlg-in', 'L X+12 Y+34 R0 FMAX');
   await sim.press('#dlg-in', 'Enter');
   await sim.waitForTimeout(300);
@@ -274,7 +277,7 @@ try {
   await page.waitForTimeout(1300);
 
   c.ok(await enter('dmc125'), 'the station list opens dmc125');
-  await sim.waitForFunction(() => window.TNC_UI.state.machine === '430', null, { timeout: 5000 }).catch(() => {});
+  await sim.waitForFunction(() => window.TNC_UI.state.machine === '430', null, { timeout: WAIT }).catch(() => {});
   s = await simState();
   c.ok(s.machine === '430', 'dmc125 selects machine 430 in the simulator', s.machine);
   c.ok(s.same, 'it is the same simulator frame, not a second one');
@@ -285,7 +288,7 @@ try {
   await page.waitForTimeout(1300);
 
   await enter('fil15');
-  await sim.waitForFunction(() => window.TNC_UI.state.machine === '426', null, { timeout: 5000 }).catch(() => {});
+  await sim.waitForFunction(() => window.TNC_UI.state.machine === '426', null, { timeout: WAIT }).catch(() => {});
   s = await simState();
   c.ok(s.machine === '426' && s.pgm === NAME + '.H' && s.text === edited && s.same, 'back at fil15 the edited program is still there, unchanged', JSON.stringify({ m: s.machine, pgm: s.pgm, same: s.same }));
   await leave();
@@ -293,7 +296,7 @@ try {
 
   /* ---- interlock: a door open in the workshop locks NC start in the simulator, and only as tnc:lock ---- */
   await list('fil15', 'Öppna luckan');
-  await sim.waitForFunction(() => window.TNC_UI.runState().locked === true, null, { timeout: 3000 }).catch(() => {});
+  await sim.waitForFunction(() => window.TNC_UI.runState().locked === true, null, { timeout: WAIT }).catch(() => {});
   c.ok((await simState()).run.locked === true, 'door open on fil15: the simulator reports locked');
   c.ok((await page.locator('.st-list li', { has: page.locator('h3', { hasText: 'fil15' }) }).locator('.st-acts .hud-btn', { hasText: 'Öppna styrningen' }).count()) === 0, 'door open: the control cannot be opened');
 
@@ -310,21 +313,21 @@ try {
   await list('fil15', 'Sätt i verktyget');
   await list('fil15', 'Dra åt verktyget');
   const row = await sim
-    .waitForFunction(() => { const t = window.TNC_UI.tools.get().find((x) => x.name === 'PLANFRAES_D40'); return t ? { t: t.t, l: +t.l, r: +t.r } : null; }, null, { timeout: 5000 })
+    .waitForFunction(() => { const t = window.TNC_UI.tools.get().find((x) => x.name === 'PLANFRAES_D40'); return t ? { t: t.t, l: +t.l, r: +t.r } : null; }, null, { timeout: WAIT })
     .then((h) => h.jsonValue(), () => null);
   c.ok(row && row.l === 45 && row.r === 20, 'clamping writes the tool into the simulator tool table (tnc:tools:get / tnc:tools:set)', JSON.stringify(row));
   await list('fil15', 'Lås upp maskinen');
   await list('fil15', 'Stäng luckan');
-  await sim.waitForFunction(() => window.TNC_UI.runState().locked === false, null, { timeout: 3000 }).catch(() => {});
+  await sim.waitForFunction(() => window.TNC_UI.runState().locked === false, null, { timeout: WAIT }).catch(() => {});
   g = await game();
   c.ok(g.stations.fil15.phase === 'floor' && g.stations.fil15.equipped === 'face40' && (await simState()).run.locked === false, 'door closed again: unlocked, new tool equipped');
 
   /* ---- power and oil ---- */
   await list('fil15', 'Slå av strömmen');
-  await sim.waitForFunction(() => window.TNC_UI.runState().locked === true, null, { timeout: 3000 }).catch(() => {});
+  await sim.waitForFunction(() => window.TNC_UI.runState().locked === true, null, { timeout: WAIT }).catch(() => {});
   c.ok((await simState()).run.locked === true, 'power off on fil15 locks the simulator');
   await list('fil15', 'Slå på strömmen');
-  await sim.waitForFunction(() => window.TNC_UI.runState().locked === false, null, { timeout: 3000 }).catch(() => {});
+  await sim.waitForFunction(() => window.TNC_UI.runState().locked === false, null, { timeout: WAIT }).catch(() => {});
   c.ok((await simState()).run.locked === false, 'power on unlocks it');
   await list('Oljekannan', 'Ta upp');
   await list('fil15', 'Fyll på olja');
@@ -337,8 +340,8 @@ try {
   const closedBefore = await inspector();
   await list('Skjutmåttet', 'Ta upp');
   await list('fil15', 'Mät detaljen');
-  c.ok(await page.waitForSelector('.shop[data-mode="machine"]', { timeout: 8000 }).then(() => true, () => false), 'the measuring tool ("Mät detaljen") enters the control of fil15');
-  await sim.waitForFunction(() => !document.body.classList.contains('focus'), null, { timeout: 5000 }).catch(() => {});
+  c.ok(await page.waitForSelector('.shop[data-mode="machine"]', { timeout: WAIT }).then(() => true, () => false), 'the measuring tool ("Mät detaljen") enters the control of fil15');
+  await sim.waitForFunction(() => !document.body.classList.contains('focus'), null, { timeout: WAIT }).catch(() => {});
   const openAfter = await inspector();
   c.ok(closedBefore.open === false && openAfter.open === true && openAfter.pressed === 'true', 'the inspector was closed and is open after the measuring tool', JSON.stringify([closedBefore, openAfter]));
   c.ok(openAfter.tab === 'diag' && (await sim.locator('#st-diag').isVisible()) && (await sim.locator('#sp-diag .card-compare').isVisible()) && (await sim.locator('#cmp').isVisible()), 'the inspector shows the compare tab: Diagnostics selected, the comparison card visible', JSON.stringify(openAfter));
@@ -367,12 +370,12 @@ try {
   await page.waitForTimeout(400);
   await page.screenshot({ path: join(out, 'e2e-floor-while-running.png') });
   await sim.evaluate(() => window.TNC_UI.exec('stop'));
-  await page.waitForFunction(() => window.__tncPlay.game().sim.running === false, null, { timeout: 5000 }).catch(() => {});
+  await page.waitForFunction(() => window.__tncPlay.game().sim.running === false, null, { timeout: WAIT }).catch(() => {});
 
   /* ---- 333 ---- */
   await page.locator('.shop-canvas').focus();
   await page.keyboard.type('333');
-  await page.waitForSelector('.cmp', { timeout: 3000 }).catch(() => {});
+  await page.waitForSelector('.cmp', { timeout: WAIT }).catch(() => {});
   c.ok((await page.locator('.cmp').count()) === 1, 'typing 333 opens the before / after comparison');
   await page.waitForTimeout(800);
   const beforeOk = await page.evaluate(() => { const i = document.querySelector('.cmp-before img'); return !!i && i.naturalWidth > 0; });
@@ -400,7 +403,7 @@ try {
   const pairs = [];
   for (let i = 0; i < 4; i++) {
     await page.locator('.cmp-tabs [role="tab"]').nth(i).click();
-    await page.waitForFunction(() => [...document.querySelectorAll('.cmp-pane img')].every((im) => im.complete), null, { timeout: 5000 }).catch(() => {});
+    await page.waitForFunction(() => [...document.querySelectorAll('.cmp-pane img')].every((im) => im.complete), null, { timeout: WAIT }).catch(() => {});
     pairs.push(await page.evaluate(() => [...document.querySelectorAll('.cmp-pane img')].map((im) => im.naturalWidth).join('+') + (document.querySelector('.cmp-range') ? '' : ' no slider')));
   }
   c.ok(pairs.every((x) => x === '1920+1920'), 'all four comparisons have their before and their after picture', pairs.join(' | '));
@@ -410,7 +413,7 @@ try {
   await enter('fil15');
   await sim.click('#modes [data-m="edit"]');
   await sim.locator('body').press('i');
-  await sim.waitForFunction(() => !document.getElementById('dlg-in').disabled, null, { timeout: 3000 }).catch(() => {});
+  await sim.waitForFunction(() => !document.getElementById('dlg-in').disabled, null, { timeout: WAIT }).catch(() => {});
   await sim.locator('#dlg-in').pressSequentially('333', { delay: 40 });
   await page.waitForTimeout(400);
   const typedInSim = await sim.evaluate(() => document.getElementById('dlg-in').value);
@@ -425,7 +428,7 @@ try {
 
   /* ---- a character: captioned, skippable, can be switched off ---- */
   await page.evaluate(() => window.__tncPlay.visit('office'));
-  await page.waitForSelector('.npc', { timeout: 3000 }).catch(() => {});
+  await page.waitForSelector('.npc', { timeout: WAIT }).catch(() => {});
   c.ok(/personell/.test(await page.locator('.npc p').innerText().catch(() => '')), 'the office character complains about "personell", with a caption');
   await page.waitForTimeout(700);
   await page.screenshot({ path: join(out, 'e2e-npc.png') });
@@ -477,7 +480,7 @@ try {
   await p.locator('.hud-rail .hud-btn').first().click();
   await stopwatch(p, 'click');
   await p.locator('.st-list li').first().locator('.st-acts .hud-btn').first().click();
-  const calmIn = await p.waitForSelector('.shop[data-mode="machine"]', { timeout: 5000 }).then(() => true, () => false);
+  const calmIn = await p.waitForSelector('.shop[data-mode="machine"]', { timeout: WAIT }).then(() => true, () => false);
   const calmSw = await p.evaluate(() => window.__sw);
   const instant = Math.round(calmSw.t1 - calmSw.t0);
   c.ok(calmIn && instant >= 0 && instant < 500, `reduced motion: the machine view opens at once (${instant} ms from the click to the view, in the same turn as the click)`, JSON.stringify(calmSw));
@@ -497,7 +500,7 @@ try {
   await ph.waitForSelector('.shop-canvas', { timeout: 30000 });
   c.ok((await ph.locator('.pad').count()) === 0, 'touch: no thumb pad under the introduction');
   await ph.tap('.ob .hud-quiet');
-  await ph.waitForSelector('.pad', { timeout: 3000 }).catch(() => {});
+  await ph.waitForSelector('.pad', { timeout: WAIT }).catch(() => {});
   const lay = await ph.evaluate(() => {
     const box = (el) => { const r = el.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; };
     const pad = document.querySelector('.pad');
@@ -552,7 +555,7 @@ try {
     await finger('touchMove', [[cx, cy], [x, 420]]);
     await ph.evaluate(() => new Promise((r) => requestAnimationFrame(() => r())));
   }
-  await ph.waitForFunction((yaw) => Math.abs(window.__tncPlay.pose().yaw - yaw) > 0.3, w4.yaw, { timeout: 5000 }).catch(() => {});
+  await ph.waitForFunction((yaw) => Math.abs(window.__tncPlay.pose().yaw - yaw) > 0.3, w4.yaw, { timeout: WAIT }).catch(() => {});
   const w5 = await pose();
   await finger('touchEnd', []);
   c.ok(Math.abs(w5.yaw - w4.yaw) > 0.3, `touch: a drag on the floor turns the view (${(w5.yaw - w4.yaw).toFixed(2)} rad) with the pad held`, JSON.stringify([w4.yaw, w5.yaw]));
@@ -560,7 +563,7 @@ try {
   await ph.screenshot({ path: join(out, 'touch-pad-390x844.png') });
 
   await ph.tap('.hud-rail .hud-btn');
-  await ph.waitForSelector('.st-list', { timeout: 3000 }).catch(() => {});
+  await ph.waitForSelector('.st-list', { timeout: WAIT }).catch(() => {});
   c.ok((await ph.locator('.st-list').count()) === 1 && (await ph.locator('.pad').count()) === 0, 'touch: a tap on the station list button opens the list; the pad is away while a panel is open');
   await ph.keyboard.press('Escape');
 
@@ -569,7 +572,7 @@ try {
   await phSim.waitForFunction(() => window.TNC_UI?.state?.res, null, { timeout: 45000 }).catch(() => {});
   await ph.locator('.shop-canvas').focus();
   await ph.keyboard.type('333');
-  await ph.waitForSelector('.cmp-live', { timeout: 4000 }).catch(() => {});
+  await ph.waitForSelector('.cmp-live', { timeout: WAIT }).catch(() => {});
   await ph.waitForTimeout(500);
   const liveShown = await ph.evaluate(() => ({ show: document.querySelector('.shop-sim').dataset.show, slider: document.querySelectorAll('.cmp-range').length, live: document.querySelectorAll('.cmp-live').length }));
   c.ok(liveShown.show === 'compare' && liveShown.slider === 0 && liveShown.live === 1, '333 without "after" pictures: the live simulator beside the old picture, no slider', JSON.stringify(liveShown));
