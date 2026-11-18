@@ -2,9 +2,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { MIN_GAP_MS, newScheduler, tick, type Npc, type SchedulerContext } from '../../web/src/play/game/scheduler.ts';
-import { loadPack, validatePack } from '../../web/src/play/pack/loader.ts';
+import { loadPack, packText, validatePack } from '../../web/src/play/pack/loader.ts';
 import { createBridge, parseSimMessage } from '../../web/src/lib/bridge.ts';
-import { readSettings, SETTINGS_KEY, writeSettings } from '../../web/src/lib/settings.ts';
+import { readSettings, SETTINGS_KEY, simFellBack, writeSettings } from '../../web/src/lib/settings.ts';
 
 const free: SchedulerContext = { active: true, setup: false, modal: false, recovering: false, showing: false, enabled: { boss: true, office: true } };
 
@@ -90,10 +90,26 @@ test('a content pack with anything out of range is rejected with the reason', ()
   assert.match(bad((p) => (p.completion.figures.length = 1))[0], /two figures/);
   assert.match(bad((p) => (p.completion.lines[0].sv = '<img src=x onerror=alert(1)>'))[0], /lines\[0\]\.sv/);
   assert.match(bad((p) => (p.completion.lines[0].en = 'x'.repeat(121)))[0], /lines\[0\]\.en/);
+  assert.match(bad((p) => (p.completion.lines[1].sr = '<b>Hvala</b>'))[0], /lines\[1\]\.sr/);
+  assert.match(bad((p) => (p.completion.lines[1].sr = ''))[0], /lines\[1\]\.sr/);
+  assert.match(bad((p) => (p.completion.lines[1].sr = 7))[0], /lines\[1\]\.sr/);
   assert.match(bad((p) => (p.completion.lines = []))[0], /1 to 6/);
   assert.match(bad((p) => (p.completion.gesture = 'explode'))[0], /gesture/);
   assert.equal(validatePack('x').ok, false);
   assert.equal(validatePack([]).ok, false);
+});
+
+test('a content pack may carry Serbian text beside Swedish and English; without it a Serbian reader gets the English', () => {
+  const withSr = structuredClone(pack) as typeof pack & { completion: { lines: { sr?: string }[] } };
+  withSr.completion.lines[0].sr = 'Zdravo! Lepo odrađeno.';
+  const r = validatePack(withSr);
+  assert.ok(r.ok);
+  if (!r.ok) return;
+  const [first, second] = r.pack.completion!.lines;
+  assert.deepEqual(first, { who: 0, sv: 'Hej!', en: 'Hello!', sr: 'Zdravo! Lepo odrađeno.' });
+  assert.equal('sr' in second, false, 'a line without sr stays without it');
+  assert.deepEqual(['sv', 'en', 'sr'].map((l) => packText(first, l as 'sv')), ['Hej!', 'Hello!', 'Zdravo! Lepo odrađeno.']);
+  assert.deepEqual(['sv', 'en', 'sr'].map((l) => packText(second, l as 'sv')), ['Tack.', 'Thanks.', 'Thanks.']);
 });
 
 test('loadPack: missing, wrong type, invalid and oversized packs all give null; a good one loads', async () => {
@@ -122,7 +138,9 @@ test('bridge: valid messages are rebuilt, malformed and unknown ones are dropped
   assert.equal(parseSimMessage({ type: 'tnc:tools', id: 'a', tools: [{ t: 1, l: 60 }] }), null);
   assert.equal(parseSimMessage({ type: 'tnc:tools', id: 'a', tools: 'all' }), null);
   assert.deepEqual(parseSimMessage({ type: 'tnc:settings', lang: 'en', quality: 'low' }), { type: 'tnc:settings', lang: 'en', quality: 'low' });
+  assert.deepEqual(parseSimMessage({ type: 'tnc:settings', lang: 'sr' }), { type: 'tnc:settings', lang: 'sr' });
   assert.equal(parseSimMessage({ type: 'tnc:settings', lang: 'de' }), null);
+  assert.equal(parseSimMessage({ type: 'tnc:settings', lang: 'sr-Latn' }), null);
   assert.deepEqual(parseSimMessage({ type: 'tnc:exit', anything: 1 }), { type: 'tnc:exit' });
   assert.equal(parseSimMessage({ type: 'tnc:program', id: 'x', name: 'A.H', machine: '426' }), null);
   assert.equal(parseSimMessage({ type: 'tnc:eval', code: '1' }), null);
@@ -183,17 +201,89 @@ test('bridge: only the simulator frame on our own origin is heard; v1 and v2 are
   b.exec('stop');
   b.setTools([{ t: 1, l: 60, r: 5 }]);
   b.present({ lang: 'en', skin: '430' });
-  assert.deepEqual(sent.slice(-7).map((s) => (s as [unknown])[0]), [
+  assert.deepEqual(sent.slice(-9).map((s) => (s as [unknown])[0]), [
     { type: 'tnc:lock', locked: true, reason: 'door' },
     { type: 'tnc:lock', locked: false },
     { type: 'tnc:machine', machine: '430' },
     { type: 'tnc:camera', view: 'tool' },
     { type: 'tnc:exec', cmd: 'stop' },
     { type: 'tnc:tools:set', tools: [{ t: 1, l: 60, r: 5 }] },
-    { type: 'tnc:present', lang: 'en', skin: '430' },
+    // the language travels alone, so a simulator that does not know it still takes the rest ...
+    { type: 'tnc:present', skin: '430' },
+    { type: 'tnc:present', lang: 'en' },
+    // ... and is asked which language it shows now
+    { type: 'tnc:hello', v: 2 },
   ]);
   b.dispose();
   assert.equal(listener, null);
+});
+
+/** a bridge wired to a fake simulator frame: what was posted to it, and a way to speak as it */
+function wired() {
+  const sent: Record<string, unknown>[] = [];
+  const frame = { postMessage: (m: Record<string, unknown>) => sent.push(m) } as unknown as Window;
+  let listener: ((e: MessageEvent) => void) | null = null;
+  const host = {
+    addEventListener: (_: 'message', fn: (e: MessageEvent) => void) => {
+      listener = fn;
+    },
+    removeEventListener: () => {
+      listener = null;
+    },
+  };
+  const b = createBridge(() => frame, 'http://127.0.0.1:5400', host);
+  const say = (data: unknown) => listener!({ data, origin: 'http://127.0.0.1:5400', source: frame } as MessageEvent);
+  return { b, sent, say };
+}
+
+test('bridge: a simulator that does not know Serbian keeps its language and does not rename the shell', () => {
+  const { b, sent, say } = wired();
+  const heard: (string | undefined)[] = [];
+  b.on('tnc:settings', (m) => heard.push(m.lang));
+  // the shell shows Serbian; this simulator read "sr" from the shared key, did not know it and fell back
+  say({ type: 'tnc:ready', v: 2, edition: 'play', machine: '426', lang: 'sv' });
+  assert.equal(b.simLang, 'sv');
+  b.present({ lang: 'sr', quality: 'low' });
+  assert.deepEqual(sent, [{ type: 'tnc:present', quality: 'low' }, { type: 'tnc:present', lang: 'sr' }, { type: 'tnc:hello', v: 2 }]);
+  say({ type: 'tnc:ready', v: 2, edition: 'play', machine: '426', lang: 'sv' }); // it dropped the language: still Swedish
+  b.present({ lang: 'sr' }); // what the shell does on every tnc:ready
+  assert.equal(sent.length, 4, 'asked once per language: no hello/ready loop');
+  // the user changes the graphics inside the simulator: every field is repeated, the language is not a choice
+  say({ type: 'tnc:settings', lang: 'sv', skin: '426', env: 'cold-steel', quality: 'high', motion: 'full', sound: true });
+  assert.deepEqual(heard, [undefined]);
+  // the user picks English inside the simulator: that is a choice
+  say({ type: 'tnc:settings', lang: 'en', quality: 'high' });
+  assert.deepEqual(heard, [undefined, 'en']);
+  assert.equal(b.simLang, 'en');
+  // the shell goes back to Serbian: since the simulator moved on its own, it is asked again what it shows
+  b.present({ lang: 'sr' });
+  assert.deepEqual(sent.slice(-2), [{ type: 'tnc:present', lang: 'sr' }, { type: 'tnc:hello', v: 2 }]);
+  say({ type: 'tnc:ready', v: 2, edition: 'play', machine: '426', lang: 'en' });
+  say({ type: 'tnc:settings', lang: 'en', quality: 'low' }); // a repeat again
+  say({ type: 'tnc:settings', lang: 'sv', quality: 'low' }); // a choice
+  assert.deepEqual(heard, [undefined, 'en', undefined, 'sv']);
+  b.dispose();
+});
+
+test('bridge: a simulator that knows Serbian is followed both ways', () => {
+  const { b, sent, say } = wired();
+  const heard: (string | undefined)[] = [];
+  b.on('tnc:settings', (m) => heard.push(m.lang));
+  say({ type: 'tnc:ready', v: 2, edition: 'play', machine: '426', lang: 'sv' });
+  b.present({ lang: 'sr' });
+  say({ type: 'tnc:ready', v: 2, edition: 'play', machine: '426', lang: 'sr' }); // the answer to the hello
+  assert.equal(b.simLang, 'sr');
+  b.present({ lang: 'sr' });
+  assert.equal(sent.filter((m) => m.type === 'tnc:hello').length, 1);
+  say({ type: 'tnc:settings', lang: 'sv', quality: 'high' }); // back to Swedish inside the simulator
+  say({ type: 'tnc:settings', lang: 'sr', quality: 'high' }); // and to Serbian again
+  assert.deepEqual(heard, ['sv', 'sr']);
+  // a v1 simulator never says its language: what it sends is taken as it is
+  const old = wired();
+  old.b.present({ lang: 'sr' });
+  assert.deepEqual(old.sent, [{ type: 'tnc:present', lang: 'sr' }], 'no hello before the simulator is known to speak v2');
+  b.dispose();
+  old.b.dispose();
 });
 
 test('shared settings: Swedish by default, bad fields fall back one by one, unknown fields survive a write', () => {
@@ -209,4 +299,28 @@ test('shared settings: Swedish by default, bad fields fall back one by one, unkn
   assert.deepEqual(JSON.parse(m.get(SETTINGS_KEY)!).future, { a: 1 });
   m.set(SETTINGS_KEY, '][');
   assert.equal(readSettings(store).lang, 'sv');
+});
+
+test('shared settings: Serbian is stored as sr, anything else falls back to Swedish; a simulator fallback is told from a choice', () => {
+  const m = new Map<string, string>();
+  const store = { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) };
+  assert.equal(writeSettings(store, { lang: 'sr' }).lang, 'sr');
+  assert.equal(JSON.parse(m.get(SETTINGS_KEY)!).lang, 'sr');
+  assert.equal(readSettings(store).lang, 'sr');
+  for (const bad of ['sr-Latn', 'SR', 'de', '', 5, null]) {
+    m.set(SETTINGS_KEY, JSON.stringify({ lang: bad, quality: 'high' }));
+    assert.deepEqual([readSettings(store).lang, readSettings(store).quality], ['sv', 'high'], String(bad));
+  }
+  // an invalid language in a patch changes nothing (the stored one stays)
+  m.set(SETTINGS_KEY, JSON.stringify({ lang: 'sr' }));
+  assert.equal(writeSettings(store, { lang: 'de' as 'sr' }).lang, 'sr');
+
+  // the simulator shows Swedish and saved the key: Swedish in the store is its own, not a choice
+  assert.equal(simFellBack('sr', 'sv', 'sv'), true);
+  // the user picked English in the simulator (it showed Swedish before) or in another tab
+  assert.equal(simFellBack('sr', 'sv', 'en'), false);
+  assert.equal(simFellBack('sv', 'sv', 'en'), false);
+  // nothing changed, or nothing is known about the simulator
+  assert.equal(simFellBack('sr', 'sr', 'sr'), false);
+  assert.equal(simFellBack('sr', undefined, 'sv'), false);
 });

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>old simulator (test fixture)</title>
+</head>
+<body>
+<p>Test fixture for tests/e2e/sr-fallback.mjs: a simulator from before Serbian. It speaks bridge v2, knows only
+"sv" and "en", falls back to Swedish for anything else, drops a tnc:present it cannot read as a whole, and writes
+every field of tnc.settings.v1 each time it saves. No engine, no 3-D.</p>
+<script>
+(function () {
+  'use strict';
+  var KEY = 'tnc.settings.v1';
+  var ENUM = { lang: ['sv', 'en'], env: ['cold-steel', 'workshop-night'], quality: ['low', 'medium', 'high'], motion: ['full', 'reduced'] };
+  var S = { v: 1, lang: 'sv', skin: '426', env: 'cold-steel', quality: 'high', motion: 'full', sound: true };
+  var stored = null;
+  try { stored = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { stored = null; }
+  function clean(k, v) { return ENUM[k] ? (ENUM[k].indexOf(v) >= 0 ? v : undefined) : (k === 'sound' && typeof v === 'boolean' ? v : undefined); }
+  function merge(from) { var changed = []; for (var k in ENUM) take(k); take('sound'); return changed;
+    function take(k) { var c = clean(k, from[k]); if (c !== undefined && c !== S[k]) { S[k] = c; changed.push(k); } } }
+  if (stored && typeof stored === 'object') merge(stored);
+  document.documentElement.lang = S.lang;
+  function save() { localStorage.setItem(KEY, JSON.stringify(S)); }
+  function post(m) { window.parent.postMessage(m, location.origin); }
+  var edition = new URLSearchParams(location.search).get('edition') || 'core';
+  var got = [];
+  function readable(m) { return (m.lang === undefined || ENUM.lang.indexOf(m.lang) >= 0); }
+  window.addEventListener('message', function (e) {
+    if (e.origin !== location.origin || e.source !== window.parent || !e.data || typeof e.data.type !== 'string') return;
+    var m = e.data;
+    got.push(m);
+    if (m.type === 'tnc:hello') post({ type: 'tnc:ready', v: 2, edition: edition, machine: '426', lang: S.lang });
+    else if (m.type === 'tnc:get') post({ type: 'tnc:program', id: m.id, name: 'OLD.H', machine: '426', text: 'BEGIN PGM OLD MM\nEND PGM OLD MM' });
+    else if (m.type === 'tnc:present') {
+      if (!readable(m)) return; // the whole message is dropped, as the old validator did
+      if (merge(m).length) { save(); document.documentElement.lang = S.lang; }
+    }
+  });
+  /* what the test drives: the messages received, and a change made by the user in the simulator's own settings */
+  window.OLD_SIM = {
+    got: got,
+    lang: function () { return S.lang; },
+    userSet: function (k, v) {
+      var o = {}; o[k] = v;
+      if (!merge(o).length) return false;
+      save(); document.documentElement.lang = S.lang;
+      post({ type: 'tnc:settings', lang: S.lang, skin: S.skin, env: S.env, quality: S.quality, motion: S.motion, sound: S.sound });
+      return true;
+    }
+  };
+})();
+</script>
+</body>
+</html>

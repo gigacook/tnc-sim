@@ -3,7 +3,7 @@
 // anything unknown is dropped and anything out of range rejects the pack. Schema: README.md beside this file.
 // Plain TypeScript (no DOM at import time) so the validator runs under `node --test`.
 
-import { isObj } from '../../lib/bridge.ts';
+import { isObj, type Lang } from '../../lib/bridge.ts';
 
 const PACK_URL = '/play/pack/pack.json';
 
@@ -28,6 +28,8 @@ export interface PackLine {
   who: 0 | 1;
   sv: string;
   en: string;
+  /** Serbian in Latin script; optional, so packs written before it existed stay valid */
+  sr?: string;
 }
 
 export interface PackScene {
@@ -108,12 +110,17 @@ function scene(v: unknown, at: string, errors: string[]): PackScene | undefined 
   raw.slice(0, 6).forEach((l, i) => {
     const o = isObj(l) ? l : {};
     if (o.who !== 0 && o.who !== 1) errors.push(`${at}.lines[${i}].who: 0 or 1`);
-    lines.push({ who: o.who === 1 ? 1 : 0, sv: text(o.sv, 120, `${at}.lines[${i}].sv`, errors), en: text(o.en, 120, `${at}.lines[${i}].en`, errors) });
+    const line: PackLine = { who: o.who === 1 ? 1 : 0, sv: text(o.sv, 120, `${at}.lines[${i}].sv`, errors), en: text(o.en, 120, `${at}.lines[${i}].en`, errors) };
+    if (o.sr !== undefined) line.sr = text(o.sr, 120, `${at}.lines[${i}].sr`, errors);
+    lines.push(line);
   });
   const gesture = GESTURES.find((g) => g === v.gesture);
   if (!gesture) errors.push(`${at}.gesture: one of ${GESTURES.join(', ')}`);
   return { figures: [figure(figs[0], `${at}.figures[0]`, errors), figure(figs[1], `${at}.figures[1]`, errors)], lines, gesture: gesture ?? 'none' };
 }
+
+/** A line in the language on screen. A pack without Serbian text is shown in English to a Serbian reader. */
+export const packText = (l: PackLine, lang: Lang): string => (lang === 'sr' ? (l.sr ?? l.en) : l[lang]);
 
 /** Check a parsed pack.json. Returns a rebuilt pack (never the input object) or every problem found. */
 export function validatePack(raw: unknown): PackResult {

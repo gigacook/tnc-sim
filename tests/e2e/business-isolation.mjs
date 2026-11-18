@@ -7,6 +7,7 @@
  * 2. Bundle: dist/business has no Play file, no Play chunk name and none of Play's own strings.
  * 3. Browser: /work, served from a plain static host with every other host blocked, requests no Play
  *    asset and the simulator still boots. /play does not exist in Business and lands on /work.
+ * 4. The menu follows the shared language, Srpski included, also when the simulator does not know it.
  * Screenshots: artifacts/business/shell-*.png
  */
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
@@ -147,6 +148,51 @@ try {
   await page.screenshot({ path: join(out, 'shell-menu-1920x1080.png') });
   await page.keyboard.press('Escape');
   c.ok((await page.locator('#work-menu').count()) === 0 && (await page.evaluate(() => document.activeElement?.className)) === 'work-menu-toggle', 'Esc closes the menu and returns the focus');
+
+  /* ---- Srpski: Business has no switch of its own, it follows tnc.settings.v1 (the simulator's settings panel or
+         Play write it). The labels change, the choice survives the simulator saving the key and a reload. ---- */
+  const menuTexts = async () => {
+    if (!(await page.locator('#work-menu').count())) await page.locator('.work-menu-toggle').click();
+    const texts = await page.locator('#work-menu a, #work-menu button').allInnerTexts();
+    await page.keyboard.press('Escape');
+    return texts.map((x) => x.trim()).join(' | ');
+  };
+  const state = () => page.evaluate(() => ({ html: document.documentElement.lang, stored: JSON.parse(localStorage.getItem('tnc.settings.v1') || '{}').lang, label: document.querySelector('.work-menu-toggle')?.getAttribute('aria-label'), frame: document.querySelector('main.work > iframe')?.title }));
+  const SV = 'Program | Verktygstabeller | Konto | Användare | Spara i biblioteket';
+  const SR = 'Programi | Tabele alata | Nalog | Korisnici | Sačuvaj u biblioteku';
+  const simFrame = async () => {
+    const f = await (await page.waitForSelector('main.work > iframe', { timeout: 15000 })).contentFrame();
+    await f.waitForFunction(() => window.TNC_UI?.state?.res && window.TNC_SETTINGS, null, { timeout: 45000 });
+    await page.waitForTimeout(400);
+    return f;
+  };
+  let sim = await simFrame();
+  c.ok((await menuTexts()) === SV && (await state()).html === 'sv', 'menu: Swedish by default', await menuTexts());
+  // the shared key gets "sr" from inside the simulator frame, the way a language choice there reaches the shell
+  await sim.evaluate(() => localStorage.setItem('tnc.settings.v1', JSON.stringify({ ...JSON.parse(localStorage.getItem('tnc.settings.v1') || '{}'), lang: 'sr' })));
+  await page.waitForFunction(() => document.documentElement.lang === 'sr-Latn', null, { timeout: 3000 }).catch(() => {});
+  let st = await state();
+  c.ok((await menuTexts()) === SR, 'Srpski: the menu labels change to Serbian', await menuTexts());
+  c.ok(st.html === 'sr-Latn' && st.label === 'Biblioteka i nalog' && st.frame === 'TNC simulator', 'Srpski: <html lang="sr-Latn">, the menu control and the frame are named in Serbian', JSON.stringify(st));
+  // the simulator saves the shared key itself (a switch in its settings panel): it may not know "sr" and write its own language
+  const simSpeaks = await sim.evaluate(() => { window.TNC_SETTINGS.set('sound', false); window.TNC_SETTINGS.set('sound', true); return window.TNC_UI.lang; });
+  await page.waitForTimeout(600);
+  st = await state();
+  c.ok((await menuTexts()) === SR && st.html === 'sr-Latn' && st.stored === 'sr', `Srpski stays after the simulator saved the shared settings (the simulator itself shows "${simSpeaks}")`, JSON.stringify(st));
+  await page.reload();
+  await page.locator('.work-menu-toggle').waitFor({ timeout: 15000 }).catch(() => {});
+  st = await state();
+  c.ok((await menuTexts()) === SR && st.html === 'sr-Latn' && st.stored === 'sr', 'Srpski survives a reload', JSON.stringify(st));
+  sim = await simFrame();
+  c.ok((await menuTexts()) === SR && (await state()).stored === 'sr', 'Srpski is still there once the simulator has booted again');
+  await page.screenshot({ path: join(out, 'shell-menu-sr-1920x1080.png') });
+  // a language picked in the simulator's own settings is followed: English, then Swedish
+  await sim.evaluate(() => window.TNC_SETTINGS.set('lang', 'en'));
+  await page.waitForFunction(() => document.documentElement.lang === 'en', null, { timeout: 3000 }).catch(() => {});
+  c.ok((await state()).label === 'Library and account', 'a language chosen inside the simulator is followed (English)', JSON.stringify(await state()));
+  await sim.evaluate(() => window.TNC_SETTINGS.set('lang', 'sv'));
+  await page.waitForFunction(() => document.documentElement.lang === 'sv', null, { timeout: 3000 }).catch(() => {});
+  c.ok((await menuTexts()) === SV && (await state()).stored === 'sv', 'and back to Swedish', JSON.stringify(await state()));
   await ctx.close();
 } finally {
   await browser.close();

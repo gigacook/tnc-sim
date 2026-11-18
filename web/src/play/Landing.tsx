@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Lang } from '../lib/bridge';
+import { htmlLang, LANG_NAMES, LANGS, type Lang } from '../lib/bridge';
 import type { T } from './strings';
 
 const TEETH = Array.from({ length: 12 }, (_, i) => i * 30);
@@ -103,9 +103,11 @@ export function Landing({ t, lang, setLang, reduced, onStart }: Props) {
               </button>
             )}
             <fieldset className="land-lang" aria-label={t('land.lang')}>
-              {(['sv', 'en'] as const).map((l) => (
-                <button key={l} type="button" className="land-ctl" aria-pressed={lang === l} onClick={() => setLang(l)} lang={l}>
-                  {l.toUpperCase()}
+              {LANGS.map((l) => (
+                // the full name where there is room, the code on a phone: one of the two is shown (play.css)
+                <button key={l} type="button" className="land-ctl" aria-pressed={lang === l} onClick={() => setLang(l)} lang={htmlLang(l)} title={LANG_NAMES[l]}>
+                  <span className="land-lang-name">{LANG_NAMES[l]}</span>
+                  <span className="land-lang-code">{l.toUpperCase()}</span>
                 </button>
               ))}
             </fieldset>

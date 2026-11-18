@@ -1,5 +1,5 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
-import type { Present } from '../lib/bridge';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { htmlLang, type Present } from '../lib/bridge';
 import { browserStore, readSettings, watchSettings, writeSettings, type Settings } from '../lib/settings';
 import { Landing } from './Landing';
 import { translator } from './strings';
@@ -26,10 +26,20 @@ export function Play() {
   const reduced = useReducedMotion(settings);
   const t = useMemo(() => translator(settings.lang), [settings.lang]);
 
-  const change = useCallback((p: Present) => setSettings(writeSettings(browserStore(), p)), []);
-  useEffect(() => watchSettings(setSettings), []);
+  // the language on screen, known at once: a bridge message and the storage event of the same change arrive
+  // one after the other, before React has drawn the first
+  const shown = useRef(settings.lang);
+  const apply = useCallback((s: Settings) => {
+    shown.current = s.lang;
+    setSettings(s);
+  }, []);
+  // a change that does not name a language keeps the one on screen, whatever the simulator last wrote into the store
+  const change = useCallback((p: Present) => apply(writeSettings(browserStore(), { lang: shown.current, ...p })), [apply]);
+  // the workshop tells which language the simulator shows, so a simulator that fell back does not rename the shell
+  const simLang = useRef<() => string | undefined>(() => undefined);
+  useEffect(() => watchSettings(apply, () => ({ lang: shown.current, simLang: simLang.current() })), [apply]);
   useEffect(() => {
-    document.documentElement.lang = settings.lang;
+    document.documentElement.lang = htmlLang(settings.lang);
     document.documentElement.dataset.theme = 'dark';
     return () => {
       delete document.documentElement.dataset.theme;
@@ -51,7 +61,7 @@ export function Play() {
             </div>
           }
         >
-          <Shop settings={settings} change={change} reduced={reduced} t={t} />
+          <Shop settings={settings} change={change} reduced={reduced} t={t} simLang={simLang} />
         </Suspense>
       ) : (
         <Landing t={t} lang={settings.lang} setLang={(lang) => change({ lang })} reduced={reduced} onStart={() => setStarted(true)} />

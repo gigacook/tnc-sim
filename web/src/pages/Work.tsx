@@ -3,46 +3,12 @@ import { Link } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
-import { createBridge, type Bridge } from '../lib/bridge';
+import { createBridge, htmlLang, type Bridge, type Lang } from '../lib/bridge';
 import { useDisclosure } from '../lib/disclosure';
 import { browserStore, readSettings, watchSettings } from '../lib/settings';
+import { WORK_STRINGS } from '../lib/work-strings';
 import '../tokens.css';
 import '../work.css';
-
-const T = {
-  sv: {
-    frame: 'TNC-simulator',
-    menu: 'Bibliotek och konto',
-    library: 'Program',
-    tools: 'Verktygstabeller',
-    account: 'Konto',
-    users: 'Användare',
-    signIn: 'Logga in',
-    save: 'Spara i biblioteket',
-    saving: 'Sparar…',
-    open: 'Öppna',
-    saved: (n: string, v: number) => `${n} sparad som v${v}.`,
-    same: (n: string, v: number) => `${n} är oförändrad (v${v}).`,
-    added: (n: string) => `${n} lades till i biblioteket.`,
-    noAnswer: 'Simulatorn svarade inte.',
-  },
-  en: {
-    frame: 'TNC simulator',
-    menu: 'Library and account',
-    library: 'Programs',
-    tools: 'Tool tables',
-    account: 'Account',
-    users: 'Users',
-    signIn: 'Sign in',
-    save: 'Save to library',
-    saving: 'Saving…',
-    open: 'Open',
-    saved: (n: string, v: number) => `${n} saved as v${v}.`,
-    same: (n: string, v: number) => `${n} is unchanged (v${v}).`,
-    added: (n: string) => `${n} added to the library.`,
-    noAnswer: 'The simulator did not answer.',
-  },
-};
 
 /**
  * Business: the machine, full-bleed, at once. No landing, no account needed, no server needed.
@@ -58,13 +24,20 @@ export function Work() {
   const { open, setOpen, toggle } = useDisclosure();
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<{ ok: boolean; text: string; id?: string } | null>(null);
-  const t = T[lang];
+  const t = WORK_STRINGS[lang];
+  // the language on screen, known at once: a bridge message and the storage event of the same change arrive
+  // one after the other, before React has drawn the first
+  const shown = useRef(lang);
 
   useEffect(() => {
     const b = createBridge(() => frame.current?.contentWindow, location.origin);
     bridge.current = b;
-    const offSettings = b.on('tnc:settings', (m) => m.lang && setLang(m.lang));
-    const offStore = watchSettings((s) => setLang(s.lang));
+    const show = (l: Lang) => {
+      shown.current = l;
+      setLang(l);
+    };
+    const offSettings = b.on('tnc:settings', (m) => m.lang && show(m.lang));
+    const offStore = watchSettings((s) => show(s.lang), () => ({ lang: shown.current, simLang: b.simLang }));
     return () => {
       offSettings();
       offStore();
@@ -73,7 +46,7 @@ export function Work() {
     };
   }, []);
   useEffect(() => {
-    document.documentElement.lang = lang;
+    document.documentElement.lang = htmlLang(lang);
   }, [lang]);
   // the machine workspace is dark; the brand tokens follow the page's theme, so say so while it is open
   useEffect(() => {

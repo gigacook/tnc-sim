@@ -4,7 +4,7 @@
 // No DOM access at import time, so the validators also run under `node --test`.
 
 export type MachineId = '426' | '430';
-export type Lang = 'sv' | 'en';
+export type Lang = 'sv' | 'en' | 'sr';
 export type Skin = '426' | '430';
 export type Env = 'cold-steel' | 'workshop-night';
 export type Quality = 'low' | 'medium' | 'high';
@@ -77,7 +77,11 @@ export const num = (v: unknown): v is number => typeof v === 'number' && Number.
 const bool = (v: unknown): v is boolean => typeof v === 'boolean';
 const oneOf = <T extends string>(v: unknown, set: readonly T[]): v is T => typeof v === 'string' && (set as readonly string[]).includes(v);
 
-export const LANGS = ['sv', 'en'] as const;
+export const LANGS = ['sv', 'en', 'sr'] as const;
+/** What a language switch calls each language: its own name, never translated. */
+export const LANG_NAMES: Record<Lang, string> = { sv: 'Svenska', en: 'English', sr: 'Srpski' };
+/** The value for `<html lang>`: Serbian is written in Latin script here, and says so. */
+export const htmlLang = (l: Lang): string => (l === 'sr' ? 'sr-Latn' : l);
 export const SKINS = ['426', '430'] as const;
 export const ENVS = ['cold-steel', 'workshop-night'] as const;
 export const QUALITIES = ['low', 'medium', 'high'] as const;
@@ -218,6 +222,15 @@ export interface Bridge {
   /** 0 until the simulator answered. */
   readonly level: BridgeLevel;
   readonly ready: Of<'tnc:ready'> | null;
+  /**
+   * The language the simulator shows, as it last said (`tnc:ready`, `tnc:settings`). It can differ from the
+   * shell's: a simulator that does not know the shell's language keeps its own.
+   */
+  readonly simLang: string | undefined;
+  /**
+   * `tnc:settings` repeats every field on every change. The language is handed on only when the simulator
+   * changed it; a repeat of the language it already showed is not a choice anybody made, and is left out.
+   */
   on<T extends SimMessage['type']>(type: T, fn: Handler<T>): () => void;
   onLevel(fn: (level: BridgeLevel) => void): () => void;
   /** Say hello (v2) and poke v1; call when the iframe has loaded. Safe to repeat. */
@@ -251,6 +264,8 @@ export function createBridge(target: () => Window | null | undefined, origin: st
   let level: BridgeLevel = 0;
   let ready: Of<'tnc:ready'> | null = null;
   let seq = 0;
+  let simLang: string | undefined;
+  let asked: Lang | undefined; // the language last sent that the simulator was asked to confirm
 
   const post = (m: AppMessage) => {
     try {
@@ -268,12 +283,22 @@ export function createBridge(target: () => Window | null | undefined, origin: st
   function listen(e: MessageEvent) {
     const w = target();
     if (e.origin !== origin || !w || e.source !== w) return;
-    const m = parseSimMessage(e.data);
+    let m = parseSimMessage(e.data);
     if (!m) return;
     if (m.type === 'tnc:ready') {
       ready = m;
+      if (m.lang !== undefined) simLang = m.lang;
       raise(m.v);
     } else {
+      if (m.type === 'tnc:settings' && m.lang !== undefined) {
+        if (m.lang === simLang) {
+          const { lang: _repeated, ...rest } = m;
+          m = rest;
+        } else {
+          simLang = m.lang;
+          asked = undefined; // it moved on its own: the next language sent is confirmed afresh
+        }
+      }
       raise(m.type === 'tnc:program' || m.type === 'tnc:changed' || m.type === 'tnc:selected' ? 1 : 2);
     }
     if (m.type === 'tnc:program' || m.type === 'tnc:tools') {
@@ -307,6 +332,9 @@ export function createBridge(target: () => Window | null | undefined, origin: st
     get ready() {
       return ready;
     },
+    get simLang() {
+      return simLang;
+    },
     on(type, fn) {
       const set = handlers.get(type) ?? new Set<(m: SimMessage) => void>();
       handlers.set(type, set);
@@ -324,7 +352,18 @@ export function createBridge(target: () => Window | null | undefined, origin: st
     },
     open: (p) => post({ type: 'tnc:open', ...p }),
     current: (timeoutMs = 3000) => ask<'tnc:program'>((id) => ({ type: 'tnc:get', id }), timeoutMs).then((m) => ({ name: m.name, machine: m.machine, text: m.text })),
-    present: (p) => post({ type: 'tnc:present', ...p }),
+    present(p) {
+      // the language goes alone: a simulator that does not know it drops that one message and still takes the rest
+      const { lang, ...rest } = p;
+      if (Object.keys(rest).length) post({ type: 'tnc:present', ...rest });
+      if (lang === undefined) return;
+      post({ type: 'tnc:present', lang });
+      // nothing answers tnc:present, so ask once per language which one the simulator shows now (it answers tnc:ready)
+      if (level === 2 && lang !== simLang && lang !== asked) {
+        asked = lang;
+        post({ type: 'tnc:hello', v: 2 });
+      }
+    },
     machine: (machine) => post({ type: 'tnc:machine', machine }),
     exec: (cmd) => post({ type: 'tnc:exec', cmd }),
     camera: (view) => post({ type: 'tnc:camera', view }),

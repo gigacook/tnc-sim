@@ -73,6 +73,8 @@
 .land-badge { flex-direction: row-reverse; }
 .land-ctl { min-width: 44px; min-height: 44px; padding: 0 12px; background: var(--glass); border: var(--rule-strong); margin-left: -1px; font: 600 var(--gc-text-sm) var(--gc-font-mono); letter-spacing: 0.08em; }
 .land-ctl:hover { background: var(--gc-hover); }
+/* three languages: the full name where there is room, the two-letter code on a phone */
+.land-lang-code { display: none; }
 .land-lang .land-ctl[aria-pressed='true'] { background: var(--gc-ink); color: var(--gc-canvas); text-decoration: underline; text-underline-offset: 4px; }
 
 .land-hero { display: flex; flex-direction: column; justify-content: flex-end; gap: var(--gc-space-5); padding-block: var(--gc-space-7) var(--gc-space-6); }
@@ -115,7 +117,12 @@
   .land-shade::before { inset: 0; border: 0; }
   .land-frame > * { padding-inline: var(--gc-space-4); }
   .land-coord { display: none; }
-  .land-top { justify-content: space-between; }
+  .land-lang-name { display: none; }
+  .land-lang-code { display: inline; }
+  /* the badge word and three language buttons share 390 px: "RADIONICA" is the longest word there */
+  .land-top { justify-content: space-between; gap: var(--gc-space-2); }
+  .land-badge i { padding-inline: 8px; letter-spacing: 0.12em; }
+  .land-badge b { padding-inline: 8px; }
   .land-hero { padding-block: var(--gc-space-6) var(--gc-space-5); }
   .land-hero h1 { font-size: clamp(var(--gc-text-2xl), 15.5vw, calc(var(--gc-text-3xl) * 1.6)); }
   .land-hero h1 span:nth-child(2) { -webkit-text-stroke-width: 1.5px; }
@@ -150,6 +157,7 @@
 .hud-badge { display: grid; place-items: center; min-width: 64px; min-height: 44px; padding: 0 10px; background: var(--gc-ink); color: var(--gc-canvas); font: 700 var(--gc-text-md) var(--gc-font-mono); letter-spacing: 0.1em; }
 .hud-btn { min-width: 44px; min-height: 44px; padding: 0 14px; background: var(--glass); border: var(--rule-strong); font-weight: 500; font-size: var(--gc-text-sm); backdrop-filter: blur(10px); }
 .play .hud-rail .hud-btn { border-radius: 0; margin-left: -1px; }
+.hud-lang { display: flex; margin: 0; padding: 0; border: 0; min-width: 0; }
 .hud-btn:hover { background: var(--gc-hover); }
 .hud-btn[aria-pressed='true'] { background: var(--gc-ink); color: var(--gc-canvas); text-decoration: underline; text-underline-offset: 4px; }
 .hud-btn.hud-primary { background: var(--gc-accent-fill); border-color: var(--gc-accent-fill); color: var(--gc-on-accent); font-weight: 600; }

@@ -17,7 +17,7 @@
     "build:business": "npm --prefix web run build:business",
     "build:play": "npm --prefix web run build:play",
     "test:play": "node --test tests/play/",
-    "test:e2e": "node tests/e2e/business-isolation.mjs && node tests/e2e/core.mjs && node tests/e2e/play.mjs",
+    "test:e2e": "node tests/e2e/business-isolation.mjs && node tests/e2e/core.mjs && node tests/e2e/play.mjs && node tests/e2e/sr-layout.mjs && node tests/e2e/sr-fallback.mjs",
     "desktop:business": "tauri build --config desktop/src-tauri/tauri.business.conf.json",
     "desktop:play": "tauri build --config desktop/src-tauri/tauri.play.conf.json"
   },

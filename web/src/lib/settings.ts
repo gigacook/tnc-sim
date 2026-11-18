@@ -69,10 +69,27 @@ export function browserStore(): KV | null {
   }
 }
 
-/** Subscribe to changes made by the simulator frame or another tab. */
-export function watchSettings(fn: (s: Settings) => void): () => void {
+/**
+ * True when a stored language is only the simulator putting back its own: it saves every field of the key each
+ * time, so a simulator that does not know the shell's language (it fell back to another) would overwrite it.
+ * @param ours the language the shell shows
+ * @param simLang the language the simulator said it shows (Bridge.simLang)
+ * @param stored the language now in the store
+ */
+export const simFellBack = (ours: Lang, simLang: string | undefined, stored: Lang): boolean => stored !== ours && stored === simLang;
+
+/**
+ * Subscribe to changes made by the simulator frame or another tab.
+ * @param own what the shell shows and what the simulator said it shows; given, a language the simulator merely
+ *   fell back to is not taken over: the shell's own is written back, so it also survives a reload
+ */
+export function watchSettings(fn: (s: Settings) => void, own?: () => { lang: Lang; simLang: string | undefined }): () => void {
   const on = (e: StorageEvent) => {
-    if (e.key === SETTINGS_KEY || e.key === null) fn(readSettings(browserStore()));
+    if (e.key !== SETTINGS_KEY && e.key !== null) return;
+    const store = browserStore();
+    const s = readSettings(store);
+    const o = own?.();
+    fn(o && simFellBack(o.lang, o.simLang, s.lang) ? writeSettings(store, { lang: o.lang }) : s);
   };
   window.addEventListener('storage', on);
   return () => window.removeEventListener('storage', on);

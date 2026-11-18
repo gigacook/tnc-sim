@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createBridge, type Bridge, type BridgeLevel, type CameraView, type Present, type SimState } from '../lib/bridge';
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { createBridge, htmlLang, LANG_NAMES, LANGS, type Bridge, type BridgeLevel, type CameraView, type Present, type SimState } from '../lib/bridge';
 import { browserStore, type Settings } from '../lib/settings';
 import { actionsFor, TARGET_IDS, type Action, type TargetId } from './game/actions';
 import { applyEquipped, CuttingClock, lockOf, newGame, oilLevel, rackTool, step, STATION_IDS, STATION_MACHINE, type Effect, type Game, type GameEvent, type StationId } from './game/machine';
 import { fromSave, loadPrefs, loadSave, parseSave, storePrefs, storeSave, toSave, type Prefs } from './game/save';
 import { newScheduler, tick, type Npc } from './game/scheduler';
-import { loadPack, type Pack } from './pack/loader';
+import { loadPack, packText, type Pack } from './pack/loader';
 import { BOSS, OFFICE_WORKER, specFromPack } from './scene/people';
 import { createWorkshop, type View, type Workshop } from './scene/workshop';
 import { Compare } from './Compare';
@@ -18,6 +18,8 @@ interface Props {
   change(p: Present): void;
   reduced: boolean;
   t: T;
+  /** set here to a way of asking which language the simulator shows (it can differ from the shell's) */
+  simLang: RefObject<() => string | undefined>;
 }
 
 type PanelId = 'stations' | 'computer' | 'onboarding' | 'compare' | 'views' | null;
@@ -26,7 +28,7 @@ const NPC_LINES = 3;
 const VIEWS: readonly (View | 'pov' | 'tool' | 'part')[] = ['walk', 'overview', 'orbit', 'pov', 'tool', 'part'];
 
 /** The workshop: the 3-D floor, the one simulator kept mounted behind it, the game and every panel. */
-export function Shop({ settings, change, reduced, t }: Props) {
+export function Shop({ settings, change, reduced, t, simLang }: Props) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const frame = useRef<HTMLIFrameElement>(null);
   const scene = useRef<Workshop | null>(null);
@@ -166,6 +168,7 @@ export function Shop({ settings, change, reduced, t }: Props) {
   useEffect(() => {
     const b = createBridge(() => frame.current?.contentWindow, location.origin);
     bridge.current = b;
+    simLang.current = () => b.simLang;
     b.onLevel(setLevel);
     b.on('tnc:ready', (m) => {
       setSimOwnsExit(m.v === 2 && m.edition === 'play');
@@ -194,8 +197,9 @@ export function Shop({ settings, change, reduced, t }: Props) {
     return () => {
       b.dispose();
       bridge.current = null;
+      simLang.current = () => undefined;
     };
-  }, [dispatch, change]);
+  }, [dispatch, change, simLang]);
 
   /* ---------- the scene ---------- */
   // the quality tier decides renderer options that cannot change later: a new tier is a new scene;
@@ -425,7 +429,7 @@ export function Shop({ settings, change, reduced, t }: Props) {
     if (npc.who === 'pack') {
       const c = pack.current?.completion;
       const l = c?.lines[npc.line];
-      if (c && l) caption = { who: c.figures[l.who].name, text: l[settings.lang] };
+      if (c && l) caption = { who: c.figures[l.who].name, text: packText(l, settings.lang) };
     } else caption = { who: t(`n.${npc.who}`), text: t(`n.${npc.who}.${npc.line}` as Key) };
   }
 
@@ -521,9 +525,13 @@ export function Shop({ settings, change, reduced, t }: Props) {
           <button type="button" className="hud-btn" aria-pressed={!settings.sound} onClick={() => setting({ sound: !settings.sound })}>
             {settings.sound ? t('hud.mute') : t('hud.unmute')}
           </button>
-          <button type="button" className="hud-btn" onClick={() => setting({ lang: settings.lang === 'sv' ? 'en' : 'sv' })} lang={settings.lang === 'sv' ? 'en' : 'sv'}>
-            {settings.lang === 'sv' ? 'EN' : 'SV'}
-          </button>
+          <fieldset className="hud-lang" aria-label={t('c.lang')}>
+            {LANGS.map((l) => (
+              <button key={l} type="button" className="hud-btn" aria-pressed={settings.lang === l} aria-label={LANG_NAMES[l]} title={LANG_NAMES[l]} onClick={() => setting({ lang: l })} lang={htmlLang(l)}>
+                {l.toUpperCase()}
+              </button>
+            ))}
+          </fieldset>
         </nav>
 
         <section className="hud hud-status" aria-label="Status">
@@ -688,7 +696,7 @@ export function Shop({ settings, change, reduced, t }: Props) {
           <section>
             <h3>{t('c.settings')}</h3>
             <div className="pc-grid">
-              {seg('c.lang', settings.lang, ['sv', 'en'] as const, (k) => (k === 'sv' ? 'Svenska' : 'English'), (lang) => setting({ lang }))}
+              {seg('c.lang', settings.lang, LANGS, (k) => LANG_NAMES[k], (lang) => setting({ lang }))}
               {seg('c.quality', settings.quality, ['low', 'medium', 'high'] as const, (k) => t(`c.q.${k}`), (quality) => setting({ quality }))}
               {seg('c.motion', settings.motion, ['full', 'reduced'] as const, (k) => t(`c.m.${k}`), (motion) => setting({ motion }))}
               {seg('c.env', settings.env, ['cold-steel', 'workshop-night'] as const, (k) => t(`c.e.${k}`), (env) => setting({ env }))}

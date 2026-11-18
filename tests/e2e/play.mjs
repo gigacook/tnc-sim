@@ -7,6 +7,8 @@
  * START enters the workshop -> each station opens the one simulator with its machine -> leaving and
  * returning keeps an edited program (the frame is never reloaded) -> the interlock, the tool change and the
  * oil can reach the simulator through the bridge -> 333, a character, the secret programs, reduced motion.
+ * First of all the third language: Srpski changes the labels, survives a reload and a simulator that does not
+ * know it, and START still enters the workshop.
  * Everything is done through the keyboard/list paths (the text station list), which are the alternatives to
  * the 3-D interactions. Screenshots: artifacts/play/e2e-*.png
  */
@@ -23,7 +25,94 @@ const { browser } = await launch(measure ? ['--use-angle=d3d11', '--enable-gpu']
 const out = shots('play');
 const NAME = 'PLAY_E2E';
 
+const stored = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('tnc.settings.v1') || '{}').lang);
+const htmlLang = (page) => page.evaluate(() => document.documentElement.lang);
+
 try {
+  /* ---- Srpski: the labels change, the choice survives a reload, START still enters the workshop ---- */
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
+    await ctx.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
+    const page = await ctx.newPage();
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    await page.goto(server.url + '/play');
+    await page.waitForSelector('.land-start', { timeout: 15000 });
+    const offered = await page.locator('.land-lang .land-ctl').allInnerTexts();
+    c.ok(offered.map((x) => x.trim()).join(' / ') === 'Svenska / English / Srpski', 'landing: the switch offers Svenska / English / Srpski', offered.join(' / '));
+    const before = await page.locator('.land-hero').innerText();
+    await page.locator('.land-lang .land-ctl[lang="sr-Latn"]').click();
+    const hero = await page.locator('.land-hero').innerText();
+    c.ok(hero !== before && hero.includes('ŠPON') && hero.includes('EMULZIJA') && /Dve mašine/.test(hero), 'Srpski: the landing copy changes to Serbian', hero.replace(/\s+/g, ' '));
+    c.ok((await page.locator('.land-cells').innerText()).includes('Stara glodalica u ćošku') && (await page.locator('.land-foot').innerText()).includes('Simulator za obuku'), 'Srpski: the cells and the note change too');
+    c.ok((await htmlLang(page)) === 'sr-Latn' && (await stored(page)) === 'sr', 'Srpski: <html lang="sr-Latn">, stored as "sr" in tnc.settings.v1', `${await htmlLang(page)} ${await stored(page)}`);
+    c.ok((await page.locator('.land-start').innerText()).startsWith('START'), 'Srpski: START stays START');
+
+    await page.reload();
+    await page.waitForSelector('.land-start', { timeout: 15000 });
+    c.ok((await page.locator('.land-hero h1').innerText()).includes('ŠPON') && (await page.locator('.land-lang .land-ctl[aria-pressed="true"]').getAttribute('lang')) === 'sr-Latn' && (await htmlLang(page)) === 'sr-Latn', 'Srpski survives a reload of the landing');
+    c.ok((await page.evaluate(() => document.activeElement?.className)) === 'land-start', 'Srpski: START has the focus after the reload');
+    await page.keyboard.press('Enter');
+    await page.waitForSelector('.shop-canvas', { timeout: 30000 });
+    c.ok(true, 'Srpski: START (Enter) enters the workshop');
+    c.ok(/dobro došli u 5511/i.test(await page.locator('.ob h2').innerText().catch(() => '')), 'Srpski: the introduction is in Serbian');
+    await page.keyboard.press('Escape');
+    const rail = async () => (await page.locator('.hud-rail > .hud-btn').allInnerTexts()).map((x) => x.trim()).join(' | ');
+    c.ok((await rail()) === 'Stanice | Pogled | Računar | Pomoć | Ugasi zvuk', 'Srpski: the workshop rail is in Serbian', await rail());
+    c.ok((await page.locator('.hud-lang .hud-btn').evaluateAll((bs) => bs.map((b) => b.getAttribute('aria-label')).join(' / '))) === 'Svenska / English / Srpski', 'workshop: the rail switch offers Svenska / English / Srpski');
+    c.ok((await page.locator('.hud-state').first().innerText()) === 'SPREMNA', 'Srpski: the machine state in the HUD is in Serbian');
+
+    // the simulator: whether it speaks Serbian yet or falls back, the shell keeps the language the user chose
+    const sim = await (await page.waitForSelector('.shop-sim iframe', { state: 'attached' })).contentFrame();
+    await sim.waitForFunction(() => window.TNC_UI?.state?.res, null, { timeout: 45000 });
+    await page.waitForTimeout(500);
+    const simSpeaks = await sim.evaluate(() => window.TNC_UI.lang);
+    console.log(`  note  the simulator in this build shows "${simSpeaks}" when asked for "sr"` + (simSpeaks === 'sr' ? '' : ' (it falls back; the shell must keep Serbian)'));
+    // a save of the shared key by the simulator itself (the user flips a switch in its settings panel, twice)
+    await sim.evaluate(() => { window.TNC_SETTINGS.set('sound', false); window.TNC_SETTINGS.set('sound', true); });
+    await page.waitForTimeout(600);
+    c.ok((await rail()) === 'Stanice | Pogled | Računar | Pomoć | Ugasi zvuk' && (await htmlLang(page)) === 'sr-Latn', 'Srpski stays on screen after the simulator booted and saved the shared settings', await rail());
+    c.ok((await stored(page)) === 'sr', 'Srpski is still what tnc.settings.v1 holds after the simulator saved it', await stored(page));
+
+    // the game works in Serbian: the list, an interlock (its reason goes to the simulator as text) and a refusal
+    await page.locator('.hud-rail .hud-btn').first().click();
+    const fil15 = page.locator('.st-list li', { has: page.locator('h3', { hasText: 'fil15' }) });
+    c.ok(/vrata zatvorena, spremna · Ulje 100 %/.test(await fil15.locator('p').innerText()), 'Srpski: the station list states are in Serbian', await fil15.locator('p').innerText());
+    // the interlock follows the station whose control was opened last: go to fil15's control and come back
+    await fil15.locator('.st-acts .hud-btn', { hasText: 'Otvori upravljanje' }).click();
+    c.ok(await page.waitForSelector('.shop[data-mode="machine"]', { timeout: 8000 }).then(() => true, () => false), 'Srpski: "Otvori upravljanje" opens the control of fil15');
+    await sim.evaluate(() => document.getElementById('b-exit').click());
+    await page.waitForSelector('.shop[data-mode="floor"]', { timeout: 8000 }).catch(() => {});
+    await page.waitForTimeout(1300);
+    await page.locator('.hud-rail .hud-btn').first().click();
+    await fil15.locator('.st-acts .hud-btn', { hasText: 'Otvori vrata' }).click();
+    await sim.waitForFunction(() => window.TNC_UI.runState().locked === true, null, { timeout: 3000 }).catch(() => {});
+    c.ok((await sim.evaluate(() => window.TNC_UI.runState().locked)) === true, 'Srpski: "Otvori vrata" locks NC start in the simulator');
+    await fil15.locator('.st-acts .hud-btn', { hasText: 'Zaustavi i zaključaj' }).click();
+    await fil15.locator('.st-acts .hud-btn', { hasText: 'Otpusti alat' }).click();
+    await page.waitForTimeout(150);
+    c.ok(/Treba ti ključ/.test(await page.locator('.pp-live').innerText()), 'Srpski: a refusal gives its reason in Serbian', await page.locator('.pp-live').innerText());
+    await page.keyboard.press('Escape');
+    await page.locator('.hud-rail .hud-btn', { hasText: 'Računar' }).click();
+    c.ok((await page.locator('.pc .seg').first().locator('button').allInnerTexts()).join(' / ') === 'Svenska / English / Srpski' && (await page.locator('.pc .seg').first().locator('[aria-pressed="true"]').innerText()) === 'Srpski', 'computer: the language setting offers Svenska / English / Srpski, Srpski chosen');
+    await page.keyboard.press('Escape');
+    await page.evaluate(() => window.__tncPlay.visit('office'));
+    await page.waitForSelector('.npc', { timeout: 3000 }).catch(() => {});
+    c.ok(/personal(?!l)/.test(await page.locator('.npc p').innerText().catch(() => '')) && /^kancelarija$/i.test(await page.locator('.npc b').innerText()), 'Srpski: the office character complains about "personal", captioned');
+    await page.keyboard.press('Escape');
+
+    await page.reload();
+    await page.waitForSelector('.land-start', { timeout: 15000 });
+    c.ok((await page.locator('.land-hero h1').innerText()).includes('ŠPON') && (await stored(page)) === 'sr', 'Srpski survives a reload after the workshop and the simulator ran');
+    await page.keyboard.press('Enter');
+    await page.waitForSelector('.shop-canvas', { timeout: 30000 });
+    c.ok((await page.locator('.ob').count()) === 0 && (await rail()).startsWith('Stanice'), 'Srpski: START enters the workshop again, straight to the floor');
+    await page.locator('.hud-lang .hud-btn[lang="sv"]').click();
+    c.ok((await rail()).startsWith('Stationer') && (await htmlLang(page)) === 'sv' && (await stored(page)) === 'sv', 'and back to Svenska from the workshop rail', await rail());
+    c.ok(errors.length === 0, 'Srpski: no page error in the shell', errors.join(' | '));
+    await ctx.close();
+  }
+
   const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
   await ctx.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
   const page = await ctx.newPage();
@@ -36,10 +125,10 @@ try {
   c.ok((await page.evaluate(() => document.activeElement?.className)) === 'land-start', 'landing: START has the focus as soon as the page is there');
   c.ok((await page.evaluate(() => document.documentElement.lang)) === 'sv', 'landing: Swedish by default');
   c.ok((await page.locator('iframe').count()) === 0, 'landing: the simulator is not loaded before START');
-  await page.locator('.land-lang .land-ctl', { hasText: 'EN' }).click();
+  await page.locator('.land-lang .land-ctl[lang="en"]').click();
   c.ok((await page.locator('.land-hero h1').innerText()).includes('CHIPS'), 'landing: the language switch changes the copy');
   c.ok(JSON.parse(await page.evaluate(() => localStorage.getItem('tnc.settings.v1'))).lang === 'en', 'landing: the language is stored in tnc.settings.v1');
-  await page.locator('.land-lang .land-ctl', { hasText: 'SV' }).click();
+  await page.locator('.land-lang .land-ctl[lang="sv"]').click();
   await page.locator('.land-start').focus();
   await page.keyboard.press('Enter');
   await page.waitForSelector('.shop-canvas', { timeout: 30000 });

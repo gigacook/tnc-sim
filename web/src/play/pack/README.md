@@ -41,6 +41,7 @@ Line:
 |---|---|---|
 | `who` | number | `0` or `1`: which figure speaks |
 | `sv`, `en` | string | 1 to 120 characters each, no `<` or `>` |
+| `sr` | string, optional | Serbian in Latin script (č ć š ž đ), same rule. Left out: the English text is shown when the language is Srpski |
 
 ## Example
 
@@ -54,12 +55,12 @@ Line:
       { "name": "Operator B", "height": 1.86, "build": 1.3, "skin": "#c99a7a", "hair": "#4a3323", "hairStyle": "short", "beard": true, "glasses": false, "top": "#3a3f47", "bottom": "#23262b" }
     ],
     "lines": [
-      { "who": 0, "sv": "Hej! Snyggt kört.", "en": "Hello! Nicely run." },
-      { "who": 1, "sv": "Tack. Nästa detalj?", "en": "Thanks. Next part?" }
+      { "who": 0, "sv": "Hej! Snyggt kört.", "en": "Hello! Nicely run.", "sr": "Zdravo! Lepo odrađeno." },
+      { "who": 1, "sv": "Tack. Nästa detalj?", "en": "Thanks. Next part?", "sr": "Hvala. Sledeći komad?" }
     ],
     "gesture": "highfive"
   }
 }
 ```
 
-Captions follow the Play language switch. The scene can be skipped like any other interruption.
+Captions follow the Play language switch (Svenska, English, Srpski). The scene can be skipped like any other interruption.
