@@ -398,8 +398,7 @@ export function Shop({ settings, change, reduced, t, simLang }: Props) {
       const el = e.target as HTMLElement | null;
       if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
-      // when the key was pressed, not when this page got to it: a slow frame between two keys does not split them
-      const now = e.timeStamp;
+      const now = performance.now();
       typed = now - at > 2000 ? '' : typed;
       at = now;
       typed = /^\d$/.test(e.key) ? (typed + e.key).slice(-3) : '';
