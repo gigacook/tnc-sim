@@ -148,11 +148,11 @@ När servern svarar får Business en liten menyknapp (☰) i kanten med Program,
 
 ### Skärmen
 
-- **Översta raden** har de fyra driftlägena, knapparna Kör, Paus och Stopp, knappen Nytt program, väljaren 426 | 430, och knapparna för Inspektören, Hjälp och Profil.
+- **Översta raden** har de fyra driftlägena, knapparna Kör, Paus och Stopp, knappen Program, knappen Nytt program, väljaren 426 | 430, och knapparna för Inspektören, Hjälp och Profil.
 - **Programmet** visas till vänster (på styrsystemet 430 Steel till höger). Det markerade blocket är det som körs eller redigeras. Ovanför listan finns knapparna Verktyg och Spara .H.
 - **Blockraden** under programmet är där du skriver ett block eller svarar på en fråga.
 - **Funktionstangenterna** ligger underst. Varje tangent visar också sin tangent på tangentbordet med liten text.
-- **Testgrafiken** visar ämnet, verktyget och verktygsbanan. Dra för att vrida och rulla för att zooma. Streckad linje är snabbtransport, heldragen är matning. Positionen (X, Y, Z, varvtal, matning och verktyg) står i en ruta ovanpå bilden.
+- **Testgrafiken** visar ämnet, verktyget och verktygsbanan. Dra för att vrida och rulla för att zooma. Streckad linje är snabbtransport, heldragen är matning. Positionen (X, Y, Z, varvtal, matning och verktyg) står i en ruta ovanpå bilden. Under reglaget finns **Effekter och vy**, se [Effekter och vy](#effekter-och-vy).
 - **Nedersta raden** har kugghjulet för inställningar, körtillståndet och antalet fel från kontrollerna.
 
 ### Driftlägen
@@ -164,7 +164,7 @@ När servern svarar får Business en liten menyknapp (☰) i kanten med Program,
 | `3` | ENKELBLOCK | kör nästa block |
 | `4` | HELKÖRNING | kör och pausar |
 
-Om du trycker Kör i PRG REDIGERA svarar simulatorn `PROGRAM MODE — NC START WORKS IN 2 TEST, 3 SINGLE-BLOCK, 4 FULL-RUN`. Byt läge först.
+Om du trycker Kör i PRG REDIGERA svarar simulatorn `PROGRAMLÄGE — NC-START FUNGERAR I 2 TEST, 3 ENKELBLOCK, 4 HELKÖRNING`. Byt läge först.
 
 ### Köra ett program
 
@@ -179,6 +179,25 @@ Fel visas med sitt block. Öppna Inspektören med `F` för att se körtid, matni
 ![Inspektören med mätvärden, kontroller och jämförelse](shots/business-inspector.png)
 
 För att jämföra två versioner av ett program: kör färdigt, välj **Spara körning som referens A** i Inspektören, ändra programmet och kör igen. Tabellen Jämförelse visar skillnaden i cykeltid, matningsväg, snabbväg, antal rörelser, lägsta Z och bortfräst volym.
+
+### Effekter och vy
+
+Under reglaget i testgrafiken finns raden **Effekter och vy**. Tryck på den för att fälla ut knapparna. Ingen av dem ändrar hur programmet körs, utom Skruvstycke, som också slår av och på kontrollen mot skruvstycket.
+
+![Effekter och vy utfälld under testgrafiken, med materialväljaren underst](shots/business-effects.png)
+
+| Knapp | Tangent | Vad den gör |
+|---|---|---|
+| Flödesvy | `V` | visar programmet som flödesschema i stället för som lista |
+| Spån | `P` | spån och gnistor vid verktyget |
+| Kylvätska | `K` | kylvätskestrålen, som syns när programmet har slagit på `M8` |
+| Rök | `B` | rök och eld vid en krasch; avstängt från början |
+| Etiketter | `L` | etiketterna för verktyg, hållare och ämne |
+| Skruvstycke | | ritar skruvstycket och kontrollerar verktyget mot det |
+| Axelvektorer | | linjer i X, Y och Z från programmets nollpunkt till verktygsspetsen, med värden; på TNC 430 också A och B |
+| Klicka för punkt | | ett klick i bilden (inte ett drag) sätter en grön markering och visar punktens koordinater; ESC tar bort den |
+
+**Materialväljaren** längst till höger i raden byter ämnets material: Aluminium 6061, Titanium Ti-6Al-4V, Mild steel, Stainless 304, Brass och Cast iron, och fyra utseenden (Turbine, Aerospace, Ground finish och Cast). Materialet ändrar hur ämnet, spånen och gnistorna ser ut. Det ändrar inte matning, varvtal eller någon kontroll. Valet sparas i webbläsaren.
 
 ### Guidad inmatning av block
 
@@ -228,9 +247,9 @@ LP PR+57 PA+157,5 R0 F MAX
 
 Så ska du läsa det:
 
-- **Decimalkomma på skärmen.** Med svenskt språk visar skärmen decimaltal med komma. Med engelskt språk visas punkt. Du får skriva antingen komma eller punkt i en fråga; båda betyder samma sak.
-- **Punkt i filen.** I den sparade filen står blocket med punkt och utan mellanslag i matningen, så som styrsystemet skriver det: `LP PR+57 PA+157.5 R0 FMAX`. Programtext och kommentarer skrivs aldrig om.
-- **Några ord behåller alltid sin punkt** också på svensk skärm: `BLK FORM 0.1`, `CYCL DEF 7.1`, `TCH PROBE 0.0` och `FN 0:`.
+- **Decimaltecknet på skärmen är en inställning.** Under Inställningar, Allmänt, **Decimaltecken (MP 7280)** väljer du **Följ språk**, **Komma** eller **Punkt**. Följ språk är förvalt och ger komma på svenska och serbiska och punkt på engelska. På styrsystemet är decimaltecknet en egen maskinparameter (MP 7280), skild från dialogspråket, och så är det också här. Du får skriva antingen komma eller punkt i en fråga; båda betyder samma sak.
+- **Punkt i filen, alltid.** Inställningen gäller bara skärmen. I den sparade filen står blocket med punkt och utan mellanslag i matningen, så som styrsystemet skriver det: `LP PR+57 PA+157.5 R0 FMAX`. Programtext och kommentarer skrivs aldrig om.
+- **Några ord behåller alltid sin punkt** också när skärmen visar komma: `BLK FORM 0.1`, `CYCL DEF 7.1`, `TCH PROBE 0.0` och `FN 0:`.
 - **Ett ogiltigt tal tas inte emot.** Skriver du till exempel `1,2,3` som vinkel står frågan kvar.
 
 `P` fungerar på samma sätt för `C` (blir `CP`), `CT` (blir `CTP`) och för framkörning och frånkörning med `APPR` och `DEP`. `CC` är alltid kartesiskt.
@@ -243,7 +262,7 @@ Ställ markören på blocket och tryck `E`.
 
 - Ett polärt block (`LP`, `CP`, `CTP`) öppnas i sin dialog med de nuvarande värdena ifyllda. ENTER behåller ett värde. När du är klar ersätts blocket.
 - Alla andra block öppnas på blockraden som text. Ändra texten och tryck ENTER för att spara eller ESC för att ångra.
-- `F2` växlar mellan dialog och text medan du redigerar. Blocken `L`, `CC`, `C`, `CR`, `CT`, `RND` och `CHF` går att öppna i dialog på det sättet. För ett block som saknar dialog svarar simulatorn `THIS BLOCK HAS NO DIALOG — EDIT IT AS TEXT`.
+- `F2` växlar mellan dialog och text medan du redigerar. Blocken `L`, `CC`, `C`, `CR`, `CT`, `RND` och `CHF` går att öppna i dialog på det sättet. För ett block som saknar dialog svarar simulatorn `BLOCKET HAR INGEN DIALOG — REDIGERA DET SOM TEXT`.
 
 `I` infogar ett nytt block efter markören, `D` eller DELETE raderar blocket och `C` kopierar det. `Ctrl+Z` ångrar och `Ctrl+Skift+Z` eller `Ctrl+Y` gör om.
 
@@ -291,7 +310,7 @@ Tryck `M` eller knappen Program. Listan visar alla program i simulatorn med stor
 | ADD TO PROJECT | | lägger programmet i det aktiva projektet |
 | SLUT | ESC | går tillbaka till programmet |
 
-Ett inbyggt program går inte att radera; simulatorn svarar `BUILT-IN PROGRAM — USE RESTORE ORIGINAL INSTEAD`.
+Ett inbyggt program går inte att radera; simulatorn svarar `INBYGGT PROGRAM — ANVÄND ÅTERSTÄLL ORIGINAL`.
 
 ### Spara och ladda filer
 
@@ -301,7 +320,7 @@ Ett inbyggt program går inte att radera; simulatorn svarar `BUILT-IN PROGRAM �
 
 ### Profilen
 
-Dina program och din verktygstabell sparas av sig själva i webbläsaren. Under Profil kan du ge profilen ett namn, exportera allt som en `.zip` och importera den i en annan webbläsare. Vid import väljer du **Merge** (lägg till) eller **Replace** (ersätt). Rensar du webbläsarens data för sidan försvinner profilen, så exportera den först.
+Dina program och din verktygstabell sparas av sig själva i webbläsaren. Under Profil kan du ge profilen ett namn, exportera allt som en `.zip` och importera den i en annan webbläsare. Vid import väljer du **Sammanfoga med min** (lägg till) eller **Ersätt min** (ersätt). Rensar du webbläsarens data för sidan försvinner profilen, så exportera den först.
 
 Ett **projekt** är en namngiven mapp med program. Du skapar det i Inspektören under fliken Mina program. Nya program hamnar i det aktiva projektet, och ZIP hämtar mappen som `.H`-filer.
 
@@ -342,32 +361,111 @@ Sidan Program på servern visar alla program med versioner. Där kan du öppna e
 
 ## AI-program och AI-nyckeln
 
-AI-fliken i dialogen Nytt program skriver ett program från en beskrivning. Välj **Nytt program** för att börja från noll eller **Ändra aktuellt** för att låta AI:n ändra programmet som är öppet, skriv vad du vill ha och tryck **Generera** eller **Ändra programmet**. `Ctrl+Z` ångrar en ändring.
+Fliken **AI** i dialogen Nytt program (tangent `N`) skriver ett Klartext-program från en beskrivning, eller ändrar programmet som är öppet. AI:n går genom tjänsten OpenRouter och ingen annan.
 
-En generering går i omgångar. AI:n skriver ett program, servern kontrollerar det med samma tolk som simulatorn använder, och simulatorn mäter den frästa detaljen mot det du bad om. Har programmet ett fel, skulle det krascha eller fräser det inte det som det ska, går resultatet tillbaka till AI:n för ett nytt försök: det första programmet och högst fem rättningsomgångar. Bara ett program som går igenom erbjuds för laddning. Går inget igenom sparas det bästa försöket som ett utkast som du själv kan öppna, och ingenting laddas. Varje konto kan ha en generering igång åt gången.
+AI kräver servern: den lokala, en som någon driver åt dig, eller skrivbordsappen, som har servern inbyggd. Simulatorfilen `index.html` och en utgåva utan server visar i stället en enda rad på fliken, och ingenting skickas någonstans:
 
-### Var nyckeln finns
+```
+AI kräver den lokala eller hostade servern. Manuellt skapande fungerar som vanligt.
+```
 
-AI:n går genom tjänsten OpenRouter och ingen annan. För det behövs en OpenRouter-nyckel, och den ligger på serverns sida, aldrig i webbläsaren.
+Ingen riktig leverantör har provkörts med den här versionen. Alla tester går mot en låtsasleverantör, så resultatet du får beror på vilken modell du väljer.
 
-- Servern tar nyckeln från miljövariabeln `OPENROUTER_API_KEY`, eller från en nyckel som en administratör har sparat på servern. En sparad nyckel går före miljövariabeln. Bara en administratör kan spara eller ta bort en nyckel; i skrivbordsappen är den enda lokala användaren administratör.
-- Nyckeln provas inte när den sparas. En felaktig nyckel märks vid första genereringen.
-- En sparad nyckel ligger i filen `openrouter.key` i serverns datamapp. Filen kan bara läsas av det konto som kör servern. Den är inte krypterad, så skydda datamappen som du skyddar andra hemligheter.
-- Nyckeln skrivs aldrig i databasen, aldrig i ett svar till webbläsaren och aldrig i en loggrad.
-- Webbläsaren skickar bara sin inloggning till servern. Servern lägger till nyckeln och skickar frågan vidare.
-- Servern har en gräns per användare och månad, 5 US-dollar om inget annat är inställt (`TNC_AI_MONTHLY_BUDGET_USD`). Vilka modeller som får väljas kan begränsas med `TNC_AI_MODELS`. Förvald modell är `deepseek/deepseek-v4.1-flash`.
+### Nyckeln
+
+OpenRouter-nyckeln ligger på servern, i skrivbordsappen i appens datamapp. Den ligger aldrig i webbläsaren.
+
+**Ange nyckeln.** Så länge servern saknar nyckel visar fliken AI ett fält överst.
+
+1. Öppna Nytt program med `N` och välj fliken **AI**.
+2. Skriv nyckeln i fältet **OpenRouter-nyckel**. Under fältet står `Nyckeln skickas till servern och lagras där. Den sparas aldrig i webbläsaren.`
+3. Tryck **Spara nyckel** eller ENTER.
+4. Fältet töms och försvinner, och fliken svarar `Nyckeln är lagrad på servern.` Markören står i beskrivningen.
+
+![Fliken AI när servern saknar nyckel: fältet OpenRouter-nyckel överst, inget är skrivet](shots/business-ai-nokey.png)
+
+**Ta bort nyckeln.** När en nyckel är lagrad finns länken **Ta bort nyckeln från servern** längst ner på fliken. Tryck på den och sedan på **Bekräfta: ta bort nyckeln**. Fliken svarar `Nyckeln är borttagen från servern.` Har servern dessutom en nyckel i sin egen inställning står det `Den lagrade nyckeln är borttagen. Servern har fortfarande en nyckel från sin egen inställning.`
+
+Det här gäller för nyckeln:
+
+- Bara en administratör kan spara eller ta bort den. Andra får `Bara en administratör kan ändra nyckeln.` I skrivbordsappen är den enda lokala användaren administratör.
+- Nyckeln provas inte när den sparas. En felaktig nyckel märks vid första genereringen: `OpenRouter godtog inte nyckeln. Ta bort den och ange en giltig nyckel.`
+- Den lagras i filen `openrouter.key` i serverns datamapp. Filen kan bara läsas av det konto som kör servern. Den är inte krypterad, så skydda datamappen som du skyddar andra hemligheter.
+- Den skrivs aldrig i databasen, aldrig i ett svar till webbläsaren och aldrig i en loggrad.
+- Den som sköter servern kan i stället ge nyckeln i miljövariabeln `OPENROUTER_API_KEY`. En nyckel som är sparad genom fliken går före.
+- Hade en äldre version sparat en nyckel i den här webbläsaren raderas den när sidan laddas, och fliken säger `En nyckel som låg sparad i den här webbläsaren har raderats härifrån. Nyckeln lagras nu på servern.`
+
+### Nytt eller Ändra aktuellt
+
+Överst i fliken väljer du vad AI:n ska göra.
+
+| Läge | Du skriver | Vad Ladda gör |
+|---|---|---|
+| **Nytt** | **Beskriv detaljen**: mått, former, djup | öppnar resultatet som ett nytt program under ett ledigt namn; programmet du hade öppet ligger kvar oförändrat |
+| **Ändra aktuellt** | **Vad ska ändras i NAMEPLATE.H?** (namnet är det öppna programmets) | ersätter texten i det öppna programmet med resultatet, som ett enda ångringssteg; `Ctrl+Z` ger tillbaka originalet |
+
+Under beskrivningen finns tre **Exempel**. Ett tryck på ett exempel fyller i beskrivningen. Namnet på ett nytt program tas ur programmets `BEGIN PGM`-rad; är namnet upptaget får det `_2`, `_3` och så vidare. Finns inget öppet program svarar Ändra aktuellt `Det finns inget öppet program att ändra.` Läget går inte att byta medan ett jobb går.
+
+### Modell
+
+Raden **Vald modell** visar modellen som används. Skriv i **Sök modell** för att korta listan, och välj med ett klick eller med piltangenterna. När du pekar på en modell, ger den fokus eller trycker på den visas modell-id, version, kontext, effektiv utdatagräns, pris per en miljon tokens och vad modellen stöder. Listan och prislapparna kommer från OpenRouter genom servern. Valet sparas i webbläsaren.
+
+Det finns inga reglage för resonemang, tokens, mätning eller antal omgångar. De är fasta på servern: medelhögt resonemang där modellen stöder det, och en utdatagräns som aldrig är högre än modellens egen.
 
 ### Vad som skickas, och när
 
-Ingenting av det du skriver lämnar din dator förrän du trycker **Generera** eller **Ändra programmet**. Då skickas din beskrivning, verktygstabellen och, när du ändrar ett program, programmets text till OpenRouter och vidare till den som driver modellen du valt. De behandlar texten enligt sina egna villkor. Skriv därför inget hemligt i beskrivningen. Du kan avbryta en pågående generering med ESC.
+Ingenting av det du skriver lämnar din dator förrän du trycker **GENERERA**. Raden ovanför knappen säger vad som då skickas:
 
-> **ATT KOMPLETTERA (AI-dialogen och serverns AI-gränssnitt byggs fortfarande).** Det här avsnittet beskriver bara det som gick att läsa i koden när handboken skrevs. Följande ska fyllas i när delarna är klara:
->
-> 1. Var i gränssnittet en administratör sparar och tar bort nyckeln, och vad knapparna heter.
-> 2. Exakt vilken text dialogen visar innan något skickas till OpenRouter.
-> 3. Vad dialogen visar medan omgångarna går, och hur ett utkast öppnas.
-> 4. Vad som gäller för simulatorfilen `index.html` utan server.
-> 5. De felmeddelanden dialogen visar (ingen nyckel, slut på kredit, månadsgränsen nådd, modellen svarar inte).
+```
+När du trycker på GENERERA skickas beskrivningen och programtexten till OpenRouter (tredje part).
+```
+
+I läget Ändra aktuellt står i stället:
+
+```
+När du trycker på GENERERA skickas beskrivningen och hela programmet NAMEPLATE.H till OpenRouter (tredje part).
+```
+
+Med beskrivningen följer din verktygstabell och vilken maskin som är vald. OpenRouter och den som driver modellen behandlar texten enligt sina egna villkor, så skriv inget hemligt i beskrivningen.
+
+### Steg och omgångar
+
+1. Tryck **GENERERA**. Knappen ersätts av **Avbryt**.
+2. Under **Förlopp** visas stegen i den ordning servern tar dem: Generering, Validering, Mätning, Förfining och Slutförande. Ett klart steg har en bock, det pågående en pil. En förfining visar sin omgång, till exempel `Förfining, omgång 2 av 5`. Det visas inga procenttal.
+3. Programtexten växer fram under **Programtext** medan modellen skriver.
+4. När jobbet är klart står det `Programmet klarade kontrollen. Tryck på Ladda för att öppna det.` följt av antal block, omgång och antal förfrågningar. Knappen heter nu **Ladda**. Bredvid finns **Generera igen**.
+5. Tryck **Ladda**. Raden ovanför knappen säger i förväg vad som händer, till exempel `Ladda öppnar det som ett nytt program, SLOT.H. NAMEPLATE.H ligger kvar oförändrat i programlistan.`
+
+![Ett färdigt jobb: stegen, resultatraden och knappen Ladda. Bilden är tagen mot testernas låtsasleverantör, så modellnamnen är påhittade](shots/business-ai-done.png)
+
+Så går ett jobb till:
+
+- Servern kontrollerar varje svar med samma tolk som simulatorn använder, och simulatorn mäter den frästa detaljen mot det du bad om.
+- Ett jobb är det första programmet och högst fem förfiningsomgångar. Det slutar vid det första program som går igenom.
+- Det slutar också när en omgång inte ger någon förbättring. Då levereras det bästa kontrollerade programmet om det matchar tillräckligt väl, och raden säger hur väl: `Programmet klarade kontrollen och matchar den planerade detaljen till 88.7 procent (mål 95). Fler omgångar gav ingen förbättring, så förfiningen stoppades.`
+- Det öppna programmet rörs aldrig av ett jobb. Bara **Ladda** för in resultatet.
+- Går inget program igenom finns det bästa försöket kvar under **Utkast (inte laddat)**. **Kopiera utkast** lägger det i urklipp. Ett utkast laddas aldrig av sig självt.
+- **Avbryt** stoppar jobbet. Fliken svarar `Avbrutet. Inget laddades.` och ingen ny förfrågan skickas.
+- Varje konto kan ha ett jobb igång åt gången.
+- Servern har en gräns per användare och månad, 5 US-dollar om inget annat är inställt (`TNC_AI_MONTHLY_BUDGET_USD`). Vilka modeller som får väljas kan begränsas med `TNC_AI_MODELS`. Förvald modell är `deepseek/deepseek-v4.1-flash` (`TNC_AI_DEFAULT_MODEL`).
+
+### Felmeddelanden på fliken AI
+
+| Meddelande | Gör så |
+|---|---|
+| `Ingen OpenRouter-nyckel är lagrad. Ange nyckeln överst.` | spara en nyckel, se [Nyckeln](#nyckeln) |
+| `Du är inte inloggad på servern. Logga in och öppna dialogen igen.` | logga in på servern |
+| `Ett jobb körs redan för det här kontot. Vänta tills det är klart.` | vänta, eller avbryt det andra jobbet |
+| `Månadens AI-budget är slut. Vänta till den 1:a eller be administratören.` | vänta, eller be den som sköter servern höja gränsen |
+| `OpenRouter-kontot har för lite kredit. Fyll på eller byt nyckel.` | fyll på kontot hos OpenRouter |
+| `Modellen är inte tillåten på den här servern. Välj en annan.` | välj en annan modell i listan |
+| `Modellistan kunde inte hämtas.` | tryck **Försök igen**; servern når inte OpenRouter |
+| `Programmet klarade inte kontrollen. Utkastet finns kvar nedan och är inte laddat. Ändra beskrivningen eller välj en annan modell.` | gör beskrivningen tydligare, eller byt modell |
+| `Svaret klipptes vid utdatagränsen. Beskriv en enklare detalj eller välj en modell med högre utdatagräns.` | dela upp detaljen, eller byt modell |
+| `Servern har inte hörts av på 50 sekunder. Jobbet stoppades. Försök igen.` | kontrollera att servern är igång och försök igen |
+| `Servern gick inte att nå. Kontrollera att den körs och försök igen.` | starta servern |
+
+Efter meddelandet kan det stå `Servern:` och en rad på engelska med serverns egen förklaring.
 
 ## Verktyg och verktygstabellen
 
@@ -399,7 +497,7 @@ Med servern har varje maskin också en verktygstabell på sidan Verktygstabeller
 
 ### Från startsidan till maskinen
 
-1. Startsidan visar en START-knapp. Tryck ENTER eller klicka. Uppe till höger byter du språk och pausar bakgrundsfilmen.
+1. Startsidan visar en START-knapp. Tryck ENTER eller klicka. Uppe till höger pausar du bakgrundsfilmen och byter språk med knapparna Svenska, English och Srpski.
 2. Första gången visas en introduktion i tre steg. Tryck Nästa, eller Hoppa över.
 3. Du står i verkstaden. Gå fram till en av de två märkta maskinerna, `fil15` med TNC 426 eller `dmc125` med TNC 430.
 4. Tryck `E` när rutan **Öppna styrningen** visas. Kameran går fram till styrningen och simulatorn öppnas, inställd på den maskinens styrsystem.
@@ -431,6 +529,12 @@ Det finns en enda simulator i verkstaden. Den kör ett program åt gången, så 
 
 Piltangenterna räcker för att ta sig runt utan mus. Rutan längst ner går också att klicka på.
 
+**På telefon och surfplatta.** På en pekskärm visas en rund styrplatta nere till vänster medan du går själv. Skjut knoppen åt det håll du vill gå; ju längre ut, desto fortare. Titta runt genom att dra med ett annat finger var som helst på golvet. Styrplattan försvinner när en panel är öppen. Allt den gör går också att göra från listan Stationer.
+
+![Play på en telefon: styrplattan nere till vänster, språkknapparna SV, EN och SR under raden](shots/play-phone-pad.jpg)
+
+**Bara tangentbord.** Hela vägen går utan mus: ENTER på START, TAB till Stationer, ENTER på **Öppna styrningen**, TAB till **Till verkstaden**, TAB till Dator och en inställning där, ESC för att stänga. Det som har fokus har en synlig ram.
+
 ### Raden uppe till vänster
 
 | Knapp | Vad den gör |
@@ -440,7 +544,7 @@ Piltangenterna räcker för att ta sig runt utan mus. Rutan längst ner går ock
 | Dator | öppnar verkstadsdatorn |
 | Hjälp | visar introduktionen igen |
 | Ljud av / Ljud på | stänger av och slår på ljudet |
-| språkknappen | byter till nästa språk |
+| SV, EN, SR | byter språk direkt: svenska, engelska eller serbiska |
 
 De tre sista vyerna är simulatorns egna kameror, så de öppnar styrningen på maskinen.
 
@@ -519,7 +623,9 @@ Varje maskin har en oljemätare som går från 100 % till 0 %.
 
 ### Mäta detaljen
 
-Ta upp **skjutmåttet** och välj **Mät detaljen** vid en maskin med stängd lucka. Styrningen öppnas med simulatorns kamera på den färdiga detaljen.
+Ta upp **skjutmåttet** och välj **Mät detaljen** vid en maskin med stängd lucka. Styrningen öppnas med simulatorns kamera på detaljen och med Inspektören öppen på panelen **Jämförelse**. Där står körningens mått (cykeltid, matningsväg, snabbväg, rörelser, lägsta Z och bortfräst volym), och med **Spara körning som referens A** jämför du två körningar, se [Köra ett program](#köra-ett-program).
+
+![Mät detaljen: styrningen på fil15 med kameran på detaljen och Inspektören öppen](shots/play-measure.png)
 
 ### Verkstadsdatorn
 
@@ -539,7 +645,7 @@ Ta upp **skjutmåttet** och välj **Mät detaljen** vid en maskin med stängd lu
 
 Det som sparas är oljenivån, strömmen och verktyget i spindeln för varje maskin, vad du har i handen och vilka påskägg du har hittat. Var du står sparas inte. En maskin som sparades med tom spindel kommer tillbaka öppen och låst, i väntan på ett verktyg. Dina program hör till simulatorns profil och sparas där.
 
-**Inställningar.** Språk (Svenska, English, Srpski), Grafik (Låg, Mellan, Hög), Rörelse (Full, Minskad), Miljö (Cold Steel, Workshop Night), Ljud, Textning och de två figurerna. Språk, grafik, rörelse, miljö och ljud delas med simulatorn. **Visa introduktionen igen** öppnar de tre stegen på nytt.
+**Inställningar.** Språk (Svenska, English, Srpski), Grafik (Låg, Mellan, Hög), Rörelse (Full, Minskad), Miljö (Cold Steel, Workshop Night), Ljud, Textning och de två figurerna. Språk, grafik, rörelse, miljö och ljud delas med simulatorn. Decimaltecknet ställs in i simulatorns egna inställningar. **Visa introduktionen igen** öppnar de tre stegen på nytt.
 
 **Hemligheter.** Datorn har en lista över påskäggen. Det du har hittat går att öppna därifrån. Resten får du leta efter själv.
 
@@ -606,11 +712,30 @@ Miljön gäller 3D-scenen och ramen runt den. I Play gäller samma val också ve
 
 Öppna inställningarna med kugghjulet nere till vänster eller med tangenten `,`. På telefon ligger de under Meny. Inställningarna sparas i webbläsaren och gäller direkt. De delas mellan simulatorfilen, Business och Play när de ligger på samma adress. Saknas de, eller är ett värde trasigt, används det förvalda värdet.
 
+### Språk
+
+Gränssnittet finns på tre språk: **Svenska** (förvalt), **English** och **Srpski** (serbiska med latinska bokstäver). Ett språk visas åt gången. CNC-ord som `TOOL CALL`, programtext och styrsystemets felmeddelanden från tolken översätts aldrig.
+
+| Var | Så byter du |
+|---|---|
+| Simulatorn, Business | kugghjulet eller `,`, fliken Allmänt, **Språk** |
+| Introduktionsrutan första gången | steg 1 av 4 |
+| Play, startsidan | knapparna Svenska, English, Srpski uppe till höger |
+| Play, verkstaden | knapparna SV, EN, SR i raden uppe till vänster |
+| Play, verkstadsdatorn | Inställningar, **Språk** |
+
+Valet sparas i webbläsaren och delas mellan simulatorfilen, Business och Play när de ligger på samma adress. Byter du språk i verkstaden byter styrningen språk samtidigt.
+
+![Inställningar, fliken Allmänt: språkväljaren och decimaltecknet](shots/business-settings-general.png)
+
+![Maskinvyn på serbiska, med Inspektören öppen](shots/business-serbian.png)
+
 ### Allmänt
 
 | Inställning | Förvalt | Betyder |
 |---|---|---|
-| Språk | Svenska | Gränssnittets språk: Svenska, English eller Srpski (serbiska med latinska bokstäver). CNC-ord som `TOOL CALL` och programtext översätts aldrig. |
+| Språk | Svenska | Svenska, English eller Srpski, se [Språk](#språk). |
+| Decimaltecken (MP 7280) | Följ språk | Följ språk, Komma eller Punkt. Gäller bara skärmen: inmatning tar både komma och punkt, och det sparade programmet behåller alltid punkten. Se [Polära block](#polära-block-lp-med-pr-och-pa). |
 | Rörelse | System | System följer datorns inställning för minskad rörelse. Reducerad tar bort kameraskakning och animerade övergångar. |
 | Ljud | På | Ljudsignaler vid krasch och varning. |
 | Kortkommandotips | På | Visar tangenten på funktionstangenter, knappar och i tips. |
@@ -700,6 +825,17 @@ Kortkommandona gäller i maskinvyn när ingen textruta har fokus. I Play gäller
 
 Tangenterna i en fråga står under [Guidad inmatning av block](#guidad-inmatning-av-block). Tangenterna i verkstaden står under [Röra sig](#röra-sig).
 
+### Bara tangentbord
+
+Allt i maskinvyn går att nå utan mus.
+
+- TAB och SKIFT+TAB flyttar fokus mellan knappar, flikar och fält. Det som har fokus har en synlig ram.
+- Första TAB på sidan ger länken **Till programmet**, som hoppar över översta raden.
+- ENTER eller MELLANSLAG trycker på knappen som har fokus. Kortkommandona tar aldrig de tangenterna från en knapp med fokus, och inte heller bokstäver som du skriver i ett fält.
+- I en rad med flikar (driftlägen, Inspektören, Hjälp, Inställningar) byter piltangenterna flik.
+- En dialog håller kvar fokus tills du stänger den. ESC stänger den och fokus går tillbaka till knappen som öppnade den.
+- På fliken AI väljer piltangenterna modell, och fokus går till **Avbryt** när ett jobb startar och till **Ladda** när det är klart.
+
 ## Utan server och utan nyckel
 
 Simulatorn är byggd för att fungera ensam. Tabellen visar vad som kräver mer.
@@ -724,16 +860,17 @@ Det här gäller när du är utan server:
 
 - Allt du sparar ligger i den webbläsare du använder. En annan webbläsare eller dator ser det inte förrän du exporterar profilen och importerar den där.
 - Menyn (☰) med bibliotek och konto visas inte i Business.
+- Fliken AI i Nytt program visar en rad om att AI kräver servern. Fliken Manuellt fungerar som vanligt.
 - Simulatorfilen behöver inget internet alls. Utgåvorna behöver bara nå den plats de själva ligger på.
 - Startsidans film i Play finns bara om filmfilerna ligger med i bygget. Saknas de visas det ritade rutnätet i stället.
 
 ## Felsökning
 
-### `PROGRAM MODE — NC START WORKS IN 2 TEST, 3 SINGLE-BLOCK, 4 FULL-RUN`
+### `PROGRAMLÄGE — NC-START FUNGERAR I 2 TEST, 3 ENKELBLOCK, 4 HELKÖRNING`
 
 Du tryckte Kör i PRG REDIGERA, där inget körs. Tryck `2`, `3` eller `4` och sedan MELLANSLAG.
 
-### `NO MOVES TO RUN`
+### `INGA RÖRELSER ATT KÖRA`
 
 Programmet har inga rörelser, till exempel för att det bara har `BEGIN PGM` och `END PGM`, eller för att ett fel stoppar det före första rörelsen. Öppna Inspektören med `F` och läs kontrollerna.
 
@@ -769,13 +906,13 @@ Utgåvan hittar inte simulatorfilen. Kör `python build.py` i projektets rot och
 
 Du öppnade biblioteket, verktygstabellerna eller kontot utan att en server är igång. Starta servern, eller välj **Open the machine** för att gå tillbaka till maskinvyn, som fungerar utan server.
 
-### `AI is off on this server (no OPENROUTER_API_KEY)`
+### `AI kräver den lokala eller hostade servern. Manuellt skapande fungerar som vanligt.`
 
-Servern har ingen OpenRouter-nyckel. Den som sköter servern lägger in en, se [Var nyckeln finns](#var-nyckeln-finns).
+Sidan har ingen server bakom sig, så fliken AI har inget att skicka till. Det gäller simulatorfilen `index.html` och en utgåva som ligger på en vanlig webbplats. Starta servern eller använd skrivbordsappen, se [AI-program och AI-nyckeln](#ai-program-och-ai-nyckeln).
 
-### `OPENROUTER MODEL LIST UNREACHABLE — SHORT OFFLINE LIST; ANY ID CAN STILL BE TYPED`
+### `Ingen OpenRouter-nyckel är lagrad. Ange nyckeln överst.`
 
-Listan över modeller gick inte att hämta, oftast för att du saknar internet. Du ser en kort lista i stället och kan fortfarande skriva ett modellnamn för hand.
+Servern har ingen OpenRouter-nyckel. En administratör skriver in den i fältet överst på fliken AI, se [Nyckeln](#nyckeln). De andra meddelandena på fliken står under [Felmeddelanden på fliken AI](#felmeddelanden-på-fliken-ai).
 
 ### `CYCLE n NOT IMPLEMENTED IN SIMULATOR` eller `TCH PROBE n NOT IMPLEMENTED IN SIMULATOR`
 
@@ -793,7 +930,7 @@ Cykelnumret hör till ett nyare styrsystem och finns inte på TNC 426 eller 430.
 
 Blocket använder fri konturprogrammering (`FPOL`, `FL`, `FLT`, `FC`, `FCT`, `FSELECT`), som simulatorn inte räknar ut. Skriv konturen med `L`, `C`, `CC`, `CR` och `CT` i stället.
 
-### `THIS BLOCK HAS NO DIALOG — EDIT IT AS TEXT`
+### `BLOCKET HAR INGEN DIALOG — REDIGERA DET SOM TEXT`
 
 Du tryckte `F2` på ett block som inte har någon dialog. Ändra det som text på blockraden.
 
@@ -865,13 +1002,15 @@ Allt nedan ligger i webbläsaren, för den adress sidan har.
 | Vad | Var |
 |---|---|
 | Program, projekt och verktygstabell (profilen) | webbläsarens databas för sidan |
-| Språk, styrsystem, miljö, grafik, rörelse, ljud | `tnc.settings.v1` |
+| Språk, decimaltecken, styrsystem, miljö, grafik, rörelse, ljud | `tnc.settings.v1` |
+| Vald AI-modell | `tnc.aigen.model` |
+| Ämnesmaterial; axelvektorer och klicka för punkt | `tnc426.material`, `tnc.viz` |
 | Inspektörens läge och vald maskin, per utgåva | `tnc.edition.business.v1`, `tnc.edition.play.v1` |
 | Play: textning, figurer, om introduktionen är visad | `tnc.edition.play.v1` |
 | Play: sparfilen | `tnc.play.save.v1` |
 | Klara lektioner | `tnc.lessons.v1` |
 
-På servern ligger databasen `tnc.db` och, om en nyckel är sparad, filen `openrouter.key` i serverns datamapp.
+På servern ligger databasen `tnc.db` och, om en nyckel är sparad, filen `openrouter.key` i serverns datamapp (`TNC_DATA_DIR`, i skrivbordsappen systemets mapp för programdata). OpenRouter-nyckeln finns aldrig i webbläsaren.
 
 ### För utvecklare
 

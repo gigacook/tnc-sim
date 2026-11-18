@@ -2,6 +2,8 @@
 
 **Svenska** · [English](#english) · Srpski: priručnik je u [docs/MANUAL.sr.md](docs/MANUAL.sr.md)
 
+Prova direkt: [gigacook.github.io/tnc-sim](https://gigacook.github.io/tnc-sim/) är simulatorfilen, hela simulatorn i en enda fil som fungerar utan internet och utan server. Sidan visar den här versionen först när grenen är sammanfogad.
+
 En simulator i webbläsaren för HEIDENHAIN Klartext-program på styrsystemen TNC 426 och TNC 430. Du skriver eller laddar ett program, kör det och ser verktyget ta bort material ur ämnet, tillsammans med de fel simulatorn hittar. Den är gjord för CNC-programmerare och elever som vill öva utan maskin.
 
 ![Business: programmet NAMEPLATE.H efter en hel körning i maskinvyn](docs/shots/business-workspace.png)
@@ -47,6 +49,10 @@ Verktygstabellen håller längd och radie för varje verktyg, som `TOOL.T` på s
 
 I Play byter du verktyg steg för steg, i 3D eller i stationslistan.
 
+![Fliken AI i dialogen Nytt program, innan någon nyckel är sparad](docs/shots/business-ai-nokey.png)
+
+Fliken AI skriver ett program från en beskrivning. Den kräver servern eller skrivbordsappen; OpenRouter-nyckeln lagras där och aldrig i webbläsaren.
+
 ## Handbok
 
 - [docs/MANUAL.md](docs/MANUAL.md): handboken på svenska.
@@ -64,6 +70,8 @@ En simulator för utbildning. Den är inte knuten till HEIDENHAIN och ska inte a
 <a id="english"></a>
 
 ## English
+
+Try it now: [gigacook.github.io/tnc-sim](https://gigacook.github.io/tnc-sim/) is the offline single-file simulator, the whole simulator in one file that works without internet and without a server. The page shows this version once the branch is merged.
 
 A browser simulator for HEIDENHAIN Klartext programs on the TNC 426 and TNC 430 controls. You write or load a program, run it and watch the tool remove material from the blank, together with the errors the simulator finds. It is made for CNC programmers and students who want to practise without a machine.
 

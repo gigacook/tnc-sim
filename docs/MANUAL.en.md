@@ -2,7 +2,7 @@
 
 [Svenska](MANUAL.md) · English · [Srpski](MANUAL.sr.md) · Short overview: [README](../README.md)
 
-The screenshots show the Swedish interface, which is the default. The text names every control in English, as it appears when the language is set to English.
+The screenshots show the Swedish interface, which is the default. The text names every control in English, as it appears when the language is set to English, see [Language](#language).
 
 ## What it is
 
@@ -150,11 +150,11 @@ When the server answers, Business gets a small menu button (☰) at the edge wit
 
 ### The screen
 
-- **The top bar** has the four operating modes, the buttons Run, Pause and Stop, the button New program, the 426 | 430 switch, and the buttons for the Inspector, Help and Profile.
+- **The top bar** has the four operating modes, the buttons Run, Pause and Stop, the button Programs, the button New program, the 426 | 430 switch, and the buttons for the Inspector, Help and Profile.
 - **The program** is on the left (on the right with the 430 Steel controller). The highlighted block is the one being run or edited. Above the listing are the buttons Tools and Save .H.
 - **The block line** under the program is where you type a block or answer a question.
 - **The soft keys** are at the bottom. Each key also shows its keyboard key in small print.
-- **The test graphics** show the blank, the tool and the tool path. Drag to orbit and use the wheel to zoom. A dashed line is rapid traverse, a solid line is feed. The position (X, Y, Z, spindle speed, feed and tool) is in a box on top of the picture.
+- **The test graphics** show the blank, the tool and the tool path. Drag to orbit and use the wheel to zoom. A dashed line is rapid traverse, a solid line is feed. The position (X, Y, Z, spindle speed, feed and tool) is in a box on top of the picture. Under the slider is **Effects and view**, see [Effects and view](#effects-and-view).
 - **The bottom bar** has the gear for settings, the run state and the number of errors from the checks.
 
 ### Operating modes
@@ -181,6 +181,25 @@ Errors are shown with their block. Open the Inspector with `F` to see run time, 
 ![The Inspector with the figures, the checks and the comparison](shots/business-inspector.png)
 
 To compare two versions of a program: finish a run, choose **Store run as reference A** in the Inspector, change the program and run again. The Compare table shows the difference in cycle time, feed path, rapid path, number of moves, lowest Z and removed volume.
+
+### Effects and view
+
+Under the slider in the test graphics is the line **Effects and view**. Press it to unfold the buttons. None of them changes how the program runs, except Vice, which also turns the check against the vice on and off.
+
+![Effects and view unfolded under the test graphics, with the material picker at the bottom](shots/business-effects.png)
+
+| Button | Key | What it does |
+|---|---|---|
+| Flow view | `V` | shows the program as a flowchart instead of a listing |
+| Chips | `P` | chips and sparks at the tool |
+| Coolant | `K` | the coolant jet, shown when the program has switched on `M8` |
+| Smoke | `B` | smoke and fire at a crash; off at the start |
+| Labels | `L` | the labels for tool, holder and blank |
+| Vice | | draws the vice and checks the tool against it |
+| Axis vectors | | lines in X, Y and Z from the program zero to the tool tip, with values; on the TNC 430 also A and B |
+| Click to pick | | a click in the picture (not a drag) sets a green marker and shows the point's coordinates; ESC removes it |
+
+**The material picker** at the end of the row changes the material of the blank: Aluminium 6061, Titanium Ti-6Al-4V, Mild steel, Stainless 304, Brass and Cast iron, and four looks (Turbine, Aerospace, Ground finish and Cast). The material changes how the blank, the chips and the sparks look. It does not change feed, speed or any check. The choice is stored in the browser.
 
 ### Guided block entry
 
@@ -230,9 +249,9 @@ LP PR+57 PA+157,5 R0 F MAX
 
 How to read it:
 
-- **Decimal comma on the screen.** With the language set to Swedish, the screen shows decimal numbers with a comma. With English it shows a point: `LP PR+57 PA+157.5 R0 F MAX`. You may type a comma or a point in a question; both mean the same.
-- **Point in the file.** In the saved file the block has a point and no space in the feed rate, the way the control writes it: `LP PR+57 PA+157.5 R0 FMAX`. Program text and comments are never rewritten.
-- **Some words always keep their point**, on the Swedish screen too: `BLK FORM 0.1`, `CYCL DEF 7.1`, `TCH PROBE 0.0` and `FN 0:`.
+- **The decimal character on the screen is a setting.** Under Settings, General, **Decimal character (MP 7280)** you choose **Follow language**, **Comma** or **Point**. Follow language is the default and gives a comma in Swedish and Serbian and a point in English: `LP PR+57 PA+157.5 R0 F MAX`. On the control the decimal character is a machine parameter of its own (MP 7280), separate from the dialog language, and it is the same here. You may type a comma or a point in a question; both mean the same.
+- **Point in the file, always.** The setting is for the screen only. In the saved file the block has a point and no space in the feed rate, the way the control writes it: `LP PR+57 PA+157.5 R0 FMAX`. Program text and comments are never rewritten.
+- **Some words always keep their point**, also when the screen shows a comma: `BLK FORM 0.1`, `CYCL DEF 7.1`, `TCH PROBE 0.0` and `FN 0:`.
 - **A malformed number is not accepted.** If you type `1,2,3` as the angle, for example, the question stays.
 
 `P` works the same way for `C` (becomes `CP`), `CT` (becomes `CTP`) and for approach and departure with `APPR` and `DEP`. `CC` is always Cartesian.
@@ -303,7 +322,7 @@ A built-in program cannot be deleted; the simulator answers `BUILT-IN PROGRAM �
 
 ### The profile
 
-Your programs and your tool table save themselves in the browser. Under Profile you can name the profile, export everything as a `.zip` and import it in another browser. On import you choose **Merge** (add) or **Replace**. Clearing the browser's data for the page removes the profile, so export it first.
+Your programs and your tool table save themselves in the browser. Under Profile you can name the profile, export everything as a `.zip` and import it in another browser. On import you choose **Merge into mine** (add) or **Replace mine**. Clearing the browser's data for the page removes the profile, so export it first.
 
 A **project** is a named folder of programs. You create one in the Inspector under the tab My programs. New programs join the active project, and ZIP downloads the folder as `.H` files.
 
@@ -344,32 +363,111 @@ The Programs page on the server shows every program with its versions. There you
 
 ## AI programs and the AI key
 
-The AI tab of the New program dialog writes a program from a description. Choose **New program** to start from nothing or **Change current** to let the AI change the program that is open, write what you want and press **Generate** or **Change the program**. `Ctrl+Z` undoes a change.
+The **AI** tab of the New program dialog (key `N`) writes a Klartext program from a description, or changes the program that is open. The AI goes through the OpenRouter service and no other.
 
-A generation works in rounds. The AI writes a program, the server checks it with the same interpreter the simulator uses, and the simulator measures the cut part against what was asked for. If the program has an error, would crash or does not cut what it should, the findings go back to the AI for a new attempt: the first program plus at most five repair rounds. Only a program that passes is offered for loading. If none passes, the best attempt is kept as a draft that you can open yourself, and nothing is loaded. One generation runs at a time per account.
+AI needs the server: the local one, one that somebody hosts for you, or the desktop app, which has the server built in. The simulator file `index.html` and an edition without a server show one line on the tab instead, and nothing is sent anywhere:
 
-### Where the key lives
+```
+AI needs the local or hosted server. Manual creation works as usual.
+```
 
-The AI goes through the service OpenRouter and no other. That needs an OpenRouter key, and the key stays on the server side, never in the browser.
+No real provider has been run with this version. Every test uses a mock provider, so the result you get depends on the model you choose.
 
-- The server takes the key from the environment variable `OPENROUTER_API_KEY`, or from a key an administrator has stored on the server. A stored key wins over the environment variable. Only an administrator can store or remove a key; in the desktop app the one local user is the administrator.
-- The key is not tested when it is stored. A wrong key shows up at the first generation.
-- A stored key is in the file `openrouter.key` in the server's data folder. Only the account that runs the server can read the file. It is not encrypted, so protect the data folder as you protect other secrets.
-- The key is never written to the database, never put in an answer to the browser and never in a log line.
-- The browser only sends its sign-in to the server. The server adds the key and passes the question on.
-- The server has a limit per user and month, 5 US dollars unless set otherwise (`TNC_AI_MONTHLY_BUDGET_USD`). The models that may be chosen can be limited with `TNC_AI_MODELS`. The default model is `deepseek/deepseek-v4.1-flash`.
+### The key
+
+The OpenRouter key lives on the server, in the desktop app in the app's data folder. It is never in the browser.
+
+**Enter the key.** While the server has no key, the AI tab shows a field at the top.
+
+1. Open New program with `N` and choose the **AI** tab.
+2. Type the key in the field **OpenRouter key**. Under the field it says `The key is sent to the server and stored there. It is never saved in the browser.`
+3. Press **Save key** or ENTER.
+4. The field is cleared and removed, and the tab answers `The key is stored on the server.` The cursor is in the description.
+
+![The AI tab when the server has no key: the OpenRouter key field at the top, nothing typed](shots/business-ai-nokey.png)
+
+**Remove the key.** When a key is stored, the link **Remove the key from the server** is at the bottom of the tab. Press it and then **Confirm: remove the key**. The tab answers `The key was removed from the server.` If the server also has a key in its own configuration it says `The stored key was removed. The server still has a key from its own configuration.`
+
+This holds for the key:
+
+- Only an administrator can store or remove it. Others get `Only an administrator can change the key.` In the desktop app the one local user is an administrator.
+- The key is not tested when it is stored. A wrong key shows at the first generation: `OpenRouter refused the key. Remove it and enter a valid key.`
+- It is stored in the file `openrouter.key` in the server's data folder. Only the account that runs the server can read the file. It is not encrypted, so protect the data folder as you protect other secrets.
+- It is never written to the database, to an answer to the browser or to a log line.
+- Whoever runs the server can give the key in the environment variable `OPENROUTER_API_KEY` instead. A key stored through the tab wins.
+- If an older version had saved a key in this browser, it is deleted when the page loads, and the tab says `A key that was saved in this browser has been deleted from it. The key now lives on the server.`
+
+### New or Change current
+
+At the top of the tab you choose what the AI is to do.
+
+| Mode | You write | What Load does |
+|---|---|---|
+| **New** | **Describe the part**: sizes, shapes, depths | opens the result as a new program under a free name; the program you had open stays unchanged |
+| **Change current** | **What should change in NAMEPLATE.H?** (the name is the open program's) | replaces the text of the open program with the result as one undo step; `Ctrl+Z` brings the original back |
+
+Under the description there are three **Examples**. Pressing one fills in the description. The name of a new program comes from the program's `BEGIN PGM` line; if the name is taken it gets `_2`, `_3` and so on. With no program open, Change current answers `There is no open program to change.` The mode cannot be switched while a job runs.
+
+### Model
+
+The line **Selected model** shows the model in use. Type in **Search models** to shorten the list, and pick with a click or the arrow keys. Pointing at a model, focusing it or tapping it shows its model id, version, context, effective output limit, price per one million tokens and what the model supports. The list and the prices come from OpenRouter through the server. The choice is stored in the browser.
+
+There are no controls for reasoning, tokens, measurement or the number of rounds. They are fixed on the server: medium reasoning where the model supports it, and an output limit that is never above the model's own.
 
 ### What is sent, and when
 
-Nothing you write leaves your computer until you press **Generate** or **Change the program**. Then your description, the tool table and, when you change a program, the program's text go to OpenRouter and on to whoever runs the model you chose. They process the text under their own terms. So do not put anything confidential in the description. You can cancel a generation that is under way with ESC.
+Nothing you write leaves your computer until you press **GENERATE**. The line above the button says what is sent then:
 
-> **TO COMPLETE (the AI dialog and the server's AI interface are still being built).** This section describes only what could be read in the code when the manual was written. The following is to be filled in when the parts are finished:
->
-> 1. Where in the interface an administrator stores and removes the key, and what the buttons are called.
-> 2. The exact text the dialog shows before anything is sent to OpenRouter.
-> 3. What the dialog shows while the rounds run, and how a draft is opened.
-> 4. What applies to the simulator file `index.html` without a server.
-> 5. The error messages the dialog shows (no key, out of credit, monthly limit reached, the model does not answer).
+```
+Pressing GENERATE sends your description and the program text to OpenRouter (a third party).
+```
+
+In the mode Change current it says instead:
+
+```
+Pressing GENERATE sends your description and the whole program NAMEPLATE.H to OpenRouter (a third party).
+```
+
+Your tool table and the selected machine go with the description. OpenRouter and whoever runs the model process the text under their own terms, so write nothing secret in the description.
+
+### Stages and rounds
+
+1. Press **GENERATE**. The button is replaced by **Cancel**.
+2. Under **Progress** the stages appear in the order the server takes them: Generation, Validation, Measurement, Refinement and Completion. A finished stage has a tick, the current one an arrow. A refinement shows its round, for example `Refinement, round 2 of 5`. No percentages are shown.
+3. The program text grows under **Program text** while the model writes.
+4. When the job is done it says `The program passed the check. Press Load to open it.` followed by the number of blocks, the round and the number of requests. The button is now **Load**. Next to it is **Generate again**.
+5. Press **Load**. The line above the button says beforehand what will happen, for example `Load opens it as a new program, SLOT.H. NAMEPLATE.H stays unchanged in the program list.`
+
+![A finished job: the stages, the result line and the Load button. The picture was taken against the tests' mock provider, so the model names are invented](shots/business-ai-done.png)
+
+This is how a job runs:
+
+- The server checks every answer with the same interpreter the simulator uses, and the simulator measures the cut part against what you asked for.
+- A job is the first program and at most five refinement rounds. It ends at the first program that passes.
+- It also ends when a round brings no gain. The best checked program is then delivered if it matches well enough, and the line says how well: `The program passed the check and matches the planned part to 88.7 percent (goal 95). Further rounds did not improve it, so refinement stopped.`
+- A job never touches the open program. Only **Load** brings the result in.
+- If no program passes, the best attempt stays under **Draft (not loaded)**. **Copy draft** puts it on the clipboard. A draft is never loaded by itself.
+- **Cancel** stops the job. The tab answers `Cancelled. Nothing was loaded.` and no further request is sent.
+- Each account can have one job running at a time.
+- The server has a limit per user and month, 5 US dollars unless set otherwise (`TNC_AI_MONTHLY_BUDGET_USD`). Which models may be chosen can be limited with `TNC_AI_MODELS`. The default model is `deepseek/deepseek-v4.1-flash` (`TNC_AI_DEFAULT_MODEL`).
+
+### Error messages on the AI tab
+
+| Message | Do this |
+|---|---|
+| `No OpenRouter key is stored. Enter the key at the top.` | store a key, see [The key](#the-key) |
+| `You are not signed in to the server. Sign in and open the dialog again.` | sign in to the server |
+| `A job is already running for this account. Wait until it has finished.` | wait, or cancel the other job |
+| `This month's AI budget is used up. Wait for the 1st or ask the administrator.` | wait, or ask whoever runs the server to raise the limit |
+| `The OpenRouter account has too little credit. Add credit or change the key.` | add credit at OpenRouter |
+| `This model is not allowed on this server. Pick another one.` | pick another model in the list |
+| `The model list could not be loaded.` | press **Try again**; the server cannot reach OpenRouter |
+| `The program did not pass the check. The draft is kept below and is not loaded. Change the description or pick another model.` | make the description clearer, or change the model |
+| `The answer was cut off at the output limit. Describe a simpler part or pick a model with a larger output limit.` | split the part, or change the model |
+| `Nothing was heard from the server for 50 seconds. The job was stopped. Try again.` | check that the server is running and try again |
+| `The server could not be reached. Check that it is running and try again.` | start the server |
+
+After the message there can be `Server:` and a line with the server's own explanation.
 
 ## Tools and the tool table
 
@@ -401,7 +499,7 @@ With the server each machine also has a tool table on the Tool tables page. In P
 
 ### From the landing page to the machine
 
-1. The landing page shows a START button. Press ENTER or click. At the top right you change the language and pause the background film.
+1. The landing page shows a START button. Press ENTER or click. At the top right you pause the background film and change the language with the buttons Svenska, English and Srpski.
 2. The first time, an introduction in three steps is shown. Press Next, or Skip.
 3. You are standing in the workshop. Walk up to one of the two marked machines, `fil15` with the TNC 426 or `dmc125` with the TNC 430.
 4. Press `E` when the box **Open the control** appears. The camera moves up to the control and the simulator opens, set to that machine's controller.
@@ -433,6 +531,12 @@ There is a single simulator in the workshop. It runs one program at a time, so i
 
 The arrow keys are enough to get around without a mouse. The box at the bottom can also be clicked.
 
+**On a phone or tablet.** On a touch screen a round walk pad is shown at the bottom left while you walk. Push the knob the way you want to go; the further out, the faster. Look around by dragging with another finger anywhere on the floor. The pad goes away while a panel is open. Everything it does can also be done from the Stations list.
+
+![Play on a phone: the walk pad at the bottom left, the language buttons SV, EN and SR under the row](shots/play-phone-pad.jpg)
+
+**Keyboard only.** The whole way works without a mouse: ENTER on START, TAB to Stations, ENTER on **Open the control**, TAB to **To the workshop**, TAB to Computer and a setting there, ESC to close. Whatever has the focus shows a visible ring.
+
 ### The row at the top left
 
 | Button | What it does |
@@ -442,7 +546,7 @@ The arrow keys are enough to get around without a mouse. The box at the bottom c
 | Computer | opens the workshop computer |
 | Help | shows the introduction again |
 | Sound off / Sound on | switches the sound off and on |
-| the language button | switches to the next language |
+| SV, EN, SR | change the language at once: Swedish, English or Serbian |
 
 The last three views are the simulator's own cameras, so they open the control on the machine.
 
@@ -521,7 +625,9 @@ Each machine has an oil meter that goes from 100 % to 0 %.
 
 ### Measuring the part
 
-Pick up the **caliper** and choose **Measure the part** at a machine with its door closed. The control opens with the simulator's camera on the finished part.
+Pick up the **caliper** and choose **Measure the part** at a machine with its door closed. The control opens with the simulator's camera on the part and with the Inspector open on the **Compare** panel. It shows the figures of the run (cycle time, feed path, rapid path, moves, lowest Z and removed volume), and with **Store run as reference A** you compare two runs, see [Running a program](#running-a-program).
+
+![Measure the part: the control on fil15 with the camera on the part and the Inspector open](shots/play-measure.png)
 
 ### The workshop computer
 
@@ -541,7 +647,7 @@ Open it with the button Computer, or walk up to it and press `E`.
 
 What is saved is the oil level, the power and the tool in the spindle of each machine, what you hold in your hand and which Easter eggs you have found. Where you stand is not saved. A machine that was saved with an empty spindle comes back open and locked out, waiting for a tool. Your programs belong to the simulator's profile and are saved there.
 
-**Settings.** Language (Svenska, English, Srpski), Graphics (Low, Medium, High), Motion (Full, Reduced), Environment (Cold Steel, Workshop Night), Sound, Captions and the two characters. Language, graphics, motion, environment and sound are shared with the simulator. **Show the introduction again** opens the three steps once more.
+**Settings.** Language (Svenska, English, Srpski), Graphics (Low, Medium, High), Motion (Full, Reduced), Environment (Cold Steel, Workshop Night), Sound, Captions and the two characters. Language, graphics, motion, environment and sound are shared with the simulator. The decimal character is set in the simulator's own settings. **Show the introduction again** opens the three steps once more.
 
 **Secrets.** The computer keeps a list of the Easter eggs. What you have found can be opened from there. The rest is for you to look for.
 
@@ -608,11 +714,30 @@ The environment applies to the 3D scene and the frame around it. In Play the sam
 
 Open the settings with the gear at the bottom left or with the key `,`. On a phone they are under Menu. The settings are stored in the browser and apply at once. They are shared between the simulator file, Business and Play when these are on the same address. If they are missing, or a value is damaged, the default is used.
 
+### Language
+
+The interface comes in three languages: **Svenska** (the default), **English** and **Srpski** (Serbian in Latin script). One language is shown at a time. CNC words such as `TOOL CALL`, program text and the interpreter's error messages are never translated.
+
+| Where | How you change it |
+|---|---|
+| The simulator, Business | the gear or `,`, the General tab, **Language** |
+| The introduction card on the first visit | step 1 of 4 |
+| Play, the landing page | the buttons Svenska, English, Srpski at the top right |
+| Play, the workshop | the buttons SV, EN, SR in the row at the top left |
+| Play, the workshop computer | Settings, **Language** |
+
+The choice is stored in the browser and shared between the simulator file, Business and Play when these are on the same address. Changing the language in the workshop changes the control's language at the same time.
+
+![Settings, the General tab: the language switch and the decimal character](shots/business-settings-general.png)
+
+![The machine workspace in Serbian, with the Inspector open](shots/business-serbian.png)
+
 ### General
 
 | Setting | Default | Meaning |
 |---|---|---|
-| Language | Svenska | The language of the interface: Svenska, English or Srpski (Serbian in Latin script). CNC words such as `TOOL CALL` and program text are never translated. |
+| Language | Svenska | Svenska, English or Srpski, see [Language](#language). |
+| Decimal character (MP 7280) | Follow language | Follow language, Comma or Point. For the screen only: input takes both a comma and a point, and the stored program always keeps the point. See [Polar blocks](#polar-blocks-lp-with-pr-and-pa). |
 | Motion | System | System follows the computer's setting for reduced motion. Reduced removes camera shake and animated transitions. |
 | Sound | On | Signals for crashes and warnings. |
 | Shortcut hints | On | Shows the key on soft keys, buttons and in tooltips. |
@@ -702,6 +827,17 @@ The shortcuts apply in the machine workspace while no text box has the focus. In
 
 The keys inside a question are under [Guided block entry](#guided-block-entry). The keys in the workshop are under [Moving](#moving).
 
+### Keyboard only
+
+Everything in the machine workspace can be reached without a mouse.
+
+- TAB and SHIFT+TAB move the focus between buttons, tabs and fields. Whatever has the focus shows a visible ring.
+- The first TAB on the page gives the link **Skip to the program**, which jumps past the top bar.
+- ENTER or SPACE presses the button that has the focus. The shortcuts never take those keys from a focused button, nor letters that you type in a field.
+- In a row of tabs (operating modes, the Inspector, Help, Settings) the arrow keys change tab.
+- A dialog keeps the focus until you close it. ESC closes it and the focus goes back to the button that opened it.
+- On the AI tab the arrow keys pick a model, and the focus goes to **Cancel** when a job starts and to **Load** when it is done.
+
 ## Without a server and without a key
 
 The simulator is built to work on its own. The table shows what needs more.
@@ -726,6 +862,7 @@ This applies when you have no server:
 
 - Everything you save is in the browser you are using. Another browser or computer does not see it until you export the profile and import it there.
 - The menu (☰) with the library and the account is not shown in Business.
+- The AI tab of New program shows one line saying that AI needs the server. The Manual tab works as usual.
 - The simulator file needs no internet at all. The editions only need to reach the place they are hosted on.
 - The landing film in Play is only there if the film files are part of the build. Without them the drawn grid is shown instead.
 
@@ -771,13 +908,13 @@ The edition cannot find the simulator file. Run `python build.py` in the project
 
 You opened the library, the tool tables or the account while no server is running. Start the server, or choose **Open the machine** to go back to the machine workspace, which works without a server.
 
-### `AI is off on this server (no OPENROUTER_API_KEY)`
+### `AI needs the local or hosted server. Manual creation works as usual.`
 
-The server has no OpenRouter key. Whoever runs the server adds one, see [Where the key lives](#where-the-key-lives).
+The page has no server behind it, so the AI tab has nowhere to send anything. This is the case for the simulator file `index.html` and for an edition on a plain web host. Start the server or use the desktop app, see [AI programs and the AI key](#ai-programs-and-the-ai-key).
 
-### `OPENROUTER MODEL LIST UNREACHABLE — SHORT OFFLINE LIST; ANY ID CAN STILL BE TYPED`
+### `No OpenRouter key is stored. Enter the key at the top.`
 
-The list of models could not be fetched, usually because you have no internet. You see a short list instead and can still type a model name by hand.
+The server has no OpenRouter key. An administrator types it into the field at the top of the AI tab, see [The key](#the-key). The other messages of the tab are under [Error messages on the AI tab](#error-messages-on-the-ai-tab).
 
 ### `CYCLE n NOT IMPLEMENTED IN SIMULATOR` or `TCH PROBE n NOT IMPLEMENTED IN SIMULATOR`
 
@@ -867,13 +1004,15 @@ Everything below is in the browser, for the address the page has.
 | What | Where |
 |---|---|
 | Programs, projects and the tool table (the profile) | the browser's database for the page |
-| Language, controller, environment, graphics, motion, sound | `tnc.settings.v1` |
+| Language, decimal character, controller, environment, graphics, motion, sound | `tnc.settings.v1` |
+| The picked AI model | `tnc.aigen.model` |
+| Stock material; axis vectors and click to pick | `tnc426.material`, `tnc.viz` |
 | The Inspector's state and the selected machine, per edition | `tnc.edition.business.v1`, `tnc.edition.play.v1` |
 | Play: captions, characters, whether the introduction was shown | `tnc.edition.play.v1` |
 | Play: the save | `tnc.play.save.v1` |
 | Finished lessons | `tnc.lessons.v1` |
 
-On the server, the database `tnc.db` and, if a key is stored, the file `openrouter.key` are in the server's data folder.
+On the server, the database `tnc.db` and, if a key is stored, the file `openrouter.key` are in the server's data folder (`TNC_DATA_DIR`; in the desktop app the system's app-data folder). The OpenRouter key is never in the browser.
 
 ### For developers
 

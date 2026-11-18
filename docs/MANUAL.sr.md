@@ -2,7 +2,7 @@
 
 [Svenska](MANUAL.md) · [English](MANUAL.en.md) · Srpski · Kratak pregled: [README](../README.md)
 
-Slike prikazuju švedski interfejs, koji je podrazumevan. Nazivi dugmadi, kartica i poruka u tekstu navedeni su onako kako ih prikazuje engleski interfejs, da biste ih lako pronašli na ekranu. CNC sintaksa i imena se nikada ne prevode.
+Nazivi dugmadi, kartica i poruka u tekstu navedeni su onako kako ih prikazuje srpski interfejs (Podešavanja, Opšte, **Jezik**: Srpski, vidite [Jezik](#jezik)). Većina slika prikazuje švedski interfejs, koji je podrazumevan; raspored je isti. CNC sintaksa, imena i poruke interpretera se nikada ne prevode.
 
 ## Šta je ovo
 
@@ -45,11 +45,11 @@ Simulator nije povezan sa kompanijom HEIDENHAIN. Namenjen je obuci i ne služi z
 - **Blok**: jedan red programa, na primer `L X+10 Y+20 R0 FMAX` (pravolinijsko kretanje brzim hodom).
 - **Ciklus**: ugrađena obrada, na primer bušenje ili glodanje džepa. Podešava se sa `CYCL DEF`, a pokreće sa `CYCL CALL`.
 - **Pripremak**: sirovi materijal, koji program zadaje sa `BLK FORM`.
-- **Režim rada**: ono što upravljanje trenutno radi. Postoje četiri: PRG EDIT (pisanje), TEST (provera), SINGLE-BLOCK (izvršavanje blok po blok) i FULL-RUN (izvršavanje celog programa).
-- **Softverski tasteri**: red dugmadi ispod programa. Njihov sadržaj se menja sa režimom rada, kao soft keys na upravljanju.
+- **Režim rada**: ono što upravljanje trenutno radi. Postoje četiri: PRG IZMENA (pisanje), TEST (provera), BLOK PO BLOK (izvršavanje blok po blok) i CEO PROGRAM (izvršavanje celog programa). Na engleskom se zovu PRG EDIT, TEST, SINGLE-BLOCK i FULL-RUN.
+- **Funkcijski tasteri**: red dugmadi ispod programa. Njihov sadržaj se menja sa režimom rada, kao soft keys na upravljanju.
 - **Polarne koordinate**: tačka zadata rastojanjem (`PR`) i uglom (`PA`) od pola, umesto sa X i Y. Pol se postavlja blokom `CC`.
-- **Inspektor** (Inspector): tabla sa desne strane sa merenjima iz izvršavanja, proverama, referentnim materijalom i vašim programima. Zatvorena je dok je ne otvorite.
-- **Profil** (Profile): vaši programi i vaša tabela alata, sačuvani u ovom pregledaču.
+- **Inspektor**: tabla sa desne strane sa merenjima iz izvršavanja, proverama, referentnim materijalom i vašim programima. Zatvorena je dok je ne otvorite.
+- **Profil**: vaši programi i vaša tabela alata, sačuvani u ovom pregledaču.
 - **Izdanje**: Business ili Play.
 - **Stanica**: stvar u Play radionici kod koje nešto možete da uradite, na primer mašina, stalak za alate ili računar.
 
@@ -93,7 +93,7 @@ Za datoteku simulatora ne morate ništa da instalirate: otvorite `index.html` u 
 
    Otvorite adresu. Treba da vidite radni prostor mašine sa programom `NAMEPLATE.H` i karticu koja pita za jezik. Ako je port 5426 zauzet, komanda bira sledeći slobodan port i ispisuje njega.
 
-![Prvo pokretanje: radni prostor mašine sa uvodnom karticom dole desno](shots/business-first-run.png)
+![Prvo pokretanje: radni prostor mašine sa uvodnom karticom dole desno (švedski interfejs)](shots/business-first-run.png)
 
 Datoteka simulatora `index.html` dolazi uz projekat, pa ne morate da je gradite. Ako ste nešto promenili u fascikli `sim`, izgradite je ponovo sa `python build.py` (na macOS i Linux sistemima `python3 build.py`).
 
@@ -142,53 +142,72 @@ $env:TNC_SERVER = 'http://127.0.0.1:8426'
 npm run dev:business
 ```
 
-Kada server odgovara, Business dobija malo dugme menija (☰) na ivici sa stavkama Programs, Tool tables, Account i, za administratore, Users. Kada prvi put otvorite biblioteku na novom serveru, strana traži da napravite prvi nalog, koji postaje administrator.
+Kada server odgovara, Business dobija malo dugme menija (☰) na ivici sa stavkama Programi, Tabele alata, Nalog i, za administratore, Korisnici. Kada prvi put otvorite biblioteku na novom serveru, strana traži da napravite prvi nalog, koji postaje administrator.
 
 ## Upravljanje i uređivanje
 
-![Radni prostor mašine posle celog izvršavanja programa NAMEPLATE.H](shots/business-workspace.png)
+![Radni prostor mašine posle celog izvršavanja programa NAMEPLATE.H (švedski interfejs)](shots/business-workspace.png)
 
 ### Ekran
 
-- **Gornja traka** ima četiri režima rada, dugmad Run, Pause i Stop, dugme New program, prekidač 426 | 430 i dugmad za Inspector, Help i Profile.
-- **Program** je levo (sa upravljanjem 430 Steel desno). Označeni blok je onaj koji se izvršava ili uređuje. Iznad liste su dugmad Tools i Save .H.
+- **Gornja traka** ima četiri režima rada, dugmad Pokreni, Pauza i Zaustavi, dugme Programi, dugme Novi program, prekidač 426 | 430 i dugmad Inspektor, Pomoć i Profil.
+- **Program** je levo (sa upravljanjem 430 Steel desno). Označeni blok je onaj koji se izvršava ili uređuje. Iznad liste su dugmad Alat i Sačuvaj .H.
 - **Red bloka** ispod programa je mesto gde kucate blok ili odgovarate na pitanje.
-- **Softverski tasteri** su na dnu. Svaki taster sitnim slovima prikazuje i svoj taster na tastaturi.
-- **Test grafika** prikazuje pripremak, alat i putanju alata. Prevucite da rotirate, točkićem zumirajte. Isprekidana linija je brzi hod, puna linija je pomak. Pozicija (X, Y, Z, broj obrtaja, pomak i alat) nalazi se u okviru preko slike.
+- **Funkcijski tasteri** su na dnu. Svaki taster sitnim slovima prikazuje i svoj taster na tastaturi.
+- **Test grafika** prikazuje pripremak, alat i putanju alata. Prevucite da rotirate, točkićem zumirajte. Isprekidana linija je brzi hod, puna linija je pomak. Pozicija (X, Y, Z, broj obrtaja, pomak i alat) nalazi se u okviru preko slike. Ispod klizača je **Efekti i prikaz**, vidite [Efekti i prikaz](#efekti-i-prikaz).
 - **Donja traka** ima zupčanik za podešavanja, stanje izvršavanja i broj grešaka iz provera.
 
 ### Režimi rada
 
-| Taster | Režim | Šta radi RAZMAKNICA |
+| Taster | Režim | Šta radi RAZMAK |
 |---|---|---|
-| `1` | PRG EDIT | ništa; softverski tasteri pišu blokove |
+| `1` | PRG IZMENA | ništa; funkcijski tasteri pišu blokove |
 | `2` | TEST | pokreće i zaustavlja |
-| `3` | SINGLE-BLOCK | izvršava sledeći blok |
-| `4` | FULL-RUN | pokreće i zaustavlja |
+| `3` | BLOK PO BLOK | izvršava sledeći blok |
+| `4` | CEO PROGRAM | pokreće i zaustavlja |
 
-Ako pritisnete Run u režimu PRG EDIT, simulator odgovara `PROGRAM MODE — NC START WORKS IN 2 TEST, 3 SINGLE-BLOCK, 4 FULL-RUN`. Prvo promenite režim.
+Ako pritisnete Pokreni u režimu PRG IZMENA, simulator odgovara `REŽIM PROGRAMIRANJA — NC START RADI U 2 TEST, 3 BLOK PO BLOK, 4 CEO PROGRAM`. Prvo promenite režim.
 
 ### Pokretanje programa
 
-1. Pritisnite `2` za TEST ili `4` za FULL-RUN.
-2. Pritisnite RAZMAKNICU ili Run. Pritisnite ponovo za pauzu.
+1. Pritisnite `2` za TEST ili `4` za CEO PROGRAM.
+2. Pritisnite RAZMAK ili Pokreni. Pritisnite ponovo za pauzu.
 3. Izaberite brzinu tasterima `5` do `9`: 1×, 4×, 16×, 64× i MAX.
 4. Povucite klizač ispod grafike, ili pritisnite `←` i `→`, da se krećete napred i nazad kroz izvršavanje. Kada idete unazad, pripremak se ponovo izgrađuje.
-5. Pritisnite `R` ili Stop da krenete od početka.
+5. Pritisnite `R` ili Zaustavi da krenete od početka.
 
-Greške se prikazuju uz svoj blok. Otvorite Inspector tasterom `F` da vidite vreme izvršavanja, put u pomaku, put u brzom hodu, najniži Z i skinutu zapreminu, kao i listu provera.
+Greške se prikazuju uz svoj blok. Otvorite Inspektor tasterom `F` da vidite vreme izvršavanja, put u pomaku, put u brzom hodu, najniži Z i skinutu zapreminu, kao i listu provera.
 
-![Inspector sa merenjima, proverama i poređenjem](shots/business-inspector.png)
+![Inspektor sa merenjima, proverama i poređenjem (švedski interfejs)](shots/business-inspector.png)
 
-Da uporedite dve verzije programa: završite izvršavanje, izaberite **Store run as reference A** u Inspectoru, promenite program i pokrenite ga ponovo. Tabela Compare prikazuje razliku u vremenu ciklusa, putu u pomaku, putu u brzom hodu, broju kretanja, najnižem Z i skinutoj zapremini.
+Da uporedite dve verzije programa: završite izvršavanje, izaberite **Sačuvaj rad kao referencu A** u Inspektoru, promenite program i pokrenite ga ponovo. Tabela Poređenje prikazuje razliku u vremenu ciklusa, putu u pomaku, putu u brzom hodu, broju kretanja, najnižem Z i skinutoj zapremini.
+
+### Efekti i prikaz
+
+Ispod klizača u test grafici je red **Efekti i prikaz**. Pritisnite ga da razvijete dugmad. Nijedno od njih ne menja način na koji se program izvršava, osim dugmeta Stega, koje uključuje i isključuje i proveru prema stegi.
+
+![Efekti i prikaz razvijeni ispod test grafike, sa izborom materijala na dnu (švedski interfejs)](shots/business-effects.png)
+
+| Dugme | Taster | Šta radi |
+|---|---|---|
+| Dijagram toka | `V` | prikazuje program kao dijagram toka umesto kao listu |
+| Strugotina | `P` | strugotina i varnice kod alata |
+| Emulzija | `K` | mlaz emulzije, koji se vidi kada program uključi `M8` |
+| Dim | `B` | dim i vatra pri sudaru; isključeno na početku |
+| Oznake | `L` | oznake za alat, držač i pripremak |
+| Stega | | crta stegu i proverava alat prema njoj |
+| Vektori osa | | linije u X, Y i Z od nulte tačke programa do vrha alata, sa vrednostima; na TNC 430 i A i B |
+| Klik za tačku | | klik na sliku (ne prevlačenje) postavlja zelenu oznaku i prikazuje koordinate te tačke; ESC je uklanja |
+
+**Izbor materijala** na kraju reda menja materijal pripremka: Aluminium 6061, Titanium Ti-6Al-4V, Mild steel, Stainless 304, Brass i Cast iron, i četiri izgleda (Turbine, Aerospace, Ground finish i Cast). Materijal menja izgled pripremka, strugotine i varnica. Ne menja pomak, broj obrtaja ni bilo koju proveru. Izbor se čuva u pregledaču.
 
 ### Vođeni unos bloka
 
-U režimu PRG EDIT blok gradite odgovarajući na jedno po jedno pitanje, kao na upravljanju. Ne morate da znate kako se blok piše.
+U režimu PRG IZMENA blok gradite odgovarajući na jedno po jedno pitanje, kao na upravljanju. Ne morate da znate kako se blok piše.
 
-1. Pritisnite `1` za PRG EDIT.
+1. Pritisnite `1` za PRG IZMENA.
 2. Postavite kursor na blok posle koga treba da dođe novi.
-3. Pritisnite softverski taster za vrstu bloka, na primer `L` za pravu liniju. Red iznad softverskih tastera pokazuje na kom ste pitanju.
+3. Pritisnite funkcijski taster za vrstu bloka, na primer `L` za pravu liniju. Red iznad funkcijskih tastera pokazuje na kom ste pitanju.
 4. Upišite odgovor i pritisnite ENTER. ENTER bez vrednosti preskače pitanje koje može da se preskoči.
 5. Posle poslednjeg pitanja blok se čuva i simulator ponovo proverava program.
 
@@ -206,23 +225,23 @@ U režimu PRG EDIT blok gradite odgovarajući na jedno po jedno pitanje, kao na 
 | `+` `-` | menja znak |
 | `#` | uzima trenutnu poziciju |
 
-Softverski tasteri u režimu PRG EDIT raspoređeni su u tri reda. Prvi red ima funkcije putanje `L`, `CC`, `C`, `CR`, `CT`, `CP`, `RND` i `CHF`. Drugi red ima `APPR/DEP`, `TOOL DEF`, `TOOL CALL`, `CYCL DEF`, `CYCL CALL`, `LBL SET`, `LBL CALL` i `Q`. Treći red ima uređivanje, umetanje, brisanje, poništavanje, ponavljanje, alate, sirovi tekst i proveru.
+Funkcijski tasteri u režimu PRG IZMENA raspoređeni su u tri reda. Prvi red ima funkcije putanje `L`, `CC`, `C`, `CR`, `CT`, `CP`, `RND` i `CHF`. Drugi red ima `APPR/DEP`, `TOOL DEF`, `TOOL CALL`, `CYCL DEF`, `CYCL CALL`, `LBL SET`, `LBL CALL` i `Q`. Treći red ima uređivanje, umetanje, brisanje, poništavanje, ponavljanje, alate, sirovi tekst i proveru.
 
 ### Polarni blokovi: LP sa PR i PA
 
 Polarni blok zadaje cilj radijusom `PR` i uglom `PA` od pola. Pol mora da postoji pre toga, u bloku `CC`.
 
 1. Upišite pol, na primer `CC X+0 Y+0`.
-2. Pritisnite softverski taster `L`. Pitanje se najpre odnosi na obične koordinate.
-3. Pritisnite `P`. Dijalog prelazi na polarnu liniju i dobija oznaku **Polar coordinates**.
+2. Pritisnite funkcijski taster `L`. Pitanje se najpre odnosi na obične koordinate.
+3. Pritisnite `P`. Dijalog prelazi na polarnu liniju i dobija oznaku **Polarne koordinate**.
 4. Odgovorite na radijus, na primer `57`, i pritisnite ENTER.
 5. Odgovorite na ugao, na primer `157,5`, i pritisnite ENTER.
-6. Izaberite korekciju radijusa softverskim tasterom `R0`, `RL` ili `RR`.
+6. Izaberite korekciju radijusa funkcijskim tasterom `R0`, `RL` ili `RR`.
 7. Odgovorite na pomak, na primer `MAX`, a zatim na M funkciju, ili pritisnite ENTER ako je nema.
 
-![Dijalog za polarni blok, sa pregledom LP PR+57 PA+157,5 R0 F MAX](shots/business-polar-dialog.png)
+![Dijalog za polarni blok, sa pregledom LP PR+57 PA+157,5 R0 F MAX (švedski interfejs)](shots/business-polar-dialog.png)
 
-Ispod pitanja prikazuje se blok dokle ste stigli sa odgovorima. Kada završite, na švedskom ekranu u programu stoji:
+Ispod pitanja prikazuje se blok dokle ste stigli sa odgovorima. Kada završite, u programu stoji:
 
 ```
 LP PR+57 PA+157,5 R0 F MAX
@@ -230,14 +249,14 @@ LP PR+57 PA+157,5 R0 F MAX
 
 Kako se to čita:
 
-- **Decimalni zarez na ekranu.** Kada je jezik švedski, ekran prikazuje decimalne brojeve sa zarezom. Kada je jezik engleski, prikazuje tačku: `LP PR+57 PA+157.5 R0 F MAX`. U pitanju smete da upišete zarez ili tačku; oba znače isto.
-- **Tačka u datoteci.** U sačuvanoj datoteci blok ima tačku i nema razmak u pomaku, onako kako ga upravljanje piše: `LP PR+57 PA+157.5 R0 FMAX`. Tekst programa i komentari se nikada ne prepravljaju.
-- **Neke reči uvek zadržavaju tačku**, i na švedskom ekranu: `BLK FORM 0.1`, `CYCL DEF 7.1`, `TCH PROBE 0.0` i `FN 0:`.
+- **Decimalni znak na ekranu je podešavanje.** Pod Podešavanja, Opšte, **Decimalni znak (MP 7280)** birate **Prati jezik**, **Zarez** ili **Tačka**. Prati jezik je podrazumevano i daje zarez na srpskom i švedskom, a tačku na engleskom: `LP PR+57 PA+157.5 R0 F MAX`. Na upravljanju je decimalni znak poseban mašinski parametar (MP 7280), odvojen od jezika dijaloga, i tako je i ovde. U pitanju smete da upišete zarez ili tačku; oba znače isto.
+- **Tačka u datoteci, uvek.** Podešavanje važi samo za ekran. U sačuvanoj datoteci blok ima tačku i nema razmak u pomaku, onako kako ga upravljanje piše: `LP PR+57 PA+157.5 R0 FMAX`. Tekst programa i komentari se nikada ne prepravljaju.
+- **Neke reči uvek zadržavaju tačku**, i kada ekran prikazuje zarez: `BLK FORM 0.1`, `CYCL DEF 7.1`, `TCH PROBE 0.0` i `FN 0:`.
 - **Neispravan broj se ne prihvata.** Ako, na primer, kao ugao upišete `1,2,3`, pitanje ostaje.
 
 `P` radi na isti način za `C` (postaje `CP`), `CT` (postaje `CTP`) i za prilaz i odlazak sa `APPR` i `DEP`. `CC` je uvek u Dekartovim koordinatama.
 
-![Gotov polarni blok u programu, sa softverskim tasterima režima PRG EDIT](shots/business-polar-block.png)
+![Gotov polarni blok u programu, sa funkcijskim tasterima režima PRG IZMENA (švedski interfejs)](shots/business-polar-block.png)
 
 ### Izmena bloka
 
@@ -245,7 +264,7 @@ Postavite kursor na blok i pritisnite `E`.
 
 - Polarni blok (`LP`, `CP`, `CTP`) otvara se u svom dijalogu sa popunjenim trenutnim vrednostima. ENTER zadržava vrednost. Kada završite, blok se zamenjuje.
 - Svaki drugi blok otvara se u redu bloka kao tekst. Izmenite tekst i pritisnite ENTER da sačuvate ili ESC da odustanete.
-- `F2` prebacuje između dijaloga i teksta dok uređujete. Blokovi `L`, `CC`, `C`, `CR`, `CT`, `RND` i `CHF` mogu se tako otvoriti u dijalogu. Za blok koji nema dijalog simulator odgovara `THIS BLOCK HAS NO DIALOG — EDIT IT AS TEXT`.
+- `F2` prebacuje između dijaloga i teksta dok uređujete. Blokovi `L`, `CC`, `C`, `CR`, `CT`, `RND` i `CHF` mogu se tako otvoriti u dijalogu. Za blok koji nema dijalog simulator odgovara `OVAJ BLOK NEMA DIJALOG — IZMENITE GA KAO TEKST`.
 
 `I` umeće novi blok posle kursora, `D` ili DELETE briše blok, a `C` ga kopira. `Ctrl+Z` poništava, a `Ctrl+Shift+Z` ili `Ctrl+Y` ponavlja.
 
@@ -255,45 +274,45 @@ Pritisnite TAB dok nijedno dugme ni klizač nema fokus. Ceo program se tada prik
 
 ### Pomoć i lekcije
 
-Pritisnite `H`. Fioka ima pet kartica: Lessons (svaka lekcija učitava sopstveni program i pokreće mašinu umesto vas), Crash it (poznati načini da se mašina slupa, ovde bez rizika), Manual, Shortcuts i AI setup. Lekcije ne diraju vaše programe.
+Pritisnite `H`. Fioka ima pet kartica: Lekcije (svaka lekcija učitava sopstveni program i pokreće mašinu umesto vas), Sudar (poznati načini da se mašina slupa, ovde bez rizika), Priručnik, Prečice i AI podešavanje. Lekcije ne diraju vaše programe.
 
-![Fioka pomoći sa karticom prečica](shots/business-help-shortcuts.png)
+![Fioka pomoći sa karticom prečica (švedski interfejs)](shots/business-help-shortcuts.png)
 
 ### Na telefonu
 
-Na ekranu užem od 900 piksela radni prostor mašine deli se na tri radne površine: Program, Graphics i Status. Menjajte ih karticama ili prevlačenjem u stranu. Softverski tasteri ostaju na dnu, po osam odjednom. New program, prekidač mašine, Help, Profile i podešavanja nalaze se pod Menu.
+Na ekranu užem od 900 piksela radni prostor mašine deli se na tri radne površine: Program, Grafika i Status. Menjajte ih karticama ili prevlačenjem u stranu. Funkcijski tasteri ostaju na dnu, po osam odjednom. Novi program, prekidač mašine, Pomoć, Profil i podešavanja nalaze se pod Meni.
 
-![Radni prostor mašine na telefonu, radna površina sa grafikom](shots/business-phone.png)
+![Radni prostor mašine na telefonu, radna površina sa grafikom (švedski interfejs)](shots/business-phone.png)
 
 ## Programi: čuvanje, učitavanje i biblioteka
 
 ### Novi program
 
-Pritisnite `N` ili New program. Dijalog ima dve kartice.
+Pritisnite `N` ili Novi program. Dijalog ima dve kartice.
 
-- **Manual**: upišite ime programa sa A–Z, 0–9 i donjom crtom i pritisnite Create. Simulator pravi `BEGIN PGM` i `END PGM` u milimetrima, a ostatak pišete blok po blok.
+- **Ručno**: upišite ime programa sa A–Z, 0–9 i donjom crtom i pritisnite Napravi. Simulator pravi `BEGIN PGM` i `END PGM` u milimetrima, a ostatak pišete blok po blok.
 - **AI**: vidite [AI programi i AI ključ](#ai-programi-i-ai-ključ).
 
-![Dijalog za novi program, kartica za ručni unos](shots/business-new-program.png)
+![Dijalog za novi program, kartica za ručni unos (švedski interfejs)](shots/business-new-program.png)
 
 ### Lista programa
 
-Pritisnite `M` ili dugme Programs. Lista prikazuje sve programe u simulatoru sa veličinom, statusom i projektom. Birajte strelicama.
+Pritisnite `M` ili dugme Programi. Lista prikazuje sve programe u simulatoru sa veličinom, statusom i projektom. Birajte strelicama.
 
-![Lista programa sa ugrađenim i pokaznim programima](shots/business-programs.png)
+![Lista programa sa ugrađenim i pokaznim programima (švedski interfejs)](shots/business-programs.png)
 
-| Softverski taster | Taster | Šta radi |
+| Funkcijski taster | Taster | Šta radi |
 |---|---|---|
-| NEW | `N` | otvara dijalog New program |
-| OPEN | ENTER | otvara označeni program |
+| NOVI | `N` | otvara dijalog Novi program |
+| OTVORI | ENTER | otvara označeni program |
 | LOAD FROM PC | `Ctrl+O` | učitava datoteku sa računara |
 | SAVE .H | `Ctrl+S` | čuva program kao datoteku |
 | RESTORE ORIGINAL | `R` | vraća ugrađeni program u izvorno stanje |
-| DELETE | DELETE | briše vaš program |
+| OBRIŠI | DELETE | briše vaš program |
 | ADD TO PROJECT | | dodaje program u aktivni projekat |
-| END | ESC | vraća na program |
+| KRAJ | ESC | vraća na program |
 
-Ugrađeni program ne može da se obriše; simulator odgovara `BUILT-IN PROGRAM — USE RESTORE ORIGINAL INSTEAD`.
+Ugrađeni program ne može da se obriše; simulator odgovara `UGRAĐEN PROGRAM — KORISTITE VRAĆANJE ORIGINALA`.
 
 ### Čuvanje i učitavanje datoteka
 
@@ -303,9 +322,9 @@ Ugrađeni program ne može da se obriše; simulator odgovara `BUILT-IN PROGRAM �
 
 ### Profil
 
-Vaši programi i vaša tabela alata sami se čuvaju u pregledaču. Pod Profile možete profilu da date ime, da izvezete sve kao `.zip` i da ga uvezete u drugom pregledaču. Pri uvozu birate **Merge** (dodaj) ili **Replace** (zameni). Brisanjem podataka pregledača za stranu profil nestaje, zato ga prethodno izvezite.
+Vaši programi i vaša tabela alata sami se čuvaju u pregledaču. Pod Profil možete profilu da date ime, da izvezete sve kao `.zip` i da ga uvezete u drugom pregledaču. Pri uvozu birate **Spoji sa mojim** (dodaj) ili **Zameni moj** (zameni). Brisanjem podataka pregledača za stranu profil nestaje, zato ga prethodno izvezite.
 
-**Projekat** je imenovana fascikla sa programima. Pravite ga u Inspectoru na kartici My programs. Novi programi ulaze u aktivni projekat, a ZIP preuzima fasciklu kao datoteke `.H`.
+**Projekat** je imenovana fascikla sa programima. Pravite ga u Inspektoru na kartici Moji programi. Novi programi ulaze u aktivni projekat, a ZIP preuzima fasciklu kao datoteke `.H`.
 
 ### Šesnaest pokaznih programa
 
@@ -332,91 +351,170 @@ Uz simulator dolazi šesnaest programa, od kojih svaki pokazuje jednu tehniku. N
 
 ### Biblioteka na serveru
 
-Kada server radi i prijavljeni ste, program sa ekrana možete da stavite u biblioteku servera: otvorite meni (☰) i izaberite **Save to library**. Meni odgovara jednim od ovih redova:
+Kada server radi i prijavljeni ste, program sa ekrana možete da stavite u biblioteku servera: otvorite meni (☰) i izaberite **Sačuvaj u biblioteku**. Meni odgovara jednim od ovih redova:
 
 ```
-NAMEPLATE.H added to the library.
-NAMEPLATE.H saved as v2.
-NAMEPLATE.H is unchanged (v2).
+NAMEPLATE.H je dodat u biblioteku.
+NAMEPLATE.H sačuvan kao v2.
+NAMEPLATE.H je nepromenjen (v2).
 ```
 
-Strana Programs na serveru prikazuje sve programe sa verzijama. Tu možete da otvorite stariju verziju, da je vratite i da podelite program linkom.
+Strana Programi na serveru prikazuje sve programe sa verzijama. Tu možete da otvorite stariju verziju, da je vratite i da podelite program linkom.
 
 ## AI programi i AI ključ
 
-Kartica AI u dijalogu New program piše program na osnovu opisa. Izaberite **New program** da krenete od nule ili **Change current** da AI izmeni program koji je otvoren, napišite šta želite i pritisnite **Generate** ili **Change the program**. `Ctrl+Z` poništava izmenu.
+Kartica **AI** u dijalogu Novi program (taster `N`) piše Klartext program na osnovu opisa, ili menja program koji je otvoren. AI radi preko servisa OpenRouter i nijednog drugog.
 
-Generisanje se odvija u krugovima. AI napiše program, server ga proverava istim interpreterom koji koristi simulator, a simulator meri izglodani obradak prema onome što ste tražili. Ako program ima grešku, ako bi izazvao sudar ili ne reže ono što treba, nalazi se vraćaju AI-ju na novi pokušaj: prvi program i najviše pet krugova ispravki. Za učitavanje se nudi samo program koji prođe proveru. Ako nijedan ne prođe, najbolji pokušaj se čuva kao nacrt koji sami možete da otvorite, i ništa se ne učitava. Po nalogu može da radi jedno generisanje odjednom.
+Za AI je potreban server: lokalni, onaj koji neko drži za vas, ili desktop aplikacija, koja ima ugrađen server. Datoteka simulatora `index.html` i izdanje bez servera na kartici prikazuju samo jedan red, i ništa se nikuda ne šalje:
 
-### Gde se nalazi ključ
+```
+AI zahteva lokalni ili hostovani server. Ručno pravljenje radi kao i obično.
+```
 
-AI radi preko servisa OpenRouter i nijednog drugog. Za to je potreban OpenRouter ključ, a on ostaje na strani servera, nikada u pregledaču.
+Sa ovom verzijom nije isproban nijedan pravi provajder. Svi testovi rade sa lažnim provajderom, pa rezultat koji dobijete zavisi od modela koji izaberete.
 
-- Server uzima ključ iz promenljive okruženja `OPENROUTER_API_KEY`, ili iz ključa koji je administrator sačuvao na serveru. Sačuvani ključ ima prednost nad promenljivom okruženja. Samo administrator može da sačuva ili ukloni ključ; u desktop aplikaciji jedini lokalni korisnik je administrator.
-- Ključ se ne proverava kada se čuva. Pogrešan ključ se pokaže pri prvom generisanju.
-- Sačuvani ključ se nalazi u datoteci `openrouter.key` u fascikli sa podacima servera. Datoteku može da čita samo nalog koji pokreće server. Nije šifrovana, pa fasciklu sa podacima čuvajte kao i druge tajne.
-- Ključ se nikada ne upisuje u bazu podataka, nikada u odgovor pregledaču i nikada u red dnevnika.
-- Pregledač serveru šalje samo svoju prijavu. Server dodaje ključ i prosleđuje pitanje.
-- Server ima ograničenje po korisniku i mesecu, 5 američkih dolara ako nije drugačije podešeno (`TNC_AI_MONTHLY_BUDGET_USD`). Modeli koji smeju da se biraju mogu se ograničiti sa `TNC_AI_MODELS`. Podrazumevani model je `deepseek/deepseek-v4.1-flash`.
+### Ključ
+
+OpenRouter ključ se nalazi na serveru, a u desktop aplikaciji u fascikli sa podacima aplikacije. Nikada nije u pregledaču.
+
+**Unos ključa.** Dok server nema ključ, kartica AI na vrhu prikazuje polje.
+
+1. Otvorite Novi program tasterom `N` i izaberite karticu **AI**.
+2. Upišite ključ u polje **OpenRouter ključ**. Ispod polja piše `Ključ se šalje serveru i tamo se čuva. Nikada se ne čuva u pregledaču.`
+3. Pritisnite **Sačuvaj ključ** ili ENTER.
+4. Polje se prazni i nestaje, a kartica odgovara `Ključ je sačuvan na serveru.` Kursor je u opisu.
+
+![Kartica AI kada server nema ključ: polje OpenRouter-nyckel na vrhu, ništa nije upisano (švedski interfejs)](shots/business-ai-nokey.png)
+
+**Uklanjanje ključa.** Kada je ključ sačuvan, na dnu kartice je link **Ukloni ključ sa servera**. Pritisnite ga, a zatim **Potvrdi: ukloni ključ**. Kartica odgovara `Ključ je uklonjen sa servera.` Ako server ima i ključ u sopstvenom podešavanju, piše `Sačuvani ključ je uklonjen. Server i dalje ima ključ iz sopstvenog podešavanja.`
+
+Za ključ važi sledeće:
+
+- Samo administrator može da ga sačuva ili ukloni. Ostali dobijaju `Samo administrator može da menja ključ.` U desktop aplikaciji jedini lokalni korisnik je administrator.
+- Ključ se ne proverava kada se čuva. Pogrešan ključ se pokaže pri prvom generisanju: `OpenRouter je odbio ključ. Uklonite ga i unesite ispravan ključ.`
+- Čuva se u datoteci `openrouter.key` u fascikli sa podacima servera. Datoteku može da čita samo nalog koji pokreće server. Nije šifrovana, pa fasciklu sa podacima čuvajte kao i druge tajne.
+- Nikada se ne upisuje u bazu podataka, u odgovor pregledaču ni u red dnevnika.
+- Ko održava server može umesto toga da zada ključ u promenljivoj okruženja `OPENROUTER_API_KEY`. Ključ sačuvan preko kartice ima prednost.
+- Ako je starija verzija sačuvala ključ u ovom pregledaču, on se briše kada se strana učita, a kartica kaže `Ključ koji je bio sačuvan u ovom pregledaču obrisan je odavde. Ključ se sada čuva na serveru.`
+
+### Novo ili Izmeni trenutni
+
+Na vrhu kartice birate šta AI treba da uradi.
+
+| Režim | Vi pišete | Šta radi Učitaj |
+|---|---|---|
+| **Novo** | **Opišite deo**: mere, oblici, dubine | otvara rezultat kao novi program pod slobodnim imenom; program koji ste imali otvoren ostaje nepromenjen |
+| **Izmeni trenutni** | **Šta da se izmeni u NAMEPLATE.H?** (ime je ime otvorenog programa) | zamenjuje tekst otvorenog programa rezultatom, kao jedan korak poništavanja; `Ctrl+Z` vraća original |
+
+Ispod opisa su tri primera, pod **Primeri**. Pritisak na primer popunjava opis. Ime novog programa uzima se iz reda `BEGIN PGM` u programu; ako je ime zauzeto, dobija `_2`, `_3` i tako dalje. Ako nijedan program nije otvoren, Izmeni trenutni odgovara `Nema otvorenog programa za izmenu.` Režim ne može da se promeni dok posao traje.
+
+### Model
+
+Red **Izabrani model** pokazuje model koji se koristi. Kucajte u polje **Pretraži modele** da skratite listu, a birajte klikom ili strelicama. Kada pokažete na model, date mu fokus ili ga dodirnete, vide se ID modela, verzija, kontekst, efektivno ograničenje izlaza, cena na milion tokena i šta model podržava. Lista i cene dolaze od servisa OpenRouter preko servera. Izbor se čuva u pregledaču.
+
+Nema kontrola za rezonovanje, tokene, merenje ni broj krugova. Oni su utvrđeni na serveru: srednje rezonovanje tamo gde ga model podržava, i ograničenje izlaza koje nikada nije veće od ograničenja samog modela.
 
 ### Šta se šalje i kada
 
-Ništa od onoga što napišete ne napušta vaš računar dok ne pritisnete **Generate** ili **Change the program**. Tada se vaš opis, tabela alata i, kada menjate program, tekst programa šalju servisu OpenRouter i dalje onome ko pokreće model koji ste izabrali. Oni obrađuju tekst prema sopstvenim uslovima. Zato u opis ne unosite ništa poverljivo. Generisanje koje je u toku možete da prekinete tasterom ESC.
+Ništa od onoga što napišete ne napušta vaš računar dok ne pritisnete **GENERIŠI**. Red iznad dugmeta kaže šta se tada šalje:
 
-> **ZA DOPUNU (AI dijalog i AI interfejs servera se još grade).** Ovaj odeljak opisuje samo ono što se moglo pročitati u kodu u trenutku pisanja priručnika. Kada delovi budu završeni, treba dopuniti sledeće:
->
-> 1. Gde u interfejsu administrator čuva i uklanja ključ i kako se dugmad zovu.
-> 2. Tačan tekst koji dijalog prikazuje pre nego što se bilo šta pošalje servisu OpenRouter.
-> 3. Šta dijalog prikazuje dok krugovi traju i kako se otvara nacrt.
-> 4. Šta važi za datoteku simulatora `index.html` bez servera.
-> 5. Poruke o greškama koje dijalog prikazuje (nema ključa, nema kredita, dostignuto mesečno ograničenje, model ne odgovara).
+```
+Pritiskom na GENERIŠI opis i tekst programa šalju se servisu OpenRouter (treća strana).
+```
+
+U režimu Izmeni trenutni umesto toga piše:
+
+```
+Pritiskom na GENERIŠI opis i ceo program NAMEPLATE.H šalju se servisu OpenRouter (treća strana).
+```
+
+Uz opis idu vaša tabela alata i izabrana mašina. OpenRouter i onaj ko pokreće model obrađuju tekst prema sopstvenim uslovima, zato u opis ne unosite ništa poverljivo.
+
+### Faze i krugovi
+
+1. Pritisnite **GENERIŠI**. Dugme zamenjuje **Otkaži**.
+2. Pod **Tok** se faze pojavljuju redom kojim ih server izvodi: Generisanje, Provera, Merenje, Dorada i Završetak. Završena faza ima kvačicu, tekuća strelicu. Dorada prikazuje svoj krug, na primer `Dorada, krug 2 od 5`. Procenti se ne prikazuju.
+3. Tekst programa raste pod **Tekst programa** dok model piše.
+4. Kada je posao gotov, piše `Program je prošao proveru. Pritisnite Učitaj da ga otvorite.`, a zatim broj blokova, krug i broj zahteva. Dugme se sada zove **Učitaj**. Pored njega je **Generiši ponovo**.
+5. Pritisnite **Učitaj**. Red iznad dugmeta unapred kaže šta će se desiti, na primer `Učitavanje ga otvara kao novi program, SLOT.H. NAMEPLATE.H ostaje nepromenjen u listi programa.`
+
+![Završen posao: faze, red sa rezultatom i dugme Ladda (švedski interfejs). Slika je snimljena sa lažnim provajderom iz testova, pa su imena modela izmišljena](shots/business-ai-done.png)
+
+Ovako posao teče:
+
+- Server proverava svaki odgovor istim interpreterom koji koristi simulator, a simulator meri izglodani deo prema onome što ste tražili.
+- Posao je prvi program i najviše pet krugova dorade. Završava se kod prvog programa koji prođe.
+- Završava se i kada krug ne donese poboljšanje. Tada se isporučuje najbolji provereni program ako se dovoljno dobro poklapa, a red kaže koliko: `Program je prošao proveru i poklapa se sa planiranim delom 88.7 procenata (cilj 95). Dalji krugovi ga nisu poboljšali, pa je dorada zaustavljena.`
+- Posao nikada ne dira otvoreni program. Rezultat unosi samo **Učitaj**.
+- Ako nijedan program ne prođe, najbolji pokušaj ostaje pod **Nacrt (nije učitan)**. **Kopiraj nacrt** ga stavlja u ostavu. Nacrt se nikada ne učitava sam.
+- **Otkaži** zaustavlja posao. Kartica odgovara `Otkazano. Ništa nije učitano.` i nijedan novi zahtev se ne šalje.
+- Po nalogu može da radi jedan posao odjednom.
+- Server ima ograničenje po korisniku i mesecu, 5 američkih dolara ako nije drugačije podešeno (`TNC_AI_MONTHLY_BUDGET_USD`). Modeli koji smeju da se biraju mogu se ograničiti sa `TNC_AI_MODELS`. Podrazumevani model je `deepseek/deepseek-v4.1-flash` (`TNC_AI_DEFAULT_MODEL`).
+
+### Poruke o greškama na kartici AI
+
+| Poruka | Uradite ovo |
+|---|---|
+| `Nijedan OpenRouter ključ nije sačuvan. Unesite ključ na vrhu.` | sačuvajte ključ, vidite [Ključ](#ključ) |
+| `Niste prijavljeni na server. Prijavite se i ponovo otvorite dijalog.` | prijavite se na server |
+| `Za ovaj nalog već radi jedan posao. Sačekajte da se završi.` | sačekajte, ili otkažite drugi posao |
+| `Mesečni AI budžet je potrošen. Sačekajte prvi u mesecu ili pitajte administratora.` | sačekajte, ili zamolite onoga ko održava server da podigne ograničenje |
+| `OpenRouter nalog nema dovoljno kredita. Dopunite ga ili promenite ključ.` | dopunite nalog kod servisa OpenRouter |
+| `Ovaj model nije dozvoljen na ovom serveru. Izaberite drugi.` | izaberite drugi model sa liste |
+| `Lista modela nije mogla da se učita.` | pritisnite **Pokušaj ponovo**; server ne može da dosegne OpenRouter |
+| `Program nije prošao proveru. Nacrt je sačuvan ispod i nije učitan. Izmenite opis ili izaberite drugi model.` | opišite deo jasnije, ili promenite model |
+| `Odgovor je odsečen na ograničenju izlaza. Opišite jednostavniji deo ili izaberite model sa većim ograničenjem izlaza.` | podelite deo, ili promenite model |
+| `Server se nije javio 50 sekundi. Posao je zaustavljen. Pokušajte ponovo.` | proverite da li server radi i pokušajte ponovo |
+| `Server nije dostupan. Proverite da li radi i pokušajte ponovo.` | pokrenite server |
+
+Posle poruke može da stoji `Server:` i red na engleskom sa objašnjenjem samog servera.
 
 ## Alati i tabela alata
 
-Pritisnite `T` ili dugme Tools. Tabela alata odgovara datoteci `TOOL.T` na upravljanju: jedan alat po redu sa brojem (T), imenom, dužinom (L) i radijusom (R). Svaka mašina ima svoju tabelu.
+Pritisnite `T` ili dugme Alat. Tabela alata odgovara datoteci `TOOL.T` na upravljanju: jedan alat po redu sa brojem (T), imenom, dužinom (L) i radijusom (R). Svaka mašina ima svoju tabelu.
 
-![Tabela alata za TNC 426](shots/business-tool-table.png)
+![Tabela alata za TNC 426 (švedski interfejs)](shots/business-tool-table.png)
 
 - **L** je dužina alata od čela vretena do vrha. Sa L = 0 alat se smatra izmerenim na mašini, a provera držača je isključena za taj alat.
 - **R** je radijus. Koristi ga korekcija radijusa (`RL`, `RR`) i on određuje koliko materijala alat skida.
 - **HOLDER** bira držač alata koji se crta i proverava prema obratku i stegi.
 - Vrednost menjate kucanjem u njeno polje. Broj alata mora biti 0–32767, a radijus ne sme biti negativan.
 
-| Softverski taster | Šta radi |
+| Funkcijski taster | Šta radi |
 |---|---|
 | ADD MISSING | dodaje alate koje program poziva, a kojih nema u tabeli |
 | IMPORT TOOL.T | učitava tabelu alata iz datoteke |
 | EXPORT TOOL.T | čuva tabelu kao datoteku, na primer `TOOL_TNC426.T` |
-| END | zatvara tabelu (takođe ESC ili `T`) |
+| KRAJ | zatvara tabelu (takođe ESC ili `T`) |
 
-Program bira alat sa `TOOL CALL`, na primer `TOOL CALL 4 Z S2000`. U režimu PRG EDIT taster `W` otvara dijalog za `TOOL CALL`. Slika prikazuje alat u držaču, sa oznakama za alat, držač i pripremak; oznake se uključuju i isključuju tasterom `L`.
+Program bira alat sa `TOOL CALL`, na primer `TOOL CALL 4 Z S2000`. U režimu PRG IZMENA taster `W` otvara dijalog za `TOOL CALL`. Slika prikazuje alat u držaču, sa oznakama za alat, držač i pripremak; oznake se uključuju i isključuju tasterom `L`.
 
-Stega je uključena od početka i može se isključiti pod **Effects and view**. Simulator javlja alarm ako alat ili držač uđe u stegu.
+Stega je uključena od početka i može se isključiti pod **Efekti i prikaz**. Simulator javlja alarm ako alat ili držač uđe u stegu.
 
-Sa serverom svaka mašina ima i tabelu alata na strani Tool tables. U izdanju Play zamena alata upisuje novi alat u tabelu, vidite [Zamena alata](#zamena-alata).
+Sa serverom svaka mašina ima i tabelu alata na strani Tabele alata. U izdanju Play zamena alata upisuje novi alat u tabelu, vidite [Zamena alata](#zamena-alata).
 
 ## Play: radionica
 
-![Početna strana izdanja Play](shots/play-landing.jpg)
+![Početna strana izdanja Play (švedski interfejs)](shots/play-landing.jpg)
 
 ### Od početne strane do mašine
 
-1. Početna strana prikazuje dugme START. Pritisnite ENTER ili kliknite. Gore desno menjate jezik i pauzirate pozadinski film.
-2. Prvi put se prikazuje uvod u tri koraka. Pritisnite Next ili Skip.
+1. Početna strana prikazuje dugme START. Pritisnite ENTER ili kliknite. Gore desno pauzirate pozadinski film i menjate jezik dugmadima Svenska, English i Srpski.
+2. Prvi put se prikazuje uvod u tri koraka. Pritisnite Dalje ili Preskoči.
 3. Stojite u radionici. Priđite jednoj od dve označene mašine, `fil15` sa TNC 426 ili `dmc125` sa TNC 430.
-4. Pritisnite `E` kada se pojavi okvir **Open the control**. Kamera prilazi upravljanju i simulator se otvara, podešen na upravljanje te mašine.
+4. Pritisnite `E` kada se pojavi okvir **Otvori upravljanje**. Kamera prilazi upravljanju i simulator se otvara, podešen na upravljanje te mašine.
 5. Radite kao u poglavlju [Upravljanje i uređivanje](#upravljanje-i-uređivanje).
-6. Pritisnite **To the workshop** u gornjoj traci da se vratite. Program ostaje tu dok se ne vratite.
+6. Pritisnite **U radionicu** u gornjoj traci da se vratite. Program ostaje tu dok se ne vratite.
 
-![Uvod pri prvoj poseti](shots/play-introduction.jpg)
+![Uvod pri prvoj poseti (švedski interfejs)](shots/play-introduction.jpg)
 
-![Radionica sa dve mašine i mašinom PORTAL 9 desno](shots/play-workshop.jpg)
+![Radionica sa dve mašine i mašinom PORTAL 9 desno (švedski interfejs)](shots/play-workshop.jpg)
 
-U radionici postoji samo jedan simulator. On izvršava jedan program odjednom, pa ako program radi na jednoj mašini, ne možete da otvorite upravljanje na drugoj. Tada vidite `The other machine is running. One simulator, one program at a time.` Treća mašina, PORTAL 9, isključena je i može samo da se gleda.
+U radionici postoji samo jedan simulator. On izvršava jedan program odjednom, pa ako program radi na jednoj mašini, ne možete da otvorite upravljanje na drugoj. Tada vidite `Druga mašina radi. Jedan simulator, jedan program u isto vreme.` Treća mašina, PORTAL 9, isključena je i može samo da se gleda.
 
-![Kod mašine fil15, sa okvirom za otvaranje upravljanja](shots/play-at-machine.jpg)
+![Kod mašine fil15, sa okvirom za otvaranje upravljanja (švedski interfejs)](shots/play-at-machine.jpg)
 
-![Upravljanje na mašini fil15: isti simulator, sa dugmetom za povratak u radionicu](shots/play-control-426.png)
+![Upravljanje na mašini fil15: isti simulator, sa dugmetom za povratak u radionicu (švedski interfejs)](shots/play-control-426.png)
 
 ### Kretanje
 
@@ -433,30 +531,36 @@ U radionici postoji samo jedan simulator. On izvršava jedan program odjednom, p
 
 Strelice su dovoljne da se krećete bez miša. Na okvir na dnu može i da se klikne.
 
+**Na telefonu i tabletu.** Na ekranu osetljivom na dodir, dok hodate sami, dole levo se vidi okrugla ploča za hodanje. Gurnite dugme u smeru u kome želite da idete; što dalje, to brže. Osvrćete se prevlačenjem drugim prstom bilo gde po podu. Ploča nestaje dok je otvorena neka tabla. Sve što ona radi može i iz liste Stanice.
+
+![Play na telefonu: ploča za hodanje dole levo, dugmad za jezik SV, EN i SR ispod reda (švedski interfejs)](shots/play-phone-pad.jpg)
+
+**Samo tastatura.** Ceo put radi bez miša: ENTER na START, TAB do Stanice, ENTER na **Otvori upravljanje**, TAB do **U radionicu**, TAB do Računar i nekog podešavanja tamo, ESC za zatvaranje. Ono što ima fokus ima vidljiv okvir.
+
 ### Red gore levo
 
 | Dugme | Šta radi |
 |---|---|
-| Stations | otvara listu svega što može da se uradi |
-| View | menja kameru: Walk, Whole workshop, Around the machine, Cutting POV, Tool close-up, Finished part |
-| Computer | otvara računar radionice |
-| Help | ponovo prikazuje uvod |
-| Sound off / Sound on | isključuje i uključuje zvuk |
-| dugme za jezik | prelazi na sledeći jezik |
+| Stanice | otvara listu svega što može da se uradi |
+| Pogled | menja kameru: Hodaj sam, Cela radionica, Oko mašine, POV rezanja, Alat izbliza, Gotov komad |
+| Računar | otvara radionički računar |
+| Pomoć | ponovo prikazuje uvod |
+| Ugasi zvuk / Upali zvuk | isključuje i uključuje zvuk |
+| SV, EN, SR | odmah menjaju jezik: švedski, engleski ili srpski |
 
 Poslednja tri pogleda su kamere samog simulatora, pa otvaraju upravljanje na mašini.
 
-![Pogled na celu radionicu](shots/play-overview.jpg)
+![Pogled na celu radionicu (švedski interfejs)](shots/play-overview.jpg)
 
 ### Stanice
 
-Sve što može da se uradi u 3D prostoru može da se uradi i iz liste Stations, bez hodanja. Svaka stanica ima svoju dugmad i dugme **Go there** koje vas postavlja ispred nje. Za mašine lista prikazuje i stanje, nivo ulja i alat u vretenu.
+Sve što može da se uradi u 3D prostoru može da se uradi i iz liste Stanice, bez hodanja. Svaka stanica ima svoju dugmad i dugme **Idi tamo** koje vas postavlja ispred nje. Za mašine lista prikazuje i stanje, nivo ulja i alat u vretenu.
 
-![Lista stanica](shots/play-stations.jpg)
+![Lista stanica (švedski interfejs)](shots/play-stations.jpg)
 
-Stanice su dve mašine, PORTAL 9, stalak za alate, ključ, kanta za ulje, pomično merilo, računar radionice, jedan orman i jedna limena ruka.
+Stanice su dve mašine, PORTAL 9, stalak za alat, ključ, kantica za ulje, šubler, radionički računar, ormar i limena ruka.
 
-U ruci možete da nosite jednu stvar (ključ, kantu za ulje ili pomično merilo) i uz to jedan alat sa stalka. Okvir gore desno pokazuje šta držite, pod **In hand**.
+U ruci možete da nosite jednu stvar (ključ, kanticu za ulje ili šubler) i uz to jedan alat sa stalka. Okvir gore desno pokazuje šta držite, pod **U ruci**.
 
 ### Okvir gore desno
 
@@ -464,36 +568,36 @@ Za svaku mašinu prikazuje stanje i merač ulja.
 
 | Stanje | Znači |
 |---|---|
-| READY | mašina može da se pokrene |
-| RUNNING | na mašini radi program |
-| LOCKED | vrata su otvorena, mašina je zaključana, zamena alata je u toku ili je ulje potrošeno |
-| POWER OFF | napajanje je isključeno |
+| SPREMNA | mašina može da se pokrene |
+| RADI | na mašini radi program |
+| BLOKIRANA | vrata su otvorena, mašina je zaključana, zamena alata je u toku ili je ulje potrošeno |
+| BEZ STRUJE | napajanje je isključeno |
 
 ### Zamena alata
 
-Zamena alata se radi utvrđenim redom. Ako neki korak uradite prerano, radionica odgovara `Not yet. Take the steps in order.` Ako program radi, odgovara `No. The machine is running. Stop the program first.`
+Zamena alata se radi utvrđenim redom. Ako neki korak uradite prerano, radionica odgovara `Ne još. Idi redom, korak po korak.` Ako program radi, odgovara `Ne. Mašina radi. Prvo zaustavi program.`
 
-1. Uzmite **ključ** (Wrench). Nalazi se na radnom stolu.
-2. Kod mašine: **Open the door**.
-3. **Stop and lock out the machine**. Program koji radi se zaustavlja.
-4. **Loosen the tool**. Za ovo vam treba ključ u ruci.
-5. **Take the tool out**. Sada ga nosite.
-6. Kod stalka za alate: **Hang the tool back** i uzmite drugi, na primer **Take FRAES_D6**.
-7. Kod mašine: **Fit the tool**.
-8. **Clamp the tool**. Za ovo vam ponovo treba ključ.
-9. **Unlock the machine** i **Close the door**.
+1. Uzmite **Ključ** (dugme **Uzmi**). Nalazi se na tezgi.
+2. Kod mašine: **Otvori vrata**.
+3. **Zaustavi i zaključaj mašinu**. Program koji radi se zaustavlja.
+4. **Otpusti alat**. Za ovo vam treba ključ u ruci.
+5. **Izvadi alat**. Sada ga nosite.
+6. Kod stalka za alat: **Vrati alat na stalak** i uzmite drugi, na primer **Uzmi FRAES_D6**.
+7. Kod mašine: **Stavi alat**.
+8. **Stegni alat**. Za ovo vam ponovo treba ključ.
+9. **Otključaj mašinu** i **Zatvori vrata**.
 
-![Lista stanica usred zamene alata: alat je otpušten](shots/play-tool-change.jpg)
+![Lista stanica usred zamene alata: alat je otpušten (švedski interfejs)](shots/play-tool-change.jpg)
 
 Kada stegnete alat, njegovo ime, dužina i radijus upisuju se u tabelu alata simulatora, na mesto alata koji je trenutno aktivan u simulatoru. Radionica potvrđuje, na primer:
 
 ```
-Tool table updated: T9 FRAES_D10 L60 R5
+Tabela alata je ažurirana: T9 FRAES_D10 L60 R5
 ```
 
-Dok su vrata otvorena, mašina zaključana ili vreteno prazno, program ne može da se pokrene. Simulator tada prikazuje **LOCKED** i razlog, na primer `The door is open` ili `A tool change is in progress`.
+Dok su vrata otvorena, mašina zaključana ili vreteno prazno, program ne može da se pokrene. Simulator tada prikazuje **ZAKLJUČANO** i razlog, na primer `Vrata su otvorena` ili `Izmena alata je u toku`.
 
-Stalak za alate ima šest alata. Vrednosti su izmišljene za radionicu i ne potiču ni iz jednog kataloga.
+Stalak za alat ima šest alata. Vrednosti su izmišljene za radionicu i ne potiču ni iz jednog kataloga.
 
 | Alat | L (mm) | R (mm) |
 |---|---|---|
@@ -508,70 +612,72 @@ Na početku je `FRAES_D10` u mašini `fil15`, a `FRAES_D16` u mašini `dmc125`. 
 
 ### Napajanje
 
-**Switch the power off** i **Switch the power on** nalaze se kod svake mašine. Napajanje ne može da se isključi dok program radi. Kada je napajanje isključeno, program ne može da se pokrene, a simulator prikazuje `The machine power is off`.
+**Isključi struju** i **Uključi struju** nalaze se kod svake mašine. Napajanje ne može da se isključi dok program radi. Kada je napajanje isključeno, program ne može da se pokrene, a simulator prikazuje `Mašina je bez struje`.
 
 ### Ulje i servisni merač
 
 Svaka mašina ima merač ulja koji ide od 100 % do 0 %.
 
 - Ulje opada samo dok mašina zaista reže, i to 2 procentna poena u minuti. Pun rezervoar zato traje 50 minuta rezanja. Vreme dok stojite, uređujete ili je kartica pregledača skrivena ne računa se.
-- Na 20 % merač prikazuje **LOW**, a radionica kaže `The oil is running low. Fetch the oil can.`
-- Na 0 % merač prikazuje **EMPTY**. Program koji radi se zaustavlja, a mašina se ne pokreće dok ne dolijete ulje.
-- Dolivanje: uzmite **kantu za ulje** (Oil can), idite do mašine i izaberite **Refill the oil**. Merač se vraća na 100 %.
+- Na 20 % merač prikazuje **MALO**, a radionica kaže `Ulje je pri kraju. Donesi kanticu.`
+- Na 0 % merač prikazuje **PRAZNO**. Program koji radi se zaustavlja, a mašina se ne pokreće dok ne dolijete ulje.
+- Dolivanje: uzmite **Kanticu za ulje**, idite do mašine i izaberite **Dolij ulje**. Merač se vraća na 100 %.
 
 ### Merenje obratka
 
-Uzmite **pomično merilo** (Caliper) i izaberite **Measure the part** kod mašine sa zatvorenim vratima. Upravljanje se otvara sa kamerom simulatora na gotovom obratku.
+Uzmite **Šubler** i izaberite **Izmeri komad** kod mašine sa zatvorenim vratima. Upravljanje se otvara sa kamerom simulatora na komadu i sa Inspektorom otvorenim na tabli **Poređenje**. Tu su mere iz rada (vreme ciklusa, put u pomaku, put u brzom hodu, kretanja, najniži Z i skinuta zapremina), a sa **Sačuvaj rad kao referencu A** poredite dva rada, vidite [Pokretanje programa](#pokretanje-programa).
 
-### Računar radionice
+![Izmeri komad: upravljanje na mašini fil15 sa kamerom na komadu i otvorenim Inspektorom (švedski interfejs)](shots/play-measure.png)
 
-Otvorite ga dugmetom Computer, ili mu priđite i pritisnite `E`.
+### Radionički računar
 
-![Računar radionice: čuvanje i podešavanja](shots/play-computer.png)
+Otvorite ga dugmetom Računar, ili mu priđite i pritisnite `E`.
 
-**Čuvanje i učitavanje (Save and load).** Igra se sama čuva u pregledaču svaki put kada se nešto promeni.
+![Radionički računar: čuvanje i podešavanja (švedski interfejs)](shots/play-computer.png)
+
+**Čuvanje i učitavanje.** Igra se sama čuva u pregledaču svaki put kada se nešto promeni.
 
 | Dugme | Šta radi |
 |---|---|
-| Save now | odmah čuva stanje |
-| Load latest | vraća na poslednje sačuvano stanje |
-| Export file | preuzima stanje kao datoteku `tnc-5511-save.json` |
-| Import file | učitava takvu datoteku; neispravna datoteka daje `That file is not a valid save.` |
-| Start over | vraća radionicu na početak: puno ulje, uključeno napajanje, prvobitni alati |
+| Sačuvaj sad | odmah čuva stanje |
+| Učitaj poslednje | vraća na poslednje sačuvano stanje |
+| Izvezi fajl | preuzima stanje kao datoteku `tnc-5511-save.json` |
+| Uvezi fajl | učitava takvu datoteku; neispravna datoteka daje `Ovaj fajl nije ispravna sačuvana igra.` |
+| Kreni ispočetka | vraća radionicu na početak: puno ulje, uključeno napajanje, prvobitni alati |
 
 Čuva se nivo ulja, napajanje i alat u vretenu svake mašine, ono što držite u ruci i skrivena iznenađenja koja ste pronašli. Mesto na kome stojite se ne čuva. Mašina koja je sačuvana sa praznim vretenom vraća se otvorena i zaključana, u čekanju na alat. Vaši programi pripadaju profilu simulatora i čuvaju se tamo.
 
-**Podešavanja (Settings).** Language (Svenska, English, Srpski), Graphics (Low, Medium, High), Motion (Full, Reduced), Environment (Cold Steel, Workshop Night), Sound, Captions i dva lika. Jezik, grafika, kretanje, okruženje i zvuk dele se sa simulatorom. **Show the introduction again** ponovo otvara tri koraka uvoda.
+**Podešavanja.** Jezik (Svenska, English, Srpski), Grafika (Niska, Srednja, Visoka), Kretanje (Puno, Smanjeno), Okruženje (Cold Steel, Workshop Night), Zvuk, Titlovi i dva lika. Jezik, grafika, kretanje, okruženje i zvuk dele se sa simulatorom. Decimalni znak se podešava u podešavanjima samog simulatora. **Prikaži uvod ponovo** ponovo otvara tri koraka uvoda.
 
-**Tajne (Secrets).** Računar vodi listu skrivenih iznenađenja. Ono što ste pronašli možete da otvorite odatle. Ostalo tražite sami.
+**Tajne.** Računar vodi listu skrivenih iznenađenja. Ono što ste pronašli možete da otvorite odatle. Ostalo tražite sami.
 
 ### Likovi
 
-Dok ste u radionici mogu da naiđu dva lika: **The boss** (šef) i **The office** (kancelarija). Kažu nekoliko rečenica i odu.
+Dok ste u radionici mogu da naiđu dva lika: **Šef** i **Kancelarija**. Kažu nekoliko rečenica i odu.
 
 - Dolaze najviše jednom u pet minuta aktivnog vremena i smenjuju se.
 - Nikada ne dolaze tokom uvoda, dok je otvorena neka tabla, dok ste kod upravljanja ili dok simulator prikazuje grešku.
-- **Next** (ili ENTER) prelazi na sledeću rečenicu. **Skip** (ili ESC) završava posetu.
+- **Dalje** (ili ENTER) prelazi na sledeću rečenicu. **Preskoči** (ili ESC) završava posetu.
 
-![Šef svraća, sa dugmadima za sledeću rečenicu, preskakanje i isključivanje](shots/play-character.jpg)
+![Šef svraća, sa dugmadima za sledeću rečenicu, preskakanje i isključivanje (švedski interfejs)](shots/play-character.jpg)
 
 Kako da ih isključite:
 
 | Želite | Uradite ovo |
 |---|---|
-| da isključite lik koji upravo govori | pritisnite **Do not interrupt me again** u njegovom okviru |
-| da isključite šefa | Computer, Settings, **The boss may interrupt**: Off |
-| da isključite kancelariju | Computer, Settings, **The office may interrupt**: Off |
-| da ih ponovo uključite | isti prekidač: On |
+| da isključite lik koji upravo govori | pritisnite **Ne prekidaj me više** u njegovom okviru |
+| da isključite šefa | Računar, Podešavanja, **Šef sme da prekida**: Ne |
+| da isključite kancelariju | Računar, Podešavanja, **Kancelarija sme da prekida**: Ne |
+| da ih ponovo uključite | isti prekidač: Da |
 
 ### Titlovi i zvuk
 
-- **Captions** određuje da li se rečenice likova prikazuju kao tekst. Kada je Captions na Off, umesto rečenice se prikazuje `(captions off)`. Uključeno je od početka.
-- **Sound off** u redu gore levo, ili Sound u računaru, isključuje zvučne signale simulatora za sudare i upozorenja. Pozadinski film na početnoj strani nema zvuk.
+- **Titlovi** određuje da li se rečenice likova prikazuju kao tekst. Kada je Titlovi na Ne, umesto rečenice se prikazuje `(titlovi isključeni)`. Uključeno je od početka.
+- **Ugasi zvuk** u redu gore levo, ili Zvuk u računaru, isključuje zvučne signale simulatora za sudare i upozorenja. Pozadinski film na početnoj strani nema zvuk.
 
 ### Skrivena iznenađenja
 
-U radionici ima skrivenih iznenađenja (Easter eggs). Razgledajte. Računar radionice pamti koja ste pronašli.
+U radionici ima skrivenih iznenađenja (Easter eggs). Razgledajte. Radionički računar pamti koja ste pronašli.
 
 ### Sopstveni sadržaj
 
@@ -579,21 +685,21 @@ Ko postavlja sopstveno izdanje Play može da doda kratku scenu sa dva lika u dat
 
 ## Izgled
 
-Izgled nikada ne menja način na koji se program izvršava. Sastoji se od dva nezavisna izbora koja pravite pod zupčanikom, na kartici Appearance.
+Izgled nikada ne menja način na koji se program izvršava. Sastoji se od dva nezavisna izbora koja pravite pod zupčanikom, na kartici Izgled.
 
-![Podešavanja, kartica za izgled](shots/business-settings.png)
+![Podešavanja, kartica za izgled (švedski interfejs)](shots/business-settings.png)
 
-### Upravljanje (Controller)
+### Upravljanje
 
 | Izbor | Kako izgleda |
 |---|---|
-| **Follow machine** (podrazumevano) | 426 Classic kada je izabran TNC 426, 430 Steel kada je izabran TNC 430 |
-| **426 Classic** | program levo, debeo okvir, red bloka ispod ekrana, osam četvrtastih svetlih softverskih tastera |
+| **Prati mašinu** (podrazumevano) | 426 Classic kada je izabran TNC 426, 430 Steel kada je izabran TNC 430 |
+| **426 Classic** | program levo, debeo okvir, red bloka ispod ekrana, osam četvrtastih svetlih funkcijskih tastera |
 | **430 Steel** | 3D prikaz levo, tanak čelični okvir, red bloka iznad belog ekrana, ravni tasteri u dve grupe po četiri |
 
 Oba izgleda su sopstveni crteži, a ne kopije panela pravih upravljanja.
 
-### Okruženje (Environment)
+### Okruženje
 
 | Izbor | Kako izgleda |
 |---|---|
@@ -602,43 +708,62 @@ Oba izgleda su sopstveni crteži, a ne kopije panela pravih upravljanja.
 
 Okruženje se odnosi na 3D scenu i okvir oko nje. U izdanju Play isti izbor važi i za radionicu.
 
-![TNC 430 sa upravljanjem 430 Steel u okruženju Workshop Night](shots/business-430-workshop-night.png)
+![TNC 430 sa upravljanjem 430 Steel u okruženju Workshop Night (švedski interfejs)](shots/business-430-workshop-night.png)
 
 ## Podešavanja
 
-Podešavanja otvarate zupčanikom dole levo ili tasterom `,`. Na telefonu su pod Menu. Podešavanja se čuvaju u pregledaču i važe odmah. Dele ih datoteka simulatora, Business i Play kada su na istoj adresi. Ako nedostaju, ili je neka vrednost oštećena, koristi se podrazumevana vrednost.
+Podešavanja otvarate zupčanikom dole levo ili tasterom `,`. Na telefonu su pod Meni. Podešavanja se čuvaju u pregledaču i važe odmah. Dele ih datoteka simulatora, Business i Play kada su na istoj adresi. Ako nedostaju, ili je neka vrednost oštećena, koristi se podrazumevana vrednost.
 
-### General
+### Jezik
+
+Interfejs postoji na tri jezika: **Svenska** (podrazumevano), **English** i **Srpski** (srpski, latinica). Prikazuje se jedan jezik odjednom. CNC reči kao što je `TOOL CALL`, tekst programa i poruke o greškama interpretera nikada se ne prevode.
+
+| Gde | Kako se menja |
+|---|---|
+| Simulator, Business | zupčanik ili `,`, kartica Opšte, **Jezik** |
+| Uvodna kartica pri prvoj poseti | korak 1 od 4 |
+| Play, početna strana | dugmad Svenska, English, Srpski gore desno |
+| Play, radionica | dugmad SV, EN, SR u redu gore levo |
+| Play, radionički računar | Podešavanja, **Jezik** |
+
+Izbor se čuva u pregledaču i dele ga datoteka simulatora, Business i Play kada su na istoj adresi. Kada promenite jezik u radionici, upravljanje menja jezik u isto vreme.
+
+![Radni prostor mašine na srpskom, sa otvorenim Inspektorom](shots/business-serbian.png)
+
+![Podešavanja, kartica Opšte: izbor jezika i decimalni znak (švedski interfejs)](shots/business-settings-general.png)
+
+### Opšte
 
 | Podešavanje | Podrazumevano | Značenje |
 |---|---|---|
-| Language | Svenska | Jezik interfejsa: Svenska, English ili Srpski (srpski, latinica). CNC reči kao što je `TOOL CALL` i tekst programa nikada se ne prevode. |
-| Motion | System | System prati podešavanje računara za smanjeno kretanje. Reduced uklanja podrhtavanje kamere i animirane prelaze. |
-| Sound | On | Zvučni signali pri sudaru i upozorenju. |
-| Shortcut hints | On | Prikazuje taster na softverskim tasterima, dugmadima i u opisima. |
-| Profile | | Otvara profil: ime, programi, tabela alata, izvoz i uvoz. |
+| Jezik | Svenska | Svenska, English ili Srpski, vidite [Jezik](#jezik). |
+| Decimalni znak (MP 7280) | Prati jezik | Prati jezik, Zarez ili Tačka. Važi samo za ekran: unos prima i zarez i tačku, a sačuvani program uvek zadržava tačku. Vidite [Polarni blokovi](#polarni-blokovi-lp-sa-pr-i-pa). |
+| Pokret | Sistem | Sistem prati podešavanje računara za smanjeno kretanje. Smanjen uklanja trešenje kamere i animirane prelaze. |
+| Zvuk | Uklj. | Zvučni signali pri sudaru i upozorenju. |
+| Prečice | Uklj. | Prikazuje taster na funkcijskim tasterima, dugmadima i u opisima. |
+| Profil | | Otvara profil: ime, programi, tabela alata, izvoz i uvoz. |
 
-### Appearance
+### Izgled
 
 | Podešavanje | Podrazumevano | Značenje |
 |---|---|---|
-| Controller | Follow machine | Vidite [Izgled](#izgled). |
-| Environment | Cold Steel | Vidite [Izgled](#izgled). |
-| Graphics | High | Low, Medium ili High. Niža vrednost radi brže na slabim grafičkim karticama. |
+| Upravljanje | Prati mašinu | Vidite [Izgled](#izgled). |
+| Okruženje | Cold Steel | Vidite [Izgled](#izgled). |
+| Grafika | Visoka | Niska, Srednja ili Visoka. Niža vrednost radi brže na slabim grafičkim karticama. |
 
-### Help, Advanced i About
+### Pomoć, Napredno i O programu
 
 | Podešavanje | Značenje |
 |---|---|
-| Help and lessons | Otvara fioku pomoći. |
-| Shortcuts | Prikazuje sve tastere. |
-| Introduction | Ponovo prikazuje uvodnu karticu: jezik, upravljanje, kretanje i grafika, prvi program. |
-| Reset help | Ponovo prikazuje uvod i briše evidenciju završenih lekcija. |
-| Developer log | Dnevnik funkcija i istorija verzija, za one koji razvijaju simulator. |
-| Diagnostics | Podaci o izdanju, mašini i pregledaču koje možete da kopirate u prijavu greške. |
-| About | Licenca i napomena da simulator nije povezan sa kompanijom HEIDENHAIN. |
+| Pomoć i lekcije | Otvara fioku pomoći. |
+| Prečice | Prikazuje sve tastere. |
+| Uvod | Ponovo prikazuje uvodnu karticu: jezik, upravljanje, pokret i grafika, prvi program. |
+| Vrati pomoć | Ponovo prikazuje uvod i briše evidenciju završenih lekcija. |
+| Razvojni dnevnik | Dnevnik funkcija i istorija verzija, za one koji razvijaju simulator. |
+| Dijagnostika | Podaci o izdanju, mašini i pregledaču koje možete da kopirate u prijavu greške. |
+| O programu | Licenca i napomena da simulator nije povezan sa kompanijom HEIDENHAIN. |
 
-Play ima iste izbore za jezik, grafiku, kretanje, okruženje i zvuk u računaru radionice, a uz to Captions i dva lika, vidite [Računar radionice](#računar-radionice).
+Play ima iste izbore za jezik, grafiku, kretanje, okruženje i zvuk u radioničkom računaru, a uz to Titlovi i dva lika, vidite [Radionički računar](#radionički-računar).
 
 ## Prečice na tastaturi
 
@@ -648,8 +773,8 @@ Prečice važe u radnom prostoru mašine dok nijedno polje za tekst nema fokus. 
 
 | Taster | Šta radi |
 |---|---|
-| RAZMAKNICA | NC START, ili pauza ako program radi |
-| ENTER | izvršava jedan blok; u režimu PRG EDIT uređuje blok |
+| RAZMAK | NC START, ili pauza ako program radi |
+| ENTER | izvršava jedan blok; u režimu PRG IZMENA uređuje blok |
 | `S` | izvršava jedan blok |
 | `R` | zaustavlja i vraća na početak |
 | ESC | pauzira; zatvara alarm, dijalog ili tablu |
@@ -658,15 +783,15 @@ Prečice važe u radnom prostoru mašine dok nijedno polje za tekst nema fokus. 
 | `+` `-` | korekcija pomaka naviše i naniže u koracima od 10 % |
 | `G` | menja prikaz: 3D, odozgo, spreda, sa strane |
 | `V` | prikazuje program kao dijagram toka |
-| `P` `K` `B` | strugotina, rashladna tečnost, dim |
+| `P` `K` `B` | strugotina, emulzija, dim |
 | `L` | oznake u 3D prikazu |
 
 ### Režimi i table
 
 | Taster | Šta radi |
 |---|---|
-| `1` do `4`, ili `F1` do `F4` | režim rada: PRG EDIT, TEST, SINGLE-BLOCK, FULL-RUN |
-| `F` | otvara i zatvara Inspector |
+| `1` do `4`, ili `F1` do `F4` | režim rada: PRG IZMENA, TEST, BLOK PO BLOK, CEO PROGRAM |
+| `F` | otvara i zatvara Inspektor |
 | `T` | tabela alata |
 | `M` | lista programa |
 | `N` | novi program |
@@ -691,7 +816,7 @@ Prečice važe u radnom prostoru mašine dok nijedno polje za tekst nema fokus. 
 | `Ctrl+S` | čuva kao `.H` |
 | `Ctrl+O` | učitava datoteku |
 
-### Samo u režimu PRG EDIT
+### Samo u režimu PRG IZMENA
 
 | Taster | Šta radi |
 |---|---|
@@ -701,6 +826,17 @@ Prečice važe u radnom prostoru mašine dok nijedno polje za tekst nema fokus. 
 | `Q` | Q parametar |
 
 Tasteri unutar pitanja navedeni su pod [Vođeni unos bloka](#vođeni-unos-bloka). Tasteri u radionici navedeni su pod [Kretanje](#kretanje).
+
+### Samo tastatura
+
+Do svega u radnom prostoru mašine može da se dođe bez miša.
+
+- TAB i SHIFT+TAB pomeraju fokus između dugmadi, kartica i polja. Ono što ima fokus ima vidljiv okvir.
+- Prvi TAB na strani daje link **Na program**, koji preskače gornju traku.
+- ENTER ili RAZMAK pritiska dugme koje ima fokus. Prečice nikada ne uzimaju te tastere dugmetu sa fokusom, niti slova koja kucate u polje.
+- U redu sa karticama (režimi rada, Inspektor, Pomoć, Podešavanja) strelice menjaju karticu.
+- Dijalog zadržava fokus dok ga ne zatvorite. ESC ga zatvara, a fokus se vraća na dugme koje ga je otvorilo.
+- Na kartici AI strelice biraju model, a fokus prelazi na **Otkaži** kada posao krene i na **Učitaj** kada se završi.
 
 ## Bez servera i bez ključa
 
@@ -726,40 +862,41 @@ Kada nemate server, važi sledeće:
 
 - Sve što sačuvate nalazi se u pregledaču koji koristite. Drugi pregledač ili računar to ne vidi dok ne izvezete profil i ne uvezete ga tamo.
 - Meni (☰) sa bibliotekom i nalogom ne prikazuje se u izdanju Business.
+- Kartica AI u dijalogu Novi program prikazuje jedan red o tome da AI zahteva server. Kartica Ručno radi kao i obično.
 - Datoteci simulatora internet uopšte nije potreban. Izdanja treba samo da dosegnu mesto na kome se sama nalaze.
 - Film na početnoj strani izdanja Play postoji samo ako su datoteke filma deo izgradnje. Bez njih se prikazuje nacrtana mreža.
 
 ## Rešavanje problema
 
-### `PROGRAM MODE — NC START WORKS IN 2 TEST, 3 SINGLE-BLOCK, 4 FULL-RUN`
+### `REŽIM PROGRAMIRANJA — NC START RADI U 2 TEST, 3 BLOK PO BLOK, 4 CEO PROGRAM`
 
-Pritisnuli ste Run u režimu PRG EDIT, u kome se ništa ne izvršava. Pritisnite `2`, `3` ili `4`, a zatim RAZMAKNICU.
+Pritisnuli ste Pokreni u režimu PRG IZMENA, u kome se ništa ne izvršava. Pritisnite `2`, `3` ili `4`, a zatim RAZMAK.
 
-### `NO MOVES TO RUN`
+### `NEMA KRETANJA ZA IZVRŠENJE`
 
-Program nema kretanja, na primer zato što ima samo `BEGIN PGM` i `END PGM`, ili zato što ga greška zaustavlja pre prvog kretanja. Otvorite Inspector tasterom `F` i pročitajte provere.
+Program nema kretanja, na primer zato što ima samo `BEGIN PGM` i `END PGM`, ili zato što ga greška zaustavlja pre prvog kretanja. Otvorite Inspektor tasterom `F` i pročitajte provere.
 
-### LOCKED, a program se ne pokreće (Play)
+### ZAKLJUČANO, a program se ne pokreće (Play)
 
-Radionica blokira pokretanje. Razlog stoji posle reči LOCKED.
+Radionica blokira pokretanje. Razlog stoji posle reči ZAKLJUČANO.
 
 | Razlog | Uradite ovo |
 |---|---|
-| `The machine power is off` | idite do mašine i izaberite Switch the power on |
-| `The oil is empty: refill it in the workshop` | uzmite kantu za ulje i izaberite Refill the oil kod mašine |
-| `The door is open` | izaberite Close the door |
-| `The machine is stopped and locked out in the workshop` | izaberite Unlock the machine, a zatim Close the door |
-| `A tool change is in progress` | završite zamenu alata, vidite [Zamena alata](#zamena-alata) |
+| `Mašina je bez struje` | idite do mašine i izaberite Uključi struju |
+| `Nema ulja: dolij ga u radionici` | uzmite kanticu za ulje i izaberite Dolij ulje kod mašine |
+| `Vrata su otvorena` | izaberite Zatvori vrata |
+| `Mašina je zaustavljena i zaključana u radionici` | izaberite Otključaj mašinu, a zatim Zatvori vrata |
+| `Izmena alata je u toku` | završite zamenu alata, vidite [Zamena alata](#zamena-alata) |
 
-### `Not yet. Take the steps in order.` (Play)
+### `Ne još. Idi redom, korak po korak.` (Play)
 
-Korak ne odgovara stanju u kome je mašina. Otvorite Stations: tamo su prikazani samo koraci koji su trenutno mogući.
+Korak ne odgovara stanju u kome je mašina. Otvorite Stanice: tamo su prikazani samo koraci koji su trenutno mogući.
 
-### `You need the wrench. It is on the workbench.` (Play)
+### `Treba ti ključ. Na tezgi je.` (Play)
 
-Za otpuštanje i stezanje alata potreban je ključ u ruci. Uzmite ga u listi Stations ili na radnom stolu.
+Za otpuštanje i stezanje alata potreban je ključ u ruci. Uzmite ga u listi Stanice ili na tezgi.
 
-### `The simulator does not answer the workshop yet` (Play)
+### `Simulator još ne odgovara na poruke iz radionice` (Play)
 
 Radionica i simulator nisu uspostavili vezu, pa izbor mašine, blokada i zamena alata ne stižu do simulatora. Ponovo učitajte stranu. Ako se ponovi, datoteka simulatora u izgradnji je starija od radionice: ponovo izgradite izdanje sa `npm run build:play`.
 
@@ -769,15 +906,15 @@ Izdanje ne nalazi datoteku simulatora. Pokrenite `python build.py` u korenu proj
 
 ### `The TNC server does not answer at /api/v1. The library, tool tables and accounts need it.`
 
-Otvorili ste biblioteku, tabele alata ili nalog, a server ne radi. Pokrenite server, ili izaberite **Open the machine** da se vratite u radni prostor mašine, koji radi bez servera.
+Otvorili ste biblioteku, tabele alata ili nalog, a server ne radi. Pokrenite server, ili izaberite **Open the machine** da se vratite u radni prostor mašine, koji radi bez servera. Ova strana postoji samo na engleskom.
 
-### `AI is off on this server (no OPENROUTER_API_KEY)`
+### `AI zahteva lokalni ili hostovani server. Ručno pravljenje radi kao i obično.`
 
-Server nema OpenRouter ključ. Ko održava server treba da ga doda, vidite [Gde se nalazi ključ](#gde-se-nalazi-ključ).
+Strana nema server iza sebe, pa kartica AI nema kome da šalje. To važi za datoteku simulatora `index.html` i za izdanje na običnom veb-sajtu. Pokrenite server ili koristite desktop aplikaciju, vidite [AI programi i AI ključ](#ai-programi-i-ai-ključ).
 
-### `OPENROUTER MODEL LIST UNREACHABLE — SHORT OFFLINE LIST; ANY ID CAN STILL BE TYPED`
+### `Nijedan OpenRouter ključ nije sačuvan. Unesite ključ na vrhu.`
 
-Lista modela nije mogla da se preuzme, najčešće zato što nemate internet. Umesto nje vidite kratku listu, a ime modela i dalje možete da upišete ručno.
+Server nema OpenRouter ključ. Administrator ga upisuje u polje na vrhu kartice AI, vidite [Ključ](#ključ). Ostale poruke kartice navedene su pod [Poruke o greškama na kartici AI](#poruke-o-greškama-na-kartici-ai).
 
 ### `CYCLE n NOT IMPLEMENTED IN SIMULATOR` ili `TCH PROBE n NOT IMPLEMENTED IN SIMULATOR`
 
@@ -795,7 +932,7 @@ Broj ciklusa pripada novijem upravljanju i ne postoji na TNC 426 ni na TNC 430.
 
 Blok koristi slobodno programiranje konture FK (`FPOL`, `FL`, `FLT`, `FC`, `FCT`, `FSELECT`), koje simulator ne računa. Napišite konturu sa `L`, `C`, `CC`, `CR` i `CT`.
 
-### `THIS BLOCK HAS NO DIALOG — EDIT IT AS TEXT`
+### `OVAJ BLOK NEMA DIJALOG — IZMENITE GA KAO TEKST`
 
 Pritisnuli ste `F2` na bloku koji nema dijalog. Izmenite ga kao tekst u redu bloka.
 
@@ -813,7 +950,7 @@ Programi se čuvaju u pregledaču, za adresu koju strana ima. Ne vide se u drugo
 
 ### Grafika je spora
 
-Izaberite Graphics: Low i Motion: Reduced u podešavanjima. U izdanju Play isti izbori su u računaru radionice.
+Izaberite Grafika: Niska i Pokret: Smanjen u podešavanjima. U izdanju Play isti izbori su u radioničkom računaru.
 
 ### Windows ili macOS upozorava pri instalaciji desktop aplikacije
 
@@ -867,13 +1004,15 @@ Sve navedeno nalazi se u pregledaču, za adresu koju strana ima.
 | Šta | Gde |
 |---|---|
 | Programi, projekti i tabela alata (profil) | baza podataka pregledača za stranu |
-| Jezik, upravljanje, okruženje, grafika, kretanje, zvuk | `tnc.settings.v1` |
-| Stanje Inspectora i izabrana mašina, po izdanju | `tnc.edition.business.v1`, `tnc.edition.play.v1` |
+| Jezik, decimalni znak, upravljanje, okruženje, grafika, pokret, zvuk | `tnc.settings.v1` |
+| Izabrani AI model | `tnc.aigen.model` |
+| Materijal pripremka; vektori osa i klik za tačku | `tnc426.material`, `tnc.viz` |
+| Stanje Inspektora i izabrana mašina, po izdanju | `tnc.edition.business.v1`, `tnc.edition.play.v1` |
 | Play: titlovi, likovi, da li je uvod prikazan | `tnc.edition.play.v1` |
 | Play: sačuvana igra | `tnc.play.save.v1` |
 | Završene lekcije | `tnc.lessons.v1` |
 
-Na serveru se baza podataka `tnc.db` i, ako je ključ sačuvan, datoteka `openrouter.key` nalaze u fascikli sa podacima servera.
+Na serveru se baza podataka `tnc.db` i, ako je ključ sačuvan, datoteka `openrouter.key` nalaze u fascikli sa podacima servera (`TNC_DATA_DIR`; u desktop aplikaciji sistemska fascikla za podatke aplikacija). OpenRouter ključ nikada nije u pregledaču.
 
 ### Za programere
 

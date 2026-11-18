@@ -143,3 +143,80 @@ re-run the script after the redesign so they show the final look.
 | `git grep --cached -l -i -I -E "<the two personal names>"` (index) | `docs/BUILD_SPEC.md` only (the staged rename, see above) |
 | the same search over untracked, not ignored files | no file |
 | `git log --oneline -S"<surname>" -i --all` | 8 commits in the history contain the surname, among them the starting commit `c6e6e7d` (the verbatim spec); history is not changed by this work |
+
+## 4. This branch, final documentation pass (2026-11-18)
+
+Tree: `feat/dual-frontend` at `a3d6591` plus the documentation and picture changes of this pass. No file under
+`sim/`, `web/src/`, `server/`, `tests/` or `build.py` changed after these commands ran (newest source file 13:07,
+first command 13:20). Machine as above; Chromium build 1243 from the shared Playwright cache
+(`PW_CHROMIUM` set to its `chrome.exe`).
+
+### 4.1 Commands run in this pass
+
+| Command | Result |
+|---|---|
+| `python build.py` | ok, prints `2,210,441 bytes`, 21 modules, `showcase: 16 programs`; run again at the end: `index.html` and `docs/index.html` equal the committed files |
+| `npm run build:business` | ok, `dist/business` written |
+| `npm run build:play` | ok, `dist/play` written (one chunk-size note from Vite); run again after the comparison pictures changed |
+| `node tests/manual.js` | ALL MANUAL EXAMPLES PASS |
+| `node tests/post.js` | 34 of 36 block shapes run, 2 correctly refused, 0 open |
+| `node tests/parity.js` | 5550 / 5550 identical to the record |
+| `node tests/part.js` | ALL PART-SPEC CHECKS PASS |
+| `node tests/polar.js` | ALL 195 POLAR CHECKS PASS |
+| `node tests/i18n.js` | ALL 40 LANGUAGE CHECKS PASS (shell keys 229, control text 58, script text 109, patterns 56) |
+| `node tests/bridge.js` | 75 passed, 0 failed: BRIDGE CONTRACT v2: ALL CHECKS PASS |
+| `node tests/showcase.js` | ALL PASS, 16 of 16 programs; run twice, before and after the thumbnails were made again. The line "native engine agrees with WASM on 31 of 31 runs" is the carried-over comparison of section 2.3, not a new native run |
+| `node tests/ai/loop.js` | ALL AI LOOP CHECKS PASS (mocked, no network) |
+| `node tests/ai/dialog-state.js` | all passed |
+| `node tests/ai/no-browser-key.js` | all 14 passed |
+| `node --test tests/play/` | 36 passed, 0 failed |
+| `cargo build --manifest-path server/Cargo.toml -p tnc-server` | ok (up to date); the binary was needed for the AI pictures |
+| `node scripts/showcase-thumbs.mjs` | 16 thumbnails, 640 x 400, from the final `index.html`; all sixteen viewed, each shows its cut part |
+| `node scripts/shots-before.mjs local/before-index.html artifacts/before` | four pictures; prints `run finished by the START soft key at speed MAX` with the run position at 1000 of 1000 and PROGRAM END |
+| `node tests/e2e/capture-after.mjs` | four pictures written to `web/public/play/after/` |
+| `node C:\Users\User\gigacook\core\conventions\lint\gc-lint.mjs` on the changed files | 0 FAIL, 0 WARN on README.md, the three manuals, FEATURE_MAP.md, TEST_REPORT.md, BUILD_STATE.md and scripts/shots-before.mjs |
+
+### 4.2 Pictures made in this pass
+
+All are captures of the running program; none is drawn or edited. No key and no personal data is in any of them.
+
+| Pictures | Made from | How |
+|---|---|---|
+| `docs/shots/business-*.png` (15, not counting the two AI pictures below) | `dist/business` served on 127.0.0.1, 1440 x 900, Swedish; `business-phone.png` at 390 x 844; `business-serbian.png` with the language set to Srpski | a scratch Playwright script (`local/llm/docs-shots/capture2.mjs`, not tracked) that clicks and types as a user does |
+| `docs/shots/business-ai-nokey.png`, `business-ai-done.png` | the built `index.html` served by the real `tnc-server` binary, with the MOCK provider of `tests/ai/server-mock-provider.mjs` | no key is typed in any picture: the no-key picture is taken first; for the finished job the mock key is sent to the server from script. The model names in the pictures are the mock's |
+| `docs/shots/play-*` (12) | `dist/play` served on 127.0.0.1, 1440 x 900, Swedish; `play-phone-pad.jpg` at 390 x 844 with touch | the same script |
+| `examples/showcase/thumbs/*.png` (16) | `index.html` | `scripts/showcase-thumbs.mjs` |
+| `artifacts/before/*.png`, copied to `web/public/play/before/` (4) | `local/before-index.html`, the build of the starting commit | `scripts/shots-before.mjs`, see 4.3 |
+| `web/public/play/after/after-{main,new-menu,run}.png` | `dist/play`, the plain simulator, English | `tests/e2e/capture-after.mjs` |
+| `web/public/play/after/after-ai-dialog.png` | the built `index.html` served by `tnc-server` with the mock provider, English, 1920 x 1080, no key | the scratch script. `capture-after.mjs` serves static files only, where the AI tab is the one line "AI needs the local or hosted server"; that picture was replaced by this one, which shows the whole AI view. Running `capture-after.mjs` again puts the one-line picture back |
+
+Each before / after pair was viewed side by side: NAMEPLATE.H in all eight, idle in main, new menu and AI dialog,
+run to the end in the run pair (elapsed 17:08.5 of 17:08.5 in both).
+
+### 4.3 What was wrong with `before-run.png`
+
+The script hid the old build's profile dialog by setting `hidden` on the element. The old page still held the
+dialog as open, kept the page behind it inert and ignored mode keys and soft keys, so the picture showed an idle
+workspace in TEST mode. The script now closes the dialog with Escape, presses `4`, sets speed MAX, presses the
+START soft key in `#sks` and waits for PROGRAM END with `#scrub` at its maximum (moving the slider to its end is
+the fallback, and the script says which of the two happened). It stops with an error when the run does not reach
+the end. The new menu and the AI dialog are now opened through the old page's own menu, before the run, and the
+page is kept off the network, so the old AI dialog shows its built-in model list.
+
+### 4.4 Reported by build lanes, to be re-run in the final pass
+
+Not run in this pass. The figures are what the lanes left in the tree; treat them as unverified.
+
+| Check | Figure on record | Where it is recorded |
+|---|---|---|
+| `node tests/ui/run.mjs` (browser suite) | 529 passed, 0 failed, 1 skipped (WebKit not installed) | `local/llm/ui-run-aigen.log`, written 13:17, not tracked |
+| `cargo test --manifest-path server/Cargo.toml` | 33 + 9 + 13 passed, 0 failed | `local/llm/cargo-test-aigen.log`, written 12:49, not tracked; it may cover the server crate only |
+| `node tests/ai/dialog-e2e.mjs`, `node tests/ai/server-job.mjs` | no figure on record | named in commits `408e14d` and `a3d6591` only |
+| `tests/e2e/*.mjs` (core, play, play-keyboard, play-layout, play-axe, landing-contrast, business-isolation, sr-layout, sr-fallback) | no figure on record | named in commits `65d7bac` and `6f6230b` only |
+| `npm run desktop:business`, `npm run desktop:play` | no figure on record | the desktop lane was still working during this pass |
+
+### 4.5 Known failures
+
+| Command | Failure | Since |
+|---|---|---|
+| `node tests/ui/autosave.mjs` | a tool name restored from a draft is lost when the page reloads within 300 ms | the same on the starting commit `c6e6e7d`; reported by the build lane, not re-run in this pass |

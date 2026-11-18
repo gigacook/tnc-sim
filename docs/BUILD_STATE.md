@@ -22,7 +22,7 @@ See [TEST_REPORT.md](TEST_REPORT.md).
   Each contains the shell plus `sim/index.html` (a copy of the single-file build), so both run from a static host.
   Business must not import or request anything under `web/src/play/` or `media/`.
 - Scripts (root `package.json`): `dev:business`, `dev:play`, `build:business`, `build:play`.
-- Storage keys (localStorage, same origin): shared `tnc.settings.v1` (language, skin, environment, quality, motion, sound);
+- Storage keys (localStorage, same origin): shared `tnc.settings.v1` (language, decimal character, skin, environment, quality, motion, sound, setup, tips);
   per edition `tnc.edition.business.v1`, `tnc.edition.play.v1`; game save `tnc.play.save.v1`. Existing keys are kept
   and migrated without deleting them. Credentials are never stored in the browser.
 
@@ -65,14 +65,30 @@ sim -> app
 | Showcase + media + docs | `examples/**`, `scripts/showcase-*.mjs`, `tests/showcase.js`, `media/**`, `docs/*.md`, `README.md`, `THIRD_PARTY_NOTICES.md` |
 | Supervisor | this file, commits, `artifacts/` layout |
 
-## Phases
+## Phases (state on 2026-11-18, HEAD `a3d6591`)
 | Phase | State |
 |---|---|
-| 1 Baseline and risk proof | baseline run; browser suite waits on the Playwright browser install |
-| 2 Business vertical slice | started |
-| 3 Play integration | started (shell + workshop against the contract above) |
-| 4 Visual production | not started |
-| 5 Release checks | not started |
+| 1 Baseline and risk proof | done: baseline in [TEST_REPORT.md](TEST_REPORT.md) section 1; the browser suite ran later (lane figure, section 4.4) |
+| 2 Business vertical slice | built and committed (`0d2b033`, `408e14d`, `a3d6591`): workspace with the Inspector closed, settings, two skins, two environments, three languages, decimal character, polar editing, the AI view on the server API with New / Change current. Engine, polar, i18n, bridge and AI state checks re-run on the final tree (section 4.1) |
+| 3 Play integration | built and committed (`65d7bac`, `2e7fcd7`, `6f6230b`): landing, workshop, both controls, tool change, power, oil, characters, measuring tool, walk pad, 333 comparison. Game rules re-run (`node --test tests/play/`); the browser checks are lane figures |
+| 4 Visual production | the landing film source is in `media/landing-hyperframes/`; showcase thumbnails and all manual pictures were made again from the final build (section 4.2) |
+| 5 Release checks | in progress: manuals (sv, en, sr), README, feature map, test report and pictures are final. Open: the items below |
+
+## Open items (each can be checked in the tree)
+| Item | Evidence | Next step |
+|---|---|---|
+| Browser suite, e2e scripts, cargo tests not re-run on the final tree | TEST_REPORT section 4.4 | run them in the final pass and replace the lane figures |
+| Desktop apps not built or started in this pass | no build record in the tree | `npm run desktop:business`, `npm run desktop:play`, start each once |
+| No live provider test of the AI | docs/AI_API.md: "No test calls the real OpenRouter" | owner decision: needs a key and credit |
+| `node tests/ui/autosave.mjs` fails on one check | TEST_REPORT section 4.5 | fix in `sim/autosave.js` or accept; same on the starting commit |
+| Four pictures in `docs/shots/` are referenced nowhere | `plan-view.png`, `prg-edit.png`, `run-3d.png`, `tool-table.png` (from before the redesign) | delete in the prune step |
+| `after-ai-dialog.png` is not what `tests/e2e/capture-after.mjs` writes | TEST_REPORT section 4.2 | teach the script to start the server with the mock provider, or keep the picture and do not overwrite it |
+| The page "The TNC server does not answer" and its button "Open the machine" are English only | `web/src/app.tsx` | add the three languages or leave as is |
+| The old AI pass-through and `sim/ai.js` are still shipped | docs/AI_API.md, first section; `build.py` module list | decide whether `sim/ai.js` stays (the AI view takes its system prompt from it) |
+| WebKit is not installed for Playwright | lane log: "SKIP [webkit] all checks" | install it or record Chromium only |
+| No `.gitattributes` | TEST_REPORT section 1.1 | add `index.html text eol=lf` and the same for `docs/index.html` |
+| Untracked files in `artifacts/business/`: `dbg.png`, `first-run-1920.png`, `shell-1440x900.png`, `shell-5120x1440.png`, `t-430-night.png`, `t-phone.png`, `t-polar.png`, `t-settings.png` | `git status` | commit the ones that are evidence, delete `dbg.png` |
+| Feature map: seven old functions not found in the new interface | [FEATURE_MAP.md](FEATURE_MAP.md), section NOT FOUND | decide per row: restore or record as removed |
 
 ## Blockers
 none
@@ -80,4 +96,4 @@ none
 ## Resume
 1. `git -C <checkout> status` and read this file.
 2. `npm ci`, `python build.py`, then the commands in TEST_REPORT.md.
-3. Take the first phase above that is not done.
+3. Take the first open item above.
