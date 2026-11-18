@@ -65,31 +65,28 @@ sim -> app
 | Showcase + media + docs | `examples/**`, `scripts/showcase-*.mjs`, `tests/showcase.js`, `media/**`, `docs/*.md`, `README.md`, `THIRD_PARTY_NOTICES.md` |
 | Supervisor | this file, commits, `artifacts/` layout |
 
-## Phases (state on 2026-11-18, HEAD `a3d6591`)
+## Phases (state on 2026-11-18, after the final pass)
 | Phase | State |
 |---|---|
-| 1 Baseline and risk proof | done: baseline in [TEST_REPORT.md](TEST_REPORT.md) section 1; the browser suite ran later (lane figure, section 4.4) |
-| 2 Business vertical slice | built and committed (`0d2b033`, `408e14d`, `a3d6591`): workspace with the Inspector closed, settings, two skins, two environments, three languages, decimal character, polar editing, the AI view on the server API with New / Change current. Engine, polar, i18n, bridge and AI state checks re-run on the final tree (section 4.1) |
-| 3 Play integration | built and committed (`65d7bac`, `2e7fcd7`, `6f6230b`): landing, workshop, both controls, tool change, power, oil, characters, measuring tool, walk pad, 333 comparison. Game rules re-run (`node --test tests/play/`); the browser checks are lane figures |
-| 4 Visual production | the landing film source is in `media/landing-hyperframes/`; showcase thumbnails and all manual pictures were made again from the final build (section 4.2) |
-| 5 Release checks | in progress: manuals (sv, en, sr), README, feature map, test report and pictures are final. Open: the items below |
+| 1 Baseline and risk proof | done: baseline in [TEST_REPORT.md](TEST_REPORT.md) section 1 |
+| 2 Business vertical slice | done and committed (`0d2b033`, `408e14d`, `a3d6591`, `fd9e4e6`): workspace with the Inspector closed, settings, two skins, two environments, three languages, decimal character, polar editing, the AI view on the server API with New / Change current and one line with the job's time and cost |
+| 3 Play integration | done and committed (`65d7bac`, `2e7fcd7`, `6f6230b`): landing, workshop, both controls, tool change, power, oil, characters, measuring tool, walk pad, 333 comparison |
+| 4 Visual production | done: the landing film source is in `media/landing-hyperframes/` (the film itself is rendered locally and not tracked; without it the landing shows the poster); showcase thumbnails and all manual pictures are from the final build |
+| 5 Release checks | done on this machine: every command of the final pass ran on the final tree (TEST_REPORT section 4.4), one known failure (section 4.5). Prune done (`fd9e4e6`): generated evidence under `artifacts/` is no longer tracked (only `artifacts/showcase/report.json`), four old pictures, one unused test fixture and the uncalled model list and key test of `sim/ai.js` are removed. CI and the public page are checked after the push and are not recorded in this file |
 
 ## Open items (each can be checked in the tree)
 | Item | Evidence | Next step |
 |---|---|---|
-| Browser suite, e2e scripts, cargo tests not re-run on the final tree | TEST_REPORT section 4.4 | run them in the final pass and replace the lane figures |
-| Desktop apps not built or started in this pass | no build record in the tree | `npm run desktop:business`, `npm run desktop:play`, start each once |
+| Desktop apps not built or started | no build record in the tree | `npm run desktop:business`, `npm run desktop:play`, start each once |
 | No live provider test of the AI | docs/AI_API.md: "No test calls the real OpenRouter" | owner decision: needs a key and credit |
-| `node tests/ui/autosave.mjs` fails on one check | TEST_REPORT section 4.5 | fix in `sim/autosave.js` or accept; same on the starting commit |
-| Four pictures in `docs/shots/` are referenced nowhere | `plan-view.png`, `prg-edit.png`, `run-3d.png`, `tool-table.png` (from before the redesign) | delete in the prune step |
+| `node tests/ui/autosave.mjs` fails on one check | TEST_REPORT section 4.5 | fix in `sim/autosave.js` or accept |
 | `after-ai-dialog.png` is not what `tests/e2e/capture-after.mjs` writes | TEST_REPORT section 4.2 | teach the script to start the server with the mock provider, or keep the picture and do not overwrite it |
 | The page "The TNC server does not answer" and its button "Open the machine" are English only | `web/src/app.tsx` | add the three languages or leave as is |
-| The old AI pass-through and `sim/ai.js` are still shipped | docs/AI_API.md, first section; `build.py` module list | decide whether `sim/ai.js` stays (the AI view takes its system prompt from it) |
-| WebKit is not installed for Playwright | lane log: "SKIP [webkit] all checks" | install it or record Chromium only |
-| No `.gitattributes` | TEST_REPORT section 1.1 | add `index.html text eol=lf` and the same for `docs/index.html` |
-| Untracked files in `artifacts/business/`: `dbg.png`, `first-run-1920.png`, `shell-1440x900.png`, `shell-5120x1440.png`, `t-430-night.png`, `t-phone.png`, `t-polar.png`, `t-settings.png` | `git status` | commit the ones that are evidence, delete `dbg.png` |
-| Feature map: seven old functions not found in the new interface | [FEATURE_MAP.md](FEATURE_MAP.md), section NOT FOUND | decide per row: restore or record as removed |
-
+| The old AI pass-through and `sim/ai.js` are still shipped | docs/AI_API.md, first section; `build.py` module list | decide whether `sim/ai.js` stays (the AI view takes its system prompt from it). Its `testKey()` is gone; the server still answers `GET /key` in OpenRouter's shape and a comment in `server/crates/tnc-server/src/ai.rs` still names `testKey` |
+| WebKit is not installed for Playwright on this machine | browser suite: "SKIP [webkit] all checks" | install it or keep Chromium only here (CI runs both) |
+| No `.gitattributes` at the root | TEST_REPORT section 1.1 | add `index.html text eol=lf` and the same for `docs/index.html` |
+| Feature map: six old functions not found in the new interface | [FEATURE_MAP.md](FEATURE_MAP.md), section NOT FOUND | decide per row: restore or record as removed |
+| `desktop/src-tauri/icons/64x64.png` is named by no tracked file | `git grep 64x64 -- desktop` gives nothing | kept: an icon set may be read by convention; check against the Tauri configs before removing |
 ## Blockers
 none
 

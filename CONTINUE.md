@@ -42,6 +42,7 @@ verified, where it ran, and the commit (pushed to main).
 | x | #24 | Local WebKit on Windows "froze" in the desktop checks: the test pressed TAB twice; Windows WebKit put the second TAB on a button, where Backspace goes back in history and the page is gone. Test now checks the first TAB opens and focuses the raw editor. Also: the phone live-region check could read in the gap announce() leaves (one CI red on 70e05e6); the wait is now the check | 10-19 | `node tests/ui/run.mjs` 567 / 0 | Win 11: Chrome + WebKit 26 | see git log |
 | x | #18 | GitHub Pages: site from `/docs` on main; build.py writes docs/index.html next to index.html, CI checks both | 10-19 | https://gigacook.github.io/tnc-sim/ returns 200, 2 MB | Pages | 9f51b8d |
 |   | #19 | Desktop app opens on macOS and Windows (CI only builds them). Windows done 10-19: CI NSIS build of 091b9bb installed per-user, window + library show, in-app server on 127.0.0.1:8427 serves /sim/, port freed on close. macOS open: the Mac has no SSH, user launches the CI .dmg by hand | | launched by hand | Win 11 | |
+| x | #28 | Dual frontend: Business (`/work`) and Play (`/play`) editions on one simulator, AI view on the server API, manuals in Swedish, English and Serbian; generated evidence untracked (docs/BUILD_STATE.md) | 11-18 | the final pass in docs/TEST_REPORT.md section 4.4 (one known failure, section 4.5) | Win 11: Chromium 1243, Node 26, Rust 1.98 | fd9e4e6 |
 
 ### 3. Proof (needs the user)
 | ✓ | id | task | date | verified via | tested on | commit |

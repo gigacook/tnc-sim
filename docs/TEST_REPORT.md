@@ -186,7 +186,7 @@ All are captures of the running program; none is drawn or edited. No key and no 
 | `docs/shots/business-ai-nokey.png`, `business-ai-done.png` | the built `index.html` served by the real `tnc-server` binary, with the MOCK provider of `tests/ai/server-mock-provider.mjs` | no key is typed in any picture: the no-key picture is taken first; for the finished job the mock key is sent to the server from script. The model names in the pictures are the mock's |
 | `docs/shots/play-*` (12) | `dist/play` served on 127.0.0.1, 1440 x 900, Swedish; `play-phone-pad.jpg` at 390 x 844 with touch | the same script |
 | `examples/showcase/thumbs/*.png` (16) | `index.html` | `scripts/showcase-thumbs.mjs` |
-| `artifacts/before/*.png`, copied to `web/public/play/before/` (4) | `local/before-index.html`, the build of the starting commit | `scripts/shots-before.mjs`, see 4.3 |
+| `artifacts/before/*.png` (generated, not tracked since the prune), copied to `web/public/play/before/` (4, tracked) | `local/before-index.html`, the build of the starting commit | `scripts/shots-before.mjs`, see 4.3 |
 | `web/public/play/after/after-{main,new-menu,run}.png` | `dist/play`, the plain simulator, English | `tests/e2e/capture-after.mjs` |
 | `web/public/play/after/after-ai-dialog.png` | the built `index.html` served by `tnc-server` with the mock provider, English, 1920 x 1080, no key | the scratch script. `capture-after.mjs` serves static files only, where the AI tab is the one line "AI needs the local or hosted server"; that picture was replaced by this one, which shows the whole AI view. Running `capture-after.mjs` again puts the one-line picture back |
 
@@ -203,20 +203,59 @@ the fallback, and the script says which of the two happened). It stops with an e
 the end. The new menu and the AI dialog are now opened through the old page's own menu, before the run, and the
 page is kept off the network, so the old AI dialog shows its built-in model list.
 
-### 4.4 Reported by build lanes, to be re-run in the final pass
+### 4.4 Final pass (2026-11-18, every command run on the final tree)
 
-Not run in this pass. The figures are what the lanes left in the tree; treat them as unverified.
+Tree: commit `fd9e4e6` (the prune and the AI time and cost line) plus the new `tests/e2e/offline.mjs`. Machine as
+above, Chromium build 1243 (`PW_CHROMIUM`), one headless browser at a time, ports from the machine's catalog on
+127.0.0.1. `node_modules` were present, so `npm ci` was not run again.
 
-| Check | Figure on record | Where it is recorded |
-|---|---|---|
-| `node tests/ui/run.mjs` (browser suite) | 529 passed, 0 failed, 1 skipped (WebKit not installed) | `local/llm/ui-run-aigen.log`, written 13:17, not tracked |
-| `cargo test --manifest-path server/Cargo.toml` | 33 + 9 + 13 passed, 0 failed | `local/llm/cargo-test-aigen.log`, written 12:49, not tracked; it may cover the server crate only |
-| `node tests/ai/dialog-e2e.mjs`, `node tests/ai/server-job.mjs` | no figure on record | named in commits `408e14d` and `a3d6591` only |
-| `tests/e2e/*.mjs` (core, play, play-keyboard, play-layout, play-axe, landing-contrast, business-isolation, sr-layout, sr-fallback) | no figure on record | named in commits `65d7bac` and `6f6230b` only |
-| `npm run desktop:business`, `npm run desktop:play` | no figure on record | the desktop lane was still working during this pass |
+| Command | Result |
+|---|---|
+| `python build.py` | ok, prints `2,207,693 bytes`, 21 modules, `showcase: 16 programs`; `git status` afterwards: `index.html` and `docs/index.html` unchanged |
+| `node tests/manual.js` | ALL MANUAL EXAMPLES PASS |
+| `node tests/post.js` | 34 of 36 block shapes run, 2 correctly refused, 0 open |
+| `node tests/parity.js` | 5550 / 5550 identical to the record (not re-recorded) |
+| `node tests/part.js` | ALL PART-SPEC CHECKS PASS |
+| `node tests/polar.js` | ALL 195 POLAR CHECKS PASS |
+| `node tests/i18n.js` | ALL 40 LANGUAGE CHECKS PASS |
+| `node tests/bridge.js` | 75 passed, 0 failed |
+| `node tests/showcase.js` | ALL PASS, 16 of 16 programs (the native comparison is the carried-over one of section 2.3); the tracked report is unchanged afterwards |
+| `node tests/ai/loop.js` | ALL AI LOOP CHECKS PASS (mocked, no network) |
+| `node tests/ai/dialog-state.js` | all passed, 117 checks |
+| `node tests/ai/no-browser-key.js` | all 14 passed |
+| `node tests/ai/server-job.mjs` | 22 passed, 0 failed (real server binary, mock provider) |
+| `node tests/ai/dialog-e2e.mjs` | all passed, 86 checks (real server binary, mock provider, Chromium) |
+| `node --test tests/play/` | 36 passed, 0 failed |
+| `node tests/ui/run.mjs` (full) | 529 passed, 0 failed, 1 skipped (WebKit is not installed for Playwright: Chromium only) |
+| `node tests/ui/autosave.mjs` | 13 passed, 1 failed: the known failure of section 4.5 |
+| `cargo test --manifest-path server/Cargo.toml` | 73 passed, 0 failed (tnc-core 3, tnc-engine 9, tnc-formats 6, tnc-server 33 + 9 + 13) |
+| `npx tsc --noEmit` in `web` | no error |
+| `npm run build:business` | ok |
+| `npm run build:play` | ok (one chunk-size note from Vite) |
+| the nine scripts of `npm run test:e2e`, run one by one | business-isolation 32, core 19, play 105, sr-layout 42, sr-fallback 20, landing-contrast 38, play-layout 42, play-axe 14, play-keyboard 20: all passed, 0 failed |
+| `node tests/e2e/play.mjs` and `business-isolation.mjs` on a Play build without `hero.mp4` / `hero.webm` (as on CI, where the film is not in the repository) | 105 passed and 32 passed, 0 failed: the landing falls back to the poster |
+| `node tests/e2e/offline.mjs` (new) | all 6 passed: the built `index.html` opened from disk with the browser offline and every network request refused (none was attempted); `02_STEPPED_POCKET.H` ran to its end, no engine error, no crash event, no script error |
+| `node mcp/tnc-mcp.test.mjs` | 6 passed, 0 failed |
+
+Not run in this pass: `npm run desktop:business`, `npm run desktop:play` (no desktop build record in the tree), and
+any call to the real OpenRouter.
+
+Scans over all tracked files at this commit and over the full diff from `origin/main`:
+
+| Scan | Result |
+|---|---|
+| OpenRouter key pattern (`sk-or-v1-` and 20 or more characters) | 0 hits in tracked files, 0 in the diff |
+| Private-key headers | 0 hits |
+| A value assigned to `OPENROUTER_API_KEY` | none: `server/.env.example` (commented, empty), a usage line in `tests/ai/bench.mjs` (an ellipsis), an empty string in `tests/ui/run.mjs` |
+| The two personal names of section 3 (case-insensitive, binary files included) | 0 hits in tracked files; `docs/BUILD_SPEC.md` has none. The diff holds them on two removed lines only (the old `docs/BUILD-SPEC.MD`) |
+| The given name looked for on its own (whole word, case-insensitive) | 0 hits in tracked files |
+| Pricing or commercial strategy wording (`price hypothes`, `pilot offer`, `margin`) | none: `margin` appears only as CSS, as a layout variable in `sim/flow.js` and twice as a technical tolerance (docs/AI_API.md, `aigen/job.rs`) |
+
+The history is unchanged by this work: the starting commit `c6e6e7d` on the public main still holds the verbatim
+spec with the names (section 3).
 
 ### 4.5 Known failures
 
 | Command | Failure | Since |
 |---|---|---|
-| `node tests/ui/autosave.mjs` | a tool name restored from a draft is lost when the page reloads within 300 ms | the same on the starting commit `c6e6e7d`; reported by the build lane, not re-run in this pass |
+| `node tests/ui/autosave.mjs` | 1 of 14 checks: "...and it was committed to the tool table (still there on the next load, draft gone)". A tool name restored from a draft is lost when the page reloads within 300 ms. Seen again in the final pass | reported by the build lane as the same on the starting commit `c6e6e7d`; that was not re-run here |
