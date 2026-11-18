@@ -59,6 +59,16 @@ const stopwatch = (pg, trigger) =>
       o.disconnect();
     }).observe(shop, { attributes: true, attributeFilter: ['data-mode'] });
   }, trigger);
+/** Type 333 the way a hand does: three keys within a moment. (`keyboard.type` waits for the page after every key; on
+ *  a machine that needs two seconds for a frame that puts the keys further apart than the two seconds they may be.) */
+async function type333(ctx, pg) {
+  const cdp = await ctx.newCDPSession(pg);
+  const key = (type) => cdp.send('Input.dispatchKeyEvent', { type, key: '3', code: 'Digit3', windowsVirtualKeyCode: 51, nativeVirtualKeyCode: 51 });
+  await Promise.all(['keyDown', 'keyUp', 'keyDown', 'keyUp', 'keyDown', 'keyUp'].map(key));
+  await cdp.detach();
+}
+/** what the shell says is put on screen a moment after the action (an empty beat first): wait for the sentence */
+const said = (pg, words) => pg.waitForFunction((w) => (document.querySelector('.pp-live')?.textContent ?? '').toLowerCase().includes(w), words.toLowerCase(), { timeout: WAIT }).catch(() => {});
 /** the list's "go there" has arrived when the prompt names the station (the walk there is a camera move) */
 const promptNames = (pg, station) => pg.waitForFunction((n) => (document.querySelector('.hud-prompt')?.textContent ?? '').includes(n), station, { timeout: WAIT }).then(() => true, () => false);
 const stored = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('tnc.settings.v1') || '{}').lang);
@@ -129,7 +139,7 @@ try {
     c.ok((await sim.evaluate(() => window.TNC_UI.runState().locked)) === true, 'Srpski: "Otvori vrata" locks NC start in the simulator');
     await fil15.locator('.st-acts .hud-btn', { hasText: 'Zaustavi i zaključaj' }).click();
     await fil15.locator('.st-acts .hud-btn', { hasText: 'Otpusti alat' }).click();
-    await page.waitForTimeout(150);
+    await said(page, 'Treba ti ključ');
     c.ok(/Treba ti ključ/.test(await page.locator('.pp-live').innerText()), 'Srpski: a refusal gives its reason in Serbian', await page.locator('.pp-live').innerText());
     await page.keyboard.press('Escape');
     await page.locator('.hud-rail .hud-btn', { hasText: 'Računar' }).click();
@@ -179,6 +189,21 @@ try {
   c.ok((await page.locator('.ob').count()) === 1, 'first visit: the introduction is shown');
   await page.keyboard.press('Escape');
   c.ok((await page.locator('.ob').count()) === 0 && JSON.parse(await page.evaluate(() => localStorage.getItem('tnc.edition.play.v1'))).onboarded === true, 'the introduction can be skipped with Esc and stays away');
+
+  // The boss and the office each drop in on their own, at most once in five minutes of play. On a machine without a
+  // graphics card this script plays for much longer than that (CI run 44344286816: the boss stood on the floor when 333
+  // was typed), so it does what a player who wants to work in peace does: it switches both off at the computer. Further
+  // down the characters are called by hand, and the boss is switched on again before he is told not to come back.
+  const playPrefs = async () => JSON.parse(await page.evaluate(() => localStorage.getItem('tnc.edition.play.v1')));
+  async function mayInterrupt(who, on) {
+    if (!(await page.locator('.pc').count())) await page.locator('.hud-rail .hud-btn', { hasText: 'Dator' }).click();
+    await page.locator('.pc .seg', { has: page.locator('legend', { hasText: who }) }).locator('button', { hasText: on ? /^På$/ : /^Av$/ }).click();
+  }
+  await mayInterrupt('Chefen får avbryta', false);
+  await mayInterrupt('Kontoret får avbryta', false);
+  await page.keyboard.press('Escape');
+  const quiet = (await playPrefs()).npc;
+  c.ok(quiet.boss === false && quiet.office === false && (await page.locator('.pc').count()) === 0, 'the computer switches both characters off: nobody interrupts on their own from here', JSON.stringify(quiet));
 
   const sim = await (await page.waitForSelector('.shop-sim iframe', { state: 'attached' })).contentFrame();
   await sim.waitForFunction(() => window.TNC_UI && window.TNC_UI.state && window.TNC_UI.state.res, null, { timeout: 45000 });
@@ -303,6 +328,7 @@ try {
   /* ---- the whole tool change, by list ---- */
   await list('fil15', 'Stoppa och lås');
   await list('fil15', 'Lossa verktyget');
+  await said(page, 'nyckeln');
   c.ok((await game()).stations.fil15.phase === 'isolated' && /nyckeln/i.test(await page.locator('.pp-live').innerText()), 'loosening without the wrench is refused, with the reason');
   await list('Nyckeln', 'Ta upp');
   await list('fil15', 'Lossa verktyget');
@@ -365,6 +391,7 @@ try {
   c.ok(g.stations.fil15.oil < 100 && g.stations.fil15.oil > 99, `simulated cutting drained the oil a little (${g.stations.fil15.oil.toFixed(3)} %)`);
   c.ok(g.stations.dmc125.oil === 100, 'the idle machine lost none');
   await list('fil15', 'Öppna luckan');
+  await said(page, 'Maskinen går');
   c.ok((await game()).stations.fil15.phase === 'floor' && /Maskinen går/.test(await page.locator('.pp-live').innerText()), 'the door is refused while the simulator runs');
   await closeList();
   await page.waitForTimeout(400);
@@ -374,10 +401,10 @@ try {
 
   /* ---- 333 ---- */
   await page.locator('.shop-canvas').focus();
-  await page.keyboard.type('333');
+  await type333(ctx, page);
   await page.waitForSelector('.cmp', { timeout: WAIT }).catch(() => {});
   c.ok((await page.locator('.cmp').count()) === 1, 'typing 333 opens the before / after comparison');
-  await page.waitForTimeout(800);
+  await page.waitForFunction(() => [...document.querySelectorAll('.cmp-pane img')].length === 2 && [...document.querySelectorAll('.cmp-pane img')].every((im) => im.complete && im.naturalWidth > 0), null, { timeout: WAIT }).catch(() => {});
   const beforeOk = await page.evaluate(() => { const i = document.querySelector('.cmp-before img'); return !!i && i.naturalWidth > 0; });
   c.ok(beforeOk, 'the "before" screenshot is shown');
   // slider mode: this build carries the "after" pictures (tests/e2e/capture-after.mjs), so no live simulator beside it
@@ -393,10 +420,19 @@ try {
   const sp0 = await split();
   await page.locator('.cmp-range').focus();
   for (let i = 0; i < 10; i++) await page.keyboard.press('ArrowRight');
+  // the divider is drawn from the slider's value: wait for it to be drawn, then read
+  const drawn = (want) => page.waitForFunction((v) => {
+    const stage = document.querySelector('.cmp-stage')?.getBoundingClientRect();
+    const bar = document.querySelector('.cmp-bar')?.getBoundingClientRect();
+    return !!stage && !!bar && Math.abs(((bar.left + bar.width / 2 - stage.left) / stage.width) * 100 - (v ?? +document.querySelector('.cmp-range').value)) <= 0.5;
+  }, want, { timeout: WAIT }).catch(() => {});
+  await drawn(60);
   const sp1 = await split();
   c.ok(sp0.value === 50 && sp1.value === 60 && sp1.bar === 60 && sp1.clip !== sp0.clip, 'the slider moves by keyboard: 50 -> 60, the divider and the cut follow', JSON.stringify([sp0, sp1]));
   const rb = await page.locator('.cmp-range').boundingBox();
   await page.mouse.click(rb.x + rb.width * 0.25, rb.y + rb.height / 2);
+  await page.waitForFunction(() => +document.querySelector('.cmp-range').value < 60, null, { timeout: WAIT }).catch(() => {});
+  await drawn(null);
   const sp2 = await split();
   c.ok(Math.abs(sp2.value - 25) <= 3 && Math.abs(sp2.bar - sp2.value) <= 1, 'the slider moves by pointer: a click at a quarter of the track', JSON.stringify(sp2));
   await page.screenshot({ path: join(out, 'e2e-333.png') });
@@ -434,9 +470,12 @@ try {
   await page.screenshot({ path: join(out, 'e2e-npc.png') });
   await page.keyboard.press('Escape');
   c.ok((await page.locator('.npc').count()) === 0, 'Esc skips the interruption');
+  await mayInterrupt('Chefen får avbryta', true);
+  await page.keyboard.press('Escape');
+  const bossOn = (await playPrefs()).npc.boss;
   await page.evaluate(() => window.__tncPlay.visit('boss'));
   await page.locator('.npc .hud-btn', { hasText: 'Avbryt mig inte igen' }).click();
-  c.ok(JSON.parse(await page.evaluate(() => localStorage.getItem('tnc.edition.play.v1'))).npc.boss === false, 'a character can be switched off for good');
+  c.ok(bossOn === true && (await playPrefs()).npc.boss === false, 'a character can be switched off for good', JSON.stringify({ before: bossOn }));
 
   /* ---- the secret programs are real programs: the engine takes each without an error ---- */
   for (const sec of SECRETS.filter((x) => x.program)) {
@@ -525,15 +564,18 @@ try {
   const pose = () => ph.evaluate(() => window.__tncPlay.pose());
   const cx = lay.pad.x + lay.pad.w / 2;
   const cy = lay.pad.y + lay.pad.h / 2;
-  const w0 = await pose();
+  // the knob is put where the thumb is in the same step that tells the scene to walk: wait for it, then measure
+  const knobAt = (where) => ph.waitForFunction((w) => document.querySelector('.pad-knob')?.style.transform === w, where, { timeout: WAIT }).catch(() => {});
   await finger('touchStart', [[cx, cy]]);
   await finger('touchMove', [[cx, cy - 20]]);
   await finger('touchMove', [[cx, cy - 60]]);
+  await knobAt('translate(0px, -38px)');
+  const w0 = await pose();
   await ph.waitForTimeout(900);
   const knobUp = await ph.evaluate(() => document.querySelector('.pad-knob').style.transform);
   const w1 = await pose();
   await finger('touchEnd', []);
-  await ph.waitForTimeout(250);
+  await knobAt('translate(0px, 0px)');
   const w2 = await pose();
   await ph.waitForTimeout(400);
   const w3 = await pose();
@@ -542,6 +584,7 @@ try {
   c.ok(w2.z === w3.z && w2.x === w3.x && (await ph.evaluate(() => document.querySelector('.pad-knob').style.transform)) === 'translate(0px, 0px)', 'touch: letting go stops the player and centres the knob', JSON.stringify([w2, w3]));
   await finger('touchStart', [[cx, cy]]);
   await finger('touchMove', [[cx + 60, cy]]);
+  await knobAt('translate(38px, 0px)');
   await ph.waitForTimeout(600);
   const w4 = await pose();
   await finger('touchEnd', []);
@@ -557,6 +600,10 @@ try {
   }
   await ph.waitForFunction((yaw) => Math.abs(window.__tncPlay.pose().yaw - yaw) > 0.3, w4.yaw, { timeout: WAIT }).catch(() => {});
   const w5 = await pose();
+  // the finger rests before it lifts: lifted at speed it is a flick, and the browser uses up the next tap to stop the
+  // flick (no click on the station list button below)
+  await ph.waitForTimeout(200);
+  await finger('touchMove', [[cx, cy], [190, 420]]);
   await finger('touchEnd', []);
   c.ok(Math.abs(w5.yaw - w4.yaw) > 0.3, `touch: a drag on the floor turns the view (${(w5.yaw - w4.yaw).toFixed(2)} rad) with the pad held`, JSON.stringify([w4.yaw, w5.yaw]));
   await ph.waitForTimeout(300);
@@ -571,7 +618,7 @@ try {
   const phSim = await (await ph.waitForSelector('.shop-sim iframe', { state: 'attached' })).contentFrame();
   await phSim.waitForFunction(() => window.TNC_UI?.state?.res, null, { timeout: 45000 }).catch(() => {});
   await ph.locator('.shop-canvas').focus();
-  await ph.keyboard.type('333');
+  await type333(phone, ph);
   await ph.waitForSelector('.cmp-live', { timeout: WAIT }).catch(() => {});
   await ph.waitForTimeout(500);
   const liveShown = await ph.evaluate(() => ({ show: document.querySelector('.shop-sim').dataset.show, slider: document.querySelectorAll('.cmp-range').length, live: document.querySelectorAll('.cmp-live').length }));
