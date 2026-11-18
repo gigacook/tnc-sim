@@ -93,3 +93,4 @@ FK solver · horizontal spindle (TOOL CALL X / Y) · cylinder surface 27 / 28 (r
 | K1 | ui.js, dialogs.js | keypad details not in the manual (END takes the entry, I and −/+ toggles, CE twice, PC-keyboard bindings) |
 | AI1 | part.js | engraving font is the simulator's own |
 | AI2 | part.js compare | feature edges within half a grid cell not counted; Z tolerance 0.1 mm |
+| SF1 | dialogs.js, ui.js screen form | rapid feed shown as `F MAX` (stored `FMAX`): the 426/430 manual prints both spellings (p. 155 `7 LP PR+60 PA+180 R0 F MAX`); not confirmed from a screen photo. Decimal character follows MP 7280 (p. 457: 0 comma, 1 point), default here = by interface language; the control's factory default is not in the manual |

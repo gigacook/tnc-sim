@@ -36,11 +36,12 @@ app -> sim
 | `tnc:open` | `{name, text, machine, tools?}` | v1: open / replace a program |
 | `tnc:get` | `{id}` | v1: ask for the program on screen |
 | `tnc:hello` | `{v:2}` | handshake; answered with `tnc:ready` |
-| `tnc:present` | `{lang?:'sv'|'en', skin?:'426'|'430', env?:'cold-steel'|'workshop-night', quality?:'low'|'medium'|'high', motion?:'full'|'reduced', sound?:boolean}` | presentation only |
+| `tnc:present` | `{lang?:'sv'|'en'|'sr', skin?:'426'|'430', env?:'cold-steel'|'workshop-night', quality?:'low'|'medium'|'high', motion?:'full'|'reduced', sound?:boolean}` | presentation only |
 | `tnc:machine` | `{machine:'426'|'430'}` | select the machine profile |
 | `tnc:exec` | `{cmd:'start'|'stop'|'step'|'reset'}` | uses the simulator's own run controls |
 | `tnc:camera` | `{view:'orbit'|'pov'|'tool'|'part'|'plan'}` | camera preset |
 | `tnc:lock` | `{locked:boolean, reason?:string}` | Play interlock: NC start refused with `reason` while locked |
+| `tnc:inspect` | `{panel:'compare'|'diag'|'ref'|'progs'}` | open the inspector on that tab |
 | `tnc:tools:get` | `{id}` | ask for the tool table |
 | `tnc:tools:set` | `{tools:[{t,name?,l,r,...}]}` | replace the tool table (same schema as `tnc:open` tools) |
 

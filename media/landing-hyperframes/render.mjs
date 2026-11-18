@@ -6,8 +6,11 @@
 //   4. FFmpeg: hero.mp4 (H.264), hero.webm (VP9), hero-poster.jpg, hero-poster.webp
 //   5. copy the four files to web/public/play/ and six proof frames to artifacts/hero/
 //
+// The delivered film is the clean plate (no overlay): the landing page puts its own text on it.
 // Use:  npm ci && node render.mjs        (from media/landing-hyperframes)
-// Flags: --skip-check   render without the check gate (never for a delivery)
+// Flags: --hud          render the version WITH the overlay (5511 badge, shot labels, read-out) to
+//                       out/hero-film.mp4 only; nothing is copied to web/ or artifacts/
+//        --skip-check   render without the check gate (never for a delivery)
 //        --keep-master  leave out/hero-master.mp4 in place after the run
 // Needs Node 22+, FFmpeg and ffprobe on PATH. No cloud render, no account, no publish.
 import { spawnSync } from 'node:child_process';
@@ -24,9 +27,9 @@ const proofDir = join(repo, 'artifacts', 'hero');
 
 let args;
 try {
-  args = parseArgs({ options: { 'skip-check': { type: 'boolean' }, 'keep-master': { type: 'boolean' } } }).values;
+  args = parseArgs({ options: { hud: { type: 'boolean' }, 'skip-check': { type: 'boolean' }, 'keep-master': { type: 'boolean' } } }).values;
 } catch (err) {
-  console.error(`render.mjs: ${err.message}\nusage: node render.mjs [--skip-check] [--keep-master]`);
+  console.error(`render.mjs: ${err.message}\nusage: node render.mjs [--hud] [--skip-check] [--keep-master]`);
   process.exit(2);
 }
 
@@ -104,14 +107,22 @@ if (!args['skip-check']) {
 
 // ---- 3. render the master --------------------------------------------------
 mkdirSync(out, { recursive: true });
-const master = join(out, 'hero-master.mp4');
+const master = join(out, args.hud ? 'hero-film-master.mp4' : 'hero-master.mp4');
 const t0 = performance.now();
-hf(['render', '--output', master, '--fps', String(FPS), '--quality', 'high', '--crf', '8', '--strict']);
+hf(['render', '--output', master, '--fps', String(FPS), '--quality', 'high', '--crf', '8', '--strict', '--variables', JSON.stringify({ hud: Boolean(args.hud) }), '--strict-variables']);
 const renderSeconds = (performance.now() - t0) / 1000;
 if (!existsSync(master) || size(master) === 0) fail('render wrote no file');
 
 // ---- 4. encode --------------------------------------------------------------
 const ff = (argv) => run('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', ...argv]);
+if (args.hud) {
+  // the overlay version: one good H.264 file beside the others, not shipped
+  const film = join(out, 'hero-film.mp4');
+  ff(['-i', master, '-an', '-frames:v', String(DURATION * FPS), '-c:v', 'libx264', '-preset', 'slow', '-crf', '20', '-pix_fmt', 'yuv420p', '-r', String(FPS), '-movflags', '+faststart', film]);
+  if (!args['keep-master']) rmSync(master, { force: true });
+  console.log(JSON.stringify({ hyperframes: version, renderSeconds: Number(renderSeconds.toFixed(1)), film, bytes: statSync(film).size }, null, 2));
+  process.exit(0);
+}
 const mp4 = join(out, 'hero.mp4');
 const webm = join(out, 'hero.webm');
 const frames = String(DURATION * FPS);

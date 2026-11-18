@@ -11,7 +11,9 @@ node render.mjs
 
 That one command fills the local assets from `node_modules`, runs `hyperframes check`, renders, encodes with
 FFmpeg, copies the four files to `web/public/play/` and six proof frames to `artifacts/hero/`.
-From the repository root the same thing is `npm run render:hero`. Needs Node 22+, FFmpeg and ffprobe.
+From the repository root the same thing is `npm run render:hero`.
+The delivered film is the clean plate, without the overlay, because the landing page sets its own text on it;
+`node render.mjs --hud` renders the version with the overlay to `out/hero-film.mp4` (not shipped). Needs Node 22+, FFmpeg and ffprobe.
 Nothing is uploaded: no cloud render, no account, no publish, telemetry off.
 
 To look while editing: `npx hyperframes preview` (the editor) or
@@ -22,7 +24,7 @@ To look while editing: `npx hyperframes preview` (the editor) or
 | File | What |
 |---|---|
 | `index.html` | the root composition: the film canvas and the overlay, 15 s |
-| `compositions/hud.html` | overlay: frame marks, the 5511 badge, one label per shot, read-out |
+| `compositions/hud.html` | overlay: frame marks, the 5511 badge, one label per shot, read-out; painted only when the variable `hud` is true |
 | `tokens.css` | the overlay's colours and faces |
 | `assets/film/main.js` | shot times (`CUTS`), the wipe between shots, the seek handler |
 | `assets/film/scene-grid.js` | shot 1, mechanical grid reveal |
