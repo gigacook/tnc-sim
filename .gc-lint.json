@@ -1,1 +1,1 @@
-{"pixelsAllowed": ["index.html", "docs/index.html", "sim/sim-shell.html"], "ignore": []}
+{"pixelsAllowed": ["sim/sim-shell.html"], "ignore": ["index.html", "docs/index.html"]}
