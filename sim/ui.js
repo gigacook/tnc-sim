@@ -65,7 +65,7 @@ function dlPlain(name, blob){
 }
 
 /* ================= storage: programs & projects in localStorage, prefs in a cookie ================= */
-const LS_KEY='tnc426.v1', KEY_LS='tnc426.orkey', MODEL_LS='tnc426.ormodel';
+const LS_KEY='tnc426.v1';
 const local={ get:k=>{ try{ return localStorage.getItem(k); }catch(e){ return null; } },
               set:(k,v)=>{ try{ localStorage.setItem(k,v); return true; }catch(e){ return false; } },
               del:k=>{ try{ localStorage.removeItem(k); }catch(e){} } };
@@ -255,6 +255,7 @@ const UIAPI={ THREE, scene, camera, renderer, controls, lights:{key:keyL,fill:fi
   get state(){ return S; }, surfaceAt:(x,y)=>surfaceAt(x,y), say:m=>say(m),
   get program(){ return {name:S.pgm, machine:S.machine, text:S.text}; },
   open:(name,text,o)=>openExternal(name,text,o||{}),
+  addProgram:(name,text)=>addPgm(name,text),            // a new program under a free name, opened: what New program does (aigen.js Load)
   /* bridge v2 (bridge.js): everything goes through the simulator's own controls */
   exec:cmd=>({start:ncStart,stop:stop,step:stepBlock,reset:reset}[cmd]||(()=>{}))(),
   lock:(on,reason)=>setLock(on,reason), cameraPreset:v=>camPreset(v), setMachine:id=>setMachine(id),
@@ -1215,7 +1216,7 @@ $('help-tabs').addEventListener('click',e=>{ const b=e.target.closest('[data-tab
 function renderHelp(){
   [...$('help-tabs').children].forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===helpTab));
   const Ls=lessonsOf(), body=$('help-body'); body.onclick=null;
-  if(helpTab==='ai'){ body.innerHTML=aiSetupHTML(); wireAiSetup(); return; }
+  if(helpTab==='ai'){ body.innerHTML=`<div class="prose"><p>${esc(T('help.ai.body'))}</p></div>`; return; }   // AI lives in New program › AI (aigen.js); the key is on the server
   if(helpTab==='keys'){ body.innerHTML='<div class="klist">'+KEYS.map(([k,d])=>`<div><kbd>${esc(X(k))}</kbd><span>${esc(X(d))}</span></div>`).join('')+'</div>'; return; }
   if(!Ls){ body.innerHTML=`<div class="prose"><p>${esc(T('help.none'))}</p></div>`; return; }
   if(helpTab==='learn'||helpTab==='break'){
@@ -1232,345 +1233,16 @@ function renderHelp(){
 $('b-help').onclick=()=>openHelp();
 $('help-setup').onclick=()=>{ closeModal(true); setupOpen(0); };
 
-/* ---------- AI setup + generation (ai.js) ---------- */
-const AI=window.TNC_AI||null;
-function getKey(){ return sess.get(KEY_LS)||local.get(KEY_LS)||window.TNC_AI_LOCAL_KEY||(window.TNC_AI_API?'server':''); }   // last: .env, local build only
-function getModel(){ return local.get(MODEL_LS)||(AI?AI.DEFAULT_MODEL:'deepseek/deepseek-v4.1-flash'); }
-function keyPill(){ const p=$('ai-keypill'), k=getKey(); p.textContent=k?(k==='server'&&window.TNC_AI_API?'key on the server':k===window.TNC_AI_LOCAL_KEY&&!sess.get(KEY_LS)&&!local.get(KEY_LS)?'key from .env':'key set'):'no key'; p.className='pill '+(k?'ok':'no'); }
-function aiSetupHTML(){
-  const k=getKey(), rem=!!local.get(KEY_LS);
-  return `<div class="prose">
-<h4>The third way to make a program: let an AI write it</h4>
-<p>This uses <strong>OpenRouter</strong>, one account that reaches many AI models. You pay OpenRouter directly — this page has no server, never sees your money, and never sees your key except to send it straight to OpenRouter.</p>
-<p>Default model: <code>deepseek/deepseek-v4.1-flash</code> (DeepSeek V4.1 Flash). At about US$0.035 per million tokens in and $0.29 out (OpenRouter, September 2026), one program costs a small fraction of a US cent.</p>${window.TNC_AI_LOCAL_KEY?'<p><span class="pill ok">local build</span> A key from <code>.env</code> is built into this copy. It is never in the public page.</p>':''}
-<h4>Set it up — five minutes</h4>
-<ol>
-<li>Create an account at <code>openrouter.ai</code>.</li>
-<li>Buy a little credit on the <strong>Credits</strong> page. $5 is thousands of programs.</li>
-<li>On the <strong>Keys</strong> page, create a key and <strong>give it a credit limit</strong> (say $2). If the key ever leaks, that is all it can spend.</li>
-<li>Copy the key, paste it below and press <strong>Test key</strong>.</li>
-<li>Press <strong>+ New</strong> → <strong>Describe a part</strong>, say what you want, press <strong>Generate</strong>. The simulator checks the result; if it fails, the errors go back to the AI once for a fix.</li>
-</ol>
-<h4>Where your key and your words go</h4>
-<div class="warnbox"><ul>
-<li>The key stays in this browser: only for this tab unless you tick <strong>Remember</strong>, then in this browser's storage until you press <strong>Forget key</strong>.</li>
-<li>It is sent only to <code>openrouter.ai</code>, with each request — never to GitHub, never in a cookie.</li>
-<li>Your description and the generated program go to OpenRouter and the model's provider. Don't paste anything confidential.</li>
-<li>Every site under <code>gigacook.github.io</code> shares browser storage. A remembered key can be read by any page there — keep the credit limit on it.</li>
-</ul></div>
-<p>The AI's program is <strong>simulator output</strong>. Never run it on a real machine without proving it out the normal way.</p>
-</div>
-<div class="fgrid" style="max-width:760px">
-<label class="fld wide"><span>OPENROUTER API KEY</span><input id="ai-key" type="password" autocomplete="off" spellcheck="false" placeholder="your OpenRouter key" value="${esc(k)}"></label>
-<label class="fld chk wide"><input type="checkbox" id="ai-remember"${rem?' checked':''}> Remember the key in this browser</label>
-</div>
-<div class="actrow"><button class="cbtn pri" id="ai-test">Test key</button><button class="cbtn" id="ai-savekey">Save</button><button class="cbtn" id="ai-forget">Forget key</button></div>
-<div class="aistat" id="ai-setstat" hidden></div>
-<div id="ai-setup-mp" style="max-width:980px;margin-top:18px"></div>`;
-}
-function storeKey(k,rem){ sess.del(KEY_LS); local.del(KEY_LS); if(k){ if(rem) local.set(KEY_LS,k); else sess.set(KEY_LS,k); } keyPill(); }
-function wireAiSetup(){
-  mpMount($('ai-setup-mp'));
-  const st=$('ai-setstat'), put=(h)=>{ st.hidden=false; st.innerHTML=h; };
-  $('ai-savekey').onclick=()=>{ storeKey($('ai-key').value.trim(),$('ai-remember').checked);
-    put('<span class="ok">Saved.</span> '+($('ai-remember').checked?'Remembered in this browser.':'Kept for this tab only.')); };
-  $('ai-forget').onclick=()=>{ storeKey('',false); $('ai-key').value=''; put('<span class="ok">Key forgotten</span> — removed from this browser.'); };
-  $('ai-test').onclick=async()=>{
-    const k=$('ai-key').value.trim(); if(!k){ put('<span class="bad">Paste a key first.</span>'); return; }
-    if(!AI){ put('<span class="bad">The AI module is not in this build.</span>'); return; }
-    storeKey(k,$('ai-remember').checked); put('<span class="dim">Checking the key with OpenRouter…</span>');
-    try{ const d=await AI.testKey(k);
-      const lim=d.limit==null?'no limit set — add one on the Keys page':'$'+(+d.limit).toFixed(2)+' limit';
-      put(`<span class="ok">Key works.</span> ${esc(d.label||'')}\nUsed so far: $${(+(d.usage||0)).toFixed(4)} · ${esc(lim)}`); }
-    catch(e){ put('<span class="bad">'+esc(aiErr(e))+'</span>'); }
-  };
-}
-function aiErr(e){
-  if(e.status===401) return 'KEY REJECTED — check it on the OpenRouter Keys page and paste it again.';
-  if(e.status===402) return 'OUT OF CREDIT — top up on the OpenRouter Credits page, or raise the key\'s limit.';
-  if(e.status===429) return 'RATE LIMITED — wait a minute and try again.';
-  if(e.status===404) return 'MODEL NOT FOUND — check the model name in AI setup. ('+e.message+')';
-  if(e.name==='AbortError') return 'CANCELLED.';
-  return (e.status?'HTTP '+e.status+': ':'NETWORK: ')+e.message;
-}
-function verifyProgram(src){
-  const m=M(); let r,ex,ev=[];
-  try{ r=m.run(src); ex=m.expand(r); ev=m.analyse(r,ex)||[]; }catch(e){ return {ok:false,text:'INTERNAL ERROR: '+e.message,errs:[e.message],crashes:[],warns:[]}; }
-  /* each item quotes its block: the AI writes no block numbers, so the text is how it finds the line */
-  const nb=i=>{ const b=r.blocks[i]; return b&&b.n!=null?`BLOCK ${b.n} \`${String(b.raw||'').trim().slice(0,80)}\``:'BLOCK ?'; };
-  const errs=r.errors.map(e=>`${nb(e.block)}: ${e.msg}`);
-  const crashes=ev.filter(e=>e.sev==='crash').map(e=>`${nb(e.block)}: ${e.msg}`);
-  const warns=ev.filter(e=>e.sev==='warn').map(e=>`${nb(e.block)}: ${e.msg}`);
-  if(!r.moves.length) errs.push('THE PROGRAM MAKES NO MOVES');
-  else if(!r.errors.length&&AI&&AI.cutCheck){ const c=AI.cutCheck(r,ev); if(c&&c.err) errs.push(c.err); if(c&&c.warn) warns.push(c.warn); }
-  return {ok:!errs.length&&!crashes.length,errs,crashes,warns,moves:r.moves.length,
-    text:[...errs,...crashes,...warns].join('\n'), name:(/BEGIN\s+PGM\s+(\w+)/i.exec(src)||[])[1]};
-}
-let aiAbort=null;
-/* ================= AI generation, live: the dialog closes, the program appears block by block in the listing,
-   the path grows in 3-D, the run pane shows progress, the exact request and every repair round ================= */
-const AI_LIVE='AI_LIVE.H';
-function aiLiveEl(){ let el=$('ailive'); if(el) return el;
-  el=document.createElement('div'); el.id='ailive'; el.className='coach ailive'; el.hidden=true;
-  const tp=document.querySelector('.tp'), sc=tp.querySelector('.scrub'); tp.insertBefore(el,sc?sc.nextSibling:tp.firstChild); return el; }
-function aiLiveOpen(){ const el=aiLiveEl(); el.hidden=false; document.querySelector('.tp').classList.add('lesson'); S.aiLive={log:[],reqs:[],prevPgm:S.pgm,t0:Date.now(),lastCompile:0}; aiLiveRender(); }
-function aiLiveClose(){ const el=$('ailive'); if(el) el.hidden=true; if(!S.lesson) document.querySelector('.tp').classList.remove('lesson');
-  if(pg()[AI_LIVE]!=null){ delete pg()[AI_LIVE]; } S.aiLive=null; renderSK(); }
-function aiLiveRender(p){
-  const L=S.aiLive, el=$('ailive'); if(!L||!el) return;
-  const kc=n=>n<1000?n+' chars':(n/1000).toFixed(1)+'k chars';
-  const line=L.ask?(L.ask.n?`<b>Round ${L.ask.round} of ${L.ask.rounds}</b> still has ${L.ask.n} problem${L.ask.n===1?'':'s'} (see the log). Send ${L.ask.n===1?'it':'them'} back to the model for round ${L.ask.round+1}, or stop and fix by hand?`
-    :`<b>Round ${L.ask.round} of ${L.ask.rounds}</b> runs clean but matches the planned part only ${L.ask.score==null?'—':L.ask.score.toFixed(1)+' %'}. Send the measurement back for round ${L.ask.round+1}, or stop and keep it?`)
-    :p?(p.stage==='thinking'?`<span class="ai-spin"></span> Thinking… ${Math.round(p.secs)} s · ${kc(p.reasoningChars||0)} of reasoning`
-    :`<span class="ai-spin"></span> Writing the program… ${Math.round(p.secs)} s · ${kc(p.chars||0)} · ${S.res&&S.res.blocks?S.res.blocks.length:0} blocks so far`):(L.done?'':'<span class="ai-spin"></span> Sending…');
-  el.innerHTML=`<div class="coach-hd"><span class="k" style="color:#ff7ac8">AI</span><span class="t">${esc(getModel())} · ${esc(L.mode==='modify'?'changing '+L.prevPgm:'new program')}</span></div>
-    <div class="coach-bd"><div class="ailine">${line}</div>${p&&p.stage==='thinking'&&p.reasoningTail?`<div class="aithink">${esc(p.reasoningTail.slice(-220))}</div>`:''}
-    <div class="ailog">${L.log.map(x=>`<div>${x}</div>`).join('')}</div></div>
-    <div class="coach-ft"><button class="cbtn" id="ai-req">Request (${L.reqs.length})</button>${L.ask?`<button class="cbtn pri" id="ai-more">Continue <small>ENTER</small></button><button class="cbtn" id="ai-stop">Stop — fix by hand <small>ESC</small></button><label class="fld chk" style="margin-left:auto"><input type="checkbox" id="ai-auto-live"> Auto: don't ask again</label>`
-      :L.done?'<button class="cbtn pri" id="ai-close">Close</button>':'<button class="cbtn" id="ai-cancel">Cancel</button>'}</div>`;
-  $('ai-req').onclick=aiShowRequest;
-  if(L.ask){ $('ai-more').onclick=()=>L.ask.res(true); $('ai-stop').onclick=()=>L.ask.res(false);
-    $('ai-auto-live').onchange=e=>{ if(e.target.checked){ local.set('tnc426.aiauto','1'); L.ask.res(true); } }; }
-  if($('ai-cancel')) $('ai-cancel').onclick=()=>{ if(aiAbort) aiAbort.abort(); };
-  if($('ai-close')) $('ai-close').onclick=aiLiveClose;
-  const lg=el.querySelector('.ailog'); if(lg) lg.scrollTop=lg.scrollHeight;
-}
-function aiLog(h){ if(S.aiLive){ S.aiLive.log.push(h); aiLiveRender(S.aiLive.lastP); } }
-/* the program so far: from the fence or BEGIN PGM, complete lines only */
-function aiPartial(text){
-  let t=String(text||''), i=t.search(/```[a-z]*\s*\n/i); if(i>=0) t=t.slice(t.indexOf('\n',i)+1); else { const b=t.search(/BEGIN\s+PGM/i); if(b<0) return ''; t=t.slice(b); }
-  t=t.replace(/```[\s\S]*$/,''); const cut=t.lastIndexOf('\n'); return cut>0?t.slice(0,cut):'';
-}
-function aiLiveProgram(src){
-  if(!src||!S.aiLive) return; const now=Date.now(); if(now-S.aiLive.lastCompile<700) return; S.aiLive.lastCompile=now;
-  if(S.mode!=='test') setMode('test');
-  pg()[AI_LIVE]=src; S.pgm=AI_LIVE; S.text=src; raw.value=src; compile();
-  S.cursor=Math.max(0,S.res.blocks.length-1); markRows(true); seek(S.total,false);      // the path so far, the tool at its end
-}
-function aiShowRequest(){
-  const L=S.aiLive; if(!L||!L.reqs.length){ say('NO REQUEST SENT YET'); return; }
-  let m=$('m-aireq'); if(!m){ m=document.createElement('div'); m.className='modal'; m.id='m-aireq'; m.hidden=true;
-    m.innerHTML='<div class="mcard dev" role="dialog" aria-modal="true"><div class="mhead"><span class="mt">AI request — exactly what goes to OpenRouter (key not shown)</span><button class="x" data-close>Close <small>ESC</small></button></div><div class="mbody"><pre id="aireq-pre" style="white-space:pre-wrap"></pre></div></div>';
-    document.body.appendChild(m); m.addEventListener('click',e=>{ if(e.target===m||e.target.closest('[data-close]')) closeModal(); }); }
-  $('aireq-pre').textContent=L.reqs.map((b,i)=>`=== ROUND ${i+1}${i?' (repair: the simulator\'s errors go back to the model)':''} ===\nPOST https://openrouter.ai/api/v1/chat/completions\n`+JSON.stringify(b,null,2)).join('\n\n');
-  openModal('m-aireq');
-}
-async function aiGenerate(){
-  const out=$('ai-stat'), prompt=$('ai-prompt').value.trim(), key=getKey();
-  const flog=(h)=>{ out.hidden=false; out.innerHTML+=h+'\n'; out.scrollTop=out.scrollHeight; };
-  out.innerHTML='';
-  if(!AI){ flog('<span class="bad">The AI module is not in this build.</span>'); return; }
-  if(!key){ flog('<span class="bad">No key yet.</span> Open <b>AI setup</b> first — it takes five minutes.'); return; }
-  if(prompt.length<8){ flog('<span class="bad">Describe the part in a sentence or two.</span>'); return; }
-  const plan=!!window.TNC_PART&&S.aiMode!=='modify', mc=M().machine, hA=window.TNC_TOOLS3D&&TNC_TOOLS3D.holderStack?TNC_TOOLS3D.holderStack(3):100;
-  const sys=(AI.system?AI.system(mtools(),{plan,holderA:hA,sMax:mc&&mc.sMax,fMax:mc&&mc.fMax}):AI.FALLBACK_SYSTEM)+(mc?`\n\nTHIS MACHINE (${M().label}): spindle max S${mc.sMax}, feed max F${mc.fMax}, rotary axes B ${mc.limits.B.join('..')} deg and A ${mc.limits.A.join('..')} deg (swivel head; B+ tilts the tip to X+, A+ to Y+).
-For tilted machining use CYCL DEF 19.0 WORKING PLANE / CYCL DEF 19.1 A+.. B+.. C+0 (it also positions the head); reset with 19.1 A+0 B+0 C+0. Never use M128.`:'');
-  const modify=S.aiMode==='modify', before=S.text, beforePgm=S.pgm;
-  const full=modify?'Here is the current program:\n```klartext\n'+S.text+'\n```\nChange it as follows: '+prompt+'\nKeep everything else as it is. Return the COMPLETE changed program.':prompt;
-  closeModal(); if(S.editing) endEdit(false); if(S.mgt) closeMgt(); if(S.tt) closeTT();
-  aiLiveOpen(); S.aiLive.mode=modify?'modify':'new'; aiAbort=new AbortController(); showPane('gfx');
-  aiLog(`<span class="dim">${esc(getModel())} · thinking ${esc(aiThink())} · max ${aiMaxTok()} tokens · ${plan?'plan + measure, ':''}${aiRounds()} refine round(s) · ${esc(M().label)}</span>`);
-  let res=null;
-  try{
-    res=await AI.generate({key,model:getModel(),prompt:full,system:sys,tools:mtools(),verify:verifyProgram,measure:measureProgram,plan,rounds:aiRounds(),confirm:aiAsk,signal:aiAbort.signal,
-      reasoning:aiThink()==='default'?undefined:aiThink(), maxTokens:aiMaxTok(),
-      onStep:s=>{
-        if(s.phase==='request'){ S.aiLive.reqs.push(s.body); aiLog(s.stage==='plan'?'<b>Plan</b> — the model describes the finished part first (see Request).'
-          :s.attempt?`<b>Round ${s.round} of ${s.rounds}</b> — the best program so far, its checks${plan?' and the measured result':''} went back to the model (see Request).`:`<b>Round 1 of ${s.rounds}</b> — program request sent (see Request).`); }
-        if(s.phase==='failed') aiLog(`<span class="bad">Refinement stopped (${esc(s.error)}) — keeping the best program so far.</span>`);
-        if(s.phase==='continued') aiLog(s.network?`<span class="dim">Connection problem (${esc(s.error||'')}) — trying once more.</span>`:s.retry?`<span class="dim">Only thinking fit in the token limit — asked again with ${s.maxTokens} tokens.</span>`:`<span class="dim">The answer hit the token limit — asked for the rest (${s.n}).</span>`);
-        if(s.phase==='planned') aiLog(s.error?`<span class="bad">No usable part spec (${esc(s.error)}) — writing without measuring.</span>`
-          :`<span class="ok">${s.revised?'Spec revised':'Spec'}: ${s.spec.features.length} feature(s) — ${esc(s.spec.features.map(f=>f.id+' '+f.type+(f.text?' "'+f.text+'"':'')).join(', '))}.</span>`+(s.notes&&s.notes.length?`<pre style="margin:2px 0 0;white-space:pre-wrap">${esc(s.notes.join('\n'))}</pre>`:''));
-        if(s.phase==='measured'){ const m=s.measure; aiLog(`<span class="${m.score>=97?'ok':'bad'}">Measured against the spec: ${m.score==null?'—':m.score.toFixed(1)+' %'} match`+
-          ` · ${(m.missing/1000).toFixed(2)} cm³ not cut · ${(m.extra/1000).toFixed(2)} cm³ cut that should stay.</span>`); }
-        if(s.phase==='progress'){ S.aiLive.lastP=s; aiLiveRender(s); aiLiveProgram(aiPartial(s.text)); }
-        if(s.phase==='checked'){ const r=s.report;
-          if(!s.src&&!r.ok){ aiLog('<span class="bad">Round '+s.round+': no program in the answer.</span>'); return; }
-          aiLog(r.ok?`<span class="ok">Checked: ${r.moves} moves, no errors, no crashes${r.warns.length?', '+r.warns.length+' warning(s)':''}.</span>`
-                  :`<span class="bad">Checked: ${r.errs.length} error(s), ${r.crashes.length} crash(es):</span><pre style="margin:2px 0 0;white-space:pre-wrap">${esc(r.text)}</pre>`); } }});
-  }catch(e){ aiLog('<span class="bad">'+esc(aiErr(e))+'</span>'); }
-  delete pg()[AI_LIVE];
-  if(res){ GCDraft.clear($('ai-prompt'));
-    let nm;
-    if(modify){ nm=beforePgm; S.pgm=beforePgm; S.text=before; raw.value=before; if(S.mode!=='edit') setMode('edit'); edit(res.src,0,'AI CHANGED '+nm+' — CTRL+Z UNDOES IT'); }
-    else nm=addPgm((res.report.name||'AI_PART'),res.src,{open:true});
-    if(!res.report.ok) aiLog(`<span class="dim">${res.stopped?'Stopped':'Out of rounds'} — loaded the best version (round ${res.round}); its problems are under Checks: fix them by hand, or run AI → Change on it.</span>`);
-    download(nm,new Blob([listing(res.src)],{type:'text/plain'}),'AI-GEN');
-    aiLog(`<span class="${res.report.ok?'ok':'bad'}">${res.report.ok?(modify?'Changed':'Saved'):'Done — still has problems, see Checks'} ${modify?'':'as '}${esc(nm)} · also saved to TNC-SIMULATOR/AI-GEN.</span>${res.measure&&res.measure.score!=null?' Best match '+res.measure.score.toFixed(1)+' %.':''} Cost about $${(res.cost||0).toFixed(4)} · ${Math.round((Date.now()-S.aiLive.t0)/1000)} s.`);
-    if(res.report.ok){ setMode('test'); reset(); if(S.speed===0) setSpeed(16,true); start(); }         // and it runs
-  } else { S.pgm=beforePgm; S.text=pg()[beforePgm]; raw.value=S.text; compile(); }
-  if(S.aiLive){ S.aiLive.done=true; S.aiLive.lastP=null; aiLiveRender(); }
-  aiAbort=null;
-}
-/* thinking effort and the answer cap: a budget guard for slow reasoning models */
-function aiThink(){ return local.get('tnc426.aithink')||'low'; }   // measured: low + plan/measure is as accurate and minutes faster than medium
-function aiMaxTok(){ return +(local.get('tnc426.aimaxtok')||32000); }
-/* refinement rounds after the first program: each one sends the checks and the measured misses / gouges back */
-function aiRounds(){ const v=local.get('tnc426.airounds'); return v==null||v===''?4:Math.max(0,Math.min(6,+v)); }
-/* the program's real cut against the model's part spec (TNC_PART) */
-function measureProgram(spec,src){ if(!window.TNC_PART) return null; const m=M(); let r;
-  try{ r=m.run(src); if(r.errors.length) return null; return TNC_PART.compare(spec,r,m.expand(r)); }catch(e){ return null; } }
-/* between rounds the user says continue or stop, unless auto is on */
-function aiAuto(){ return local.get('tnc426.aiauto')==='1'; }
-function aiAsk(q){
-  if(aiAuto()) return true;
-  const L=S.aiLive; if(!L) return false;
-  return new Promise(done=>{
-    const n=q.report.errs.length+q.report.crashes.length;
-    L.ask={round:q.round,rounds:q.rounds,n,score:q.measure&&q.measure.score,res:v=>{ if(L.ask){ L.ask=null; aiLiveRender(); done(v); } }};
-    if(aiAbort) aiAbort.signal.addEventListener('abort',()=>{ if(L.ask) L.ask.res(false); },{once:true});
-    aiLiveRender();
-  });
-}
-/* the answer cap is the user's call: any whole number. The model's own output limit (OpenRouter's catalogue) is shown
-   as the recommended ceiling, never enforced: past it the provider may refuse the request or cut the answer short */
-function aiTokRec(){ const m=MP.cat&&MP.cat.models.find(x=>x.id===getModel()); return m?m.maxOut||m.context||null:null; }
-function aiTokHint(){ const h=$('ai-tokhint'); if(!h) return; const r=aiTokRec(), v=aiMaxTok();
-  h.textContent=!r?'No known limit for this model — any number goes.'
-    :`Recommended up to ${r.toLocaleString('en')} for this model${v>r?' — yours is above it: the provider may refuse or cut the answer short':''}.`;
-  h.style.color=r&&v>r?'#ffb347':''; }
-
 /* ---------- NEW PROGRAM ---------- */
-/* NEW PROGRAM: one dialog, two tabs. Manual = the name, then block by block; AI = describe the part (or change the program on screen). */
-function openNew(which){ openModal('m-new'); keyPill(); newGo(which||'scratch'); }
-/* ================= MODEL PICKER — one catalogue (TNC_AI.listModels): the recommended model, frontier quick picks
-   computed from OpenRouter's live list, a sortable / filterable table (↑↓ Enter Esc), and any id typed by hand.
-   The pick is stored under MODEL_LS in this browser (as before); every request uses getModel(). ================= */
-const MP={cat:null,sort:'created',dir:-1,q:'',prov:'',act:0,rows:[]};
-const MP_COLS=[['name','Model'],['provider','Provider'],['context','Context'],['pin','$/M in'],['pout','$/M out']];
-/* prices: US$ per million tokens. Table: fixed decimals so the column lines up; cards and chips: trailing zeros dropped */
-const mpUsd=(v,col)=>{ if(v==null) return '—'; if(v===0) return 'free'; const t=v<0.1?v.toFixed(3):col||v<100?v.toFixed(2):v.toFixed(0); return '$'+(col?t:t.replace(/\.0+$|(\.\d*[1-9])0+$/,'$1')); };
-const mpCtx=n=>!n?'—':n>=1e6?+(n/1e6).toFixed(1)+'M':Math.round(n/1000)+'K';
-const mpProvName=p=>AI&&AI.providerName?AI.providerName(p):p;
-const mpMeta=m=>`<span>${mpCtx(m.context)} context</span><span>${mpUsd(m.pin)} in</span><span>${mpUsd(m.pout)} out</span><small>per M tokens</small>`;
-const MP_ID=/^[\w.-]+\/[\w.:~-]+$/;
-/* fuzzy: each query word matches as a substring, or as its letters in order within a short span ("gmn 3" → gemini-3) */
-function mpFuzzy(hay,t){ if(hay.includes(t)) return true;
-  for(let s=hay.indexOf(t[0]);s>=0;s=hay.indexOf(t[0],s+1)){ let j=s,k=0; while(j<hay.length&&k<t.length){ if(hay[j]===t[k]) k++; j++; } if(k===t.length&&j-s<=t.length*3) return true; }
-  return false; }
-function mpRows(){
-  const L=(MP.cat&&MP.cat.models)||[], toks=MP.q.toLowerCase().split(/\s+/).filter(Boolean), k=MP.sort, d=MP.dir;
-  const r=L.filter(m=>{ if(MP.prov&&m.provider!==MP.prov) return false; const h=m._h||(m._h=(m.name+' '+m.id+' '+mpProvName(m.provider)).toLowerCase()); return toks.every(t=>mpFuzzy(h,t)); });
-  return r.sort((a,b)=>{ let x=a[k], y=b[k]; if(k==='provider'){ x=mpProvName(x); y=mpProvName(y); }
-    if(x==null||y==null) return (x==null)-(y==null)||b.created-a.created;                 // unknown price / context last, either way
-    return (typeof x==='string'?x.localeCompare(y,undefined,{sensitivity:'base'}):x-y)*d||b.created-a.created; });
-}
-function mpMount(root){
-  if(!root) return;
-  if(root.dataset.mp){ mpTop(root); mpLoad(root); return; }
-  root.dataset.mp='1'; root.classList.add('mp');
-  root.innerHTML=`<div class="mp-top"></div>
-  <div class="mp-bar"><button type="button" class="mp-all" aria-expanded="false">All models <span class="mp-cnt"></span><span class="mp-car">▾</span></button>
-    <input class="mp-id" data-autosave="model-id" spellcheck="false" autocomplete="off" placeholder="…or type any OpenRouter id: provider/model" aria-label="Model id">
-    <button type="button" class="mp-use">Use id</button></div>
-  <div class="mp-pal" hidden>
-    <div class="mp-tools"><input class="mp-q" spellcheck="false" autocomplete="off" placeholder="Filter — name or provider" aria-label="Filter models">
-      <select class="mp-prov" aria-label="Provider"><option value="">All providers</option></select><span class="mp-n"></span></div>
-    <div class="mp-scroll"><table class="mp-t"><colgroup><col class="c-n"><col class="c-p"><col class="c-x"><col class="c-i"><col class="c-o"></colgroup>
-      <thead><tr>${MP_COLS.map(([k,l])=>`<th data-s="${k}"${k==='name'||k==='provider'?'':' class="num"'}><button type="button">${l}<i></i></button></th>`).join('')}</tr></thead><tbody></tbody></table></div>
-    <div class="mp-keys"><kbd>↑</kbd><kbd>↓</kbd> move <kbd>Enter</kbd> pick <kbd>Esc</kbd> close <span>·</span> click a column to sort; again reverses, a third time goes back to newest first</div>
-  </div>`;
-  const q=root.querySelector('.mp-q'), pal=root.querySelector('.mp-pal'), idf=root.querySelector('.mp-id');
-  root.addEventListener('click',e=>{
-    const pk=e.target.closest('[data-pick]'); if(pk){ mpPick(root,pk.dataset.pick); return; }
-    const tr=e.target.closest('tbody tr[data-i]'); if(tr){ mpPick(root,MP.rows[+tr.dataset.i].id,true); return; }
-    const th=e.target.closest('th[data-s]'); if(th){ const s=th.dataset.s, d0=s==='context'?-1:1;
-      if(MP.sort!==s){ MP.sort=s; MP.dir=d0; } else if(MP.dir===d0) MP.dir=-d0; else { MP.sort='created'; MP.dir=-1; }
-      MP.act=0; root.querySelector('.mp-scroll').scrollTop=0; mpTable(root); q.focus(); return; }
-    if(e.target.closest('.mp-all')) mpOpen(root,pal.hidden);
-    if(e.target.closest('.mp-use')) mpUseId(root);
-  });
-  q.addEventListener('input',()=>{ MP.q=q.value; MP.act=0; mpTable(root); });
-  root.querySelector('.mp-prov').onchange=e=>{ MP.prov=e.target.value; MP.act=0; mpTable(root); q.focus(); };
-  q.addEventListener('keydown',e=>{ const k=e.key, n=MP.rows.length;
-    if(k==='ArrowDown'||k==='ArrowUp'||k==='PageDown'||k==='PageUp'){ e.preventDefault(); if(!n) return;
-      const st=k==='ArrowDown'?1:k==='ArrowUp'?-1:k==='PageDown'?10:-10; MP.act=Math.max(0,Math.min(n-1,MP.act+st)); mpAct(root); }
-    else if(k==='Enter'){ e.preventDefault(); if(n) mpPick(root,MP.rows[MP.act].id,true); else if(MP_ID.test(q.value.trim())) mpPick(root,q.value.trim(),true); }
-    else if(k==='Escape'){ e.preventDefault(); e.stopPropagation(); if(q.value){ q.value=''; MP.q=''; MP.act=0; mpTable(root); } else mpOpen(root,false); }
-  });
-  idf.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); mpUseId(root); } });
-  mpTop(root); mpLoad(root);
-}
-function mpLoad(root){
-  if(!AI||!AI.listModels) return;
-  AI.listModels().then(cat=>{ const changed=!MP.cat||MP.cat.live!==cat.live; MP.cat=cat; if(!root.isConnected) return;
-    const provs={}; cat.models.forEach(m=>provs[m.provider]=(provs[m.provider]||0)+1);
-    const sel=root.querySelector('.mp-prov');
-    sel.innerHTML=`<option value="">All providers (${cat.models.length})</option>`+Object.keys(provs).sort((a,b)=>mpProvName(a).localeCompare(mpProvName(b))).map(p=>`<option value="${esc(p)}">${esc(mpProvName(p))} (${provs[p]})</option>`).join('');
-    if(!provs[MP.prov]) MP.prov=''; sel.value=MP.prov;
-    root.querySelector('.mp-cnt').textContent=cat.models.length;
-    mpTop(root); if(!root.querySelector('.mp-pal').hidden) mpTable(root);
-    if(changed&&!cat.live) say('OPENROUTER MODEL LIST UNREACHABLE — SHORT OFFLINE LIST; ANY ID CAN STILL BE TYPED'); });
-}
-function mpOpen(root,on){ const pal=root.querySelector('.mp-pal'), b=root.querySelector('.mp-all');
-  pal.hidden=!on; b.setAttribute('aria-expanded',on); root.classList.toggle('open',on);
-  if(on){ MP.act=0; mpTable(root); const i=MP.q?-1:MP.rows.findIndex(m=>m.id===getModel()); if(i>=0){ MP.act=i; mpAct(root); } root.querySelector('.mp-q').focus(); }
-  else { const q=root.querySelector('.mp-q'); if(q.value){ q.value=''; MP.q=''; } b.focus(); } }
-function mpPick(root,id,close){
-  if(!MP_ID.test(id)){ say('MODEL ID LOOKS LIKE provider/model'); return; }
-  local.set(MODEL_LS,id); say('MODEL '+id); mpTop(root);
-  if(close) mpOpen(root,false); else if(!root.querySelector('.mp-pal').hidden) mpTable(root);
-}
-function mpUseId(root){ const f=root.querySelector('.mp-id'), v=f.value.trim(); if(!v){ f.focus(); return; } mpPick(root,v,true); if(MP_ID.test(v)){ f.value=''; GCDraft.clear(f); } }
-function mpTop(root){ aiTokHint();
-  const cat=MP.cat, cur=getModel(), L=cat?cat.models:[], find=id=>L.find(m=>m.id===id);
-  const recId=AI?AI.DEFAULT_MODEL:'deepseek/deepseek-v4.1-flash', rec=find(recId)||(AI&&AI.RECOMMENDED)||{id:recId,name:recId};
-  const fr=cat?cat.frontier.filter(m=>m.id!==recId):[], curM=find(cur), known=cur===recId||fr.some(m=>m.id===cur);
-  root.querySelector('.mp-top').innerHTML=`<div class="mp-hd"><span class="mp-lbl">Model</span>
-    <span class="mp-src${cat&&cat.live?' live':''}">${!cat?'<span class="ai-spin"></span>loading the OpenRouter list…':cat.live?'live from OpenRouter · '+L.length+' models':'offline list — OpenRouter unreachable'}</span></div>
-  <button type="button" class="mp-rec${cur===recId?' sel':''}" data-pick="${esc(recId)}">
-    <span class="mp-star">★ Recommended</span><span class="mp-rn">${esc(rec.name)}</span><span class="mp-rid">${esc(recId)}</span>
-    <span class="mp-rmeta">${mpMeta(rec)}</span>
-    <span class="mp-why">Fast and cheap, and writes clean Klartext: a whole program costs a fraction of a US cent.</span>
-    <span class="mp-use1">${cur===recId?'✓ In use':'Use'}</span></button>
-  <div class="mp-frow"><span class="mp-lbl">Frontier</span><div class="mp-chips">${fr.map(m=>`<button type="button" class="mp-chip${cur===m.id?' sel':''}" data-pick="${esc(m.id)}" title="${esc(m.id)} · ${esc(mpCtx(m.context))} context">
-    <span class="p">${esc(mpProvName(m.provider))}</span><span class="n">${esc(m.name)}</span><span class="c">${mpUsd(m.pin)} / ${mpUsd(m.pout)}</span></button>`).join('')||'<span class="mp-dim">…</span>'}</div></div>
-  ${known?'':`<div class="mp-curl"><span class="mp-lbl">In use</span><b>${esc(curM?curM.name:cur)}</b><code>${esc(cur)}</code>${curM?`<span class="mp-cm">${mpMeta(curM)}</span>`:cat&&cat.live?'<span class="mp-warn">not in the live list — check the id</span>':''}</div>`}`;
-}
-function mpTable(root){
-  const rows=MP.rows=mpRows(), cur=getModel(); if(MP.act>=rows.length) MP.act=Math.max(0,rows.length-1);
-  root.querySelector('.mp-t tbody').innerHTML=rows.length?rows.map((m,i)=>`<tr data-i="${i}"${m.id===cur?' class="sel" aria-selected="true"':''}>
-    <td class="nm"><b>${esc(m.name)}</b><span>${esc(m.id)}</span></td><td>${esc(mpProvName(m.provider))}</td><td class="num">${mpCtx(m.context)}</td><td class="num">${mpUsd(m.pin,1)}</td><td class="num">${mpUsd(m.pout,1)}</td></tr>`).join('')
-    :`<tr class="empty"><td colspan="5">No model matches.${MP_ID.test(MP.q.trim())?' Enter uses <code>'+esc(MP.q.trim())+'</code> as typed.':''}</td></tr>`;
-  root.querySelectorAll('.mp-t th').forEach(th=>{ const on=th.dataset.s===MP.sort; th.setAttribute('aria-sort',on?(MP.dir>0?'ascending':'descending'):'none'); th.querySelector('i').textContent=on?(MP.dir>0?' ↑':' ↓'):''; });
-  root.querySelector('.mp-n').textContent=rows.length+' of '+((MP.cat&&MP.cat.models.length)||0)+(MP.sort==='created'?' · newest first':'');
-  mpAct(root);
-}
-function mpAct(root){ const tb=root.querySelector('.mp-t tbody'); tb.querySelectorAll('tr.act').forEach(r=>r.classList.remove('act'));
-  const r=tb.querySelector(`tr[data-i="${MP.act}"]`); if(r){ r.classList.add('act'); r.scrollIntoView({block:'nearest'}); } }
-/* the AI dialog: prompt, then the model picker, then thinking effort and the answer cap */
-function aiModelUI(){
-  if($('ai-think')){ mpMount($('ai-mp')); return; }
-  const mp=document.createElement('div'); mp.id='ai-mp'; mp.style.marginTop='16px';
-  const box=document.createElement('div'); box.className='fgrid'; box.style.marginTop='12px';
-  box.innerHTML=`<label class="fld"><span>THINKING (REASONING MODELS)</span><select id="ai-think"><option value="off">Off — fastest, cheapest</option><option value="low">Low (recommended)</option><option value="medium">Medium — slower</option><option value="high">High — slow, can cost more</option></select></label>
-    <label class="fld"><span>MAX ANSWER TOKENS PER REQUEST (THINKING COUNTS)</span><input id="ai-maxtok" data-autosave="ai-maxtok" data-autosave-commit inputmode="numeric" value="32000"><small id="ai-tokhint" style="opacity:.75"></small></label>
-    <label class="fld"><span>MEASURE &amp; REFINE ROUNDS</span><select id="ai-rounds"><option value="0">0 — first answer only</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4 (recommended)</option><option value="5">5</option><option value="6">6 — slow</option></select></label>
-    <label class="fld chk wide"><input type="checkbox" id="ai-auto"> Auto-repair: run every round without asking</label>`;
-  const ta=$('ai-prompt').closest('.fld'); ta.parentNode.insertBefore(box,ta.nextSibling); ta.parentNode.insertBefore(mp,box);
-  $('ai-think').value=aiThink(); $('ai-think').onchange=()=>{ local.set('tnc426.aithink',$('ai-think').value); };
-  $('ai-rounds').value=String(aiRounds()); $('ai-rounds').onchange=()=>{ local.set('tnc426.airounds',$('ai-rounds').value); };
-  $('ai-auto').checked=aiAuto(); $('ai-auto').onchange=()=>{ local.set('tnc426.aiauto',$('ai-auto').checked?'1':'0'); };
-  $('ai-maxtok').value=aiMaxTok(); $('ai-maxtok').defaultValue=aiMaxTok(); $('ai-maxtok').addEventListener('keydown',e=>e.stopPropagation());
-  $('ai-maxtok').onchange=()=>{ GCDraft.clear($('ai-maxtok')); const v=Math.round(+String($('ai-maxtok').value).replace(/[\s,_']/g,'')); if(v>=1) local.set('tnc426.aimaxtok',v); else say('MAX TOKENS: A WHOLE NUMBER'); $('ai-maxtok').value=aiMaxTok(); aiTokHint(); };
-  mpMount(mp); aiTokHint();
-}
-
-/* AI: 'new' writes a new program, 'modify' changes the program on screen (undoable) */
-function aiMode(mode){ S.aiMode=mode==='modify'?'modify':'new'; const mod=S.aiMode==='modify', f=k=>T(k).replace('{pgm}',S.pgm);
-  [...$('ai-mode').children].forEach(b=>{ b.setAttribute('aria-pressed',b.dataset.mode===S.aiMode); });
-  $('ai-title').textContent=f(mod?'ai.title.mod':'ai.title.new'); $('ai-lead').textContent=f(mod?'ai.lead.mod':'ai.lead.new');
-  $('ai-go').textContent=T(mod?'ai.go.mod':'ai.go.new'); $('ai-prompt').placeholder=T(mod?'ai.ph.mod':'ai.ph.new'); }
+/* NEW PROGRAM: one dialog, two tabs. Manual = the name, then block by block; AI = describe the part: that view is aigen.js, mounted into #new-ai. */
+function openNew(which){ openModal('m-new'); newGo(which||'scratch'); }
 function newGo(w){
   w=w==='ai'?'ai':'scratch';
   [...$('new-tabs').children].forEach(b=>{ b.setAttribute('aria-selected',b.dataset.go===w); });
   $('new-scratch').hidden=w!=='scratch'; $('new-ai').hidden=w!=='ai';
-  if(w==='ai'){ aiMode(S.aiMode||'new'); aiModelUI(); }
-  (w==='scratch'?$('ns-name'):$('ai-prompt')).focus();
+  if(w==='scratch') $('ns-name').focus();   // the AI view (aigen.js) takes the focus itself when its panel is shown
 }
 $('new-tabs').addEventListener('click',e=>{ const g=e.target.closest('[data-go]'); if(g) newGo(g.dataset.go); });
-$('ai-mode').addEventListener('click',e=>{ const b=e.target.closest('[data-mode]'); if(b) aiMode(b.dataset.mode); });
-$('ai-go').onclick=aiGenerate; $('ai-setup').onclick=()=>openHelp('ai');
 $('ns-go').onclick=()=>{
   const name=($('ns-name').value.trim()||'MY_PART').toUpperCase().replace(/[^A-Z0-9_]/g,'_').slice(0,16);
   const txt=[`BEGIN PGM ${name} MM`,`END PGM ${name} MM`].join('\n');     // what the control creates: nothing else
@@ -1939,8 +1611,6 @@ const KEYS=[['↑ ↓','Block cursor'],['← →','Scrub the run (Shift ×5)'],[
 const VIEWS=['3D','TOP','FRONT','SIDE'];
 addEventListener('keydown',e=>{
   const k=e.key, mod=e.ctrlKey||e.metaKey;
-  if(S.aiLive&&S.aiLive.ask&&!openModalEl){ if(k==='Enter'||k==='Escape'){ e.preventDefault(); S.aiLive.ask.res(k==='Enter'); } return; }
-  if(S.aiLive&&!S.aiLive.done&&!openModalEl){ if(k==='Escape'&&aiAbort){ e.preventDefault(); aiAbort.abort(); } return; }
   if(openModalEl){ if(k==='Escape'){ e.preventDefault(); closeModal(); } return; }
   if(drawerOpen()){ if(k==='Escape'){ e.preventDefault(); closeDrawer(); } return; }
   if(!$('setup').hidden&&(k==='Escape'||$('setup').contains(e.target))){ if(k==='Escape'){ e.preventDefault(); setupClose(); } return; }
@@ -2196,7 +1866,7 @@ function langSync(){
   if(S.lesson){ $('coach-k').textContent=T(S.lesson.kind==='learn'?'coach.learn':'coach.break'); $('coach-next').textContent=T(S.lesson.i===S.lesson.steps.length-1?'coach.finish':'coach.next'); }
   else $('coach-next').textContent=T('coach.next');
   if(!S.wiz&&!S.editing) dlgHint.textContent=T('dlg.hint'); if(S.wiz) wizPreview();
-  if(openModalEl===$('m-help')) renderHelp(); if(openModalEl===$('m-new')) aiMode(S.aiMode||'new'); if(openModalEl===$('m-prof')) renderProfile();
+  if(openModalEl===$('m-help')) renderHelp(); if(openModalEl===$('m-prof')) renderProfile();
   document.querySelectorAll('[data-label]').forEach(b=>{ b.textContent=X(b.dataset.label); });           // plugin controls (viz.js)
   document.querySelectorAll('[data-aria]').forEach(b=>{ b.setAttribute('aria-label',X(b.dataset.aria)); });   // (materials.js)
   renderProjects(); if(S.tt) renderTT();
@@ -2353,7 +2023,7 @@ raw.value=S.text;
 inspSync();
 if(window.TNC_I18N) try{ TNC_I18N.set(TNC_I18N.lang||'sv'); }catch{}
 settingsApply();
-compile(); machSync(); setMode(S.mode); renderProjects(); syncToggles(); keyPill(); resize(); profChip(); setSideTab(S.sideTab); renderUserPrograms(); langSync();
+compile(); machSync(); setMode(S.mode); renderProjects(); syncToggles(); resize(); profChip(); setSideTab(S.sideTab); renderUserPrograms(); langSync();
 if(S.flowView&&window.TNC_FLOW){ S.flowView=false; toggleFlow(); }
 const flash=sess.get('tnc.flash'); if(flash){ sess.del('tnc.flash'); setTimeout(()=>say(flash),400); }
 if(sess.get('tnc.askname')){ sess.del('tnc.askname'); if(!PROF.name) openProfile(); }

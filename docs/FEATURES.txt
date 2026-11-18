@@ -211,11 +211,12 @@ WORKSPACE (sim-shell.html, ui.js, settings.js, i18n.js):
     keeps its tab and page while closed; the choice is stored per edition
     (localStorage tnc.edition.<edition>.v1, with the selected machine).
     Phones: it is the Status workspace.
-  - New program: one dialog, tabs Manual and AI. AI holds "New program" and
-    "Change current" and the existing generation flow. The three-card popup
-    and the + New / Lessons / AI header menus are gone.
+  - New program: one dialog, tabs Manual and AI. The AI tab is the view of
+    aigen.js (see AI PROGRAM GENERATION). The three-card popup and the
+    + New / Lessons / AI header menus are gone.
   - Help and lessons: one drawer (Lessons, Crash it, Manual, Shortcuts, AI
-    setup). Finished lessons are remembered (tnc.lessons.v1) and marked.
+    setup = three lines saying where AI lives and that the key is on the
+    server). Finished lessons are remembered (tnc.lessons.v1) and marked.
   - Settings (bottom gear; in the drawer on phones): General (language,
     decimal character, motion, sound, shortcut hints, profile), Appearance (controller skin,
     environment, graphics quality), Help (help, shortcuts, introduction,
@@ -260,20 +261,37 @@ BRIDGE v2 (bridge.js; contract in docs/BUILD_STATE.md; tests/bridge.js):
   - Origin, source window and payload shape are checked; anything else is
     dropped. tnc:lock refuses NC start with the reason on screen.
 
-AI PROGRAM GENERATION (ai.js):
-  - OpenRouter only, BYOK - never Anthropic direct (checked: no Anthropic
-    endpoint string anywhere in the built page).
-  - Default model deepseek/deepseek-v4.1-flash, with a picker for a few
-    other OpenRouter models (deepseek-v4-pro-0813, gemini-3.8-flash,
-    gpt-5.6-luna) or any model id.
-  - Streaming progress, the program appearing block by block, the path
-    growing in 3D live, and a request viewer showing every round including
-    the repair pass.
-  - One repair pass: compile the AI's program, feed errors back. Prompt
-    includes the operator's own tool table.
-  - Key in sessionStorage/localStorage, never a cookie.
-  - Tested so far only against a mocked OpenRouter (QA suite). No run
-    against the real API in this repo yet.
+AI PROGRAM GENERATION (aigen.js = the view, the server = the job; ai.js =
+the system prompt):
+  - Needs the local or hosted server (docs/AI_API.md). The plain page
+    (GitHub Pages, a downloaded index.html) shows one line saying so, and
+    no key field. Manual creation is unaffected.
+  - OpenRouter only, through the server - never Anthropic direct. The key
+    is typed into the view once (shown only while the server has no key),
+    sent to the server and stored there; never in browser storage, in a
+    page or in a program. A key an older build kept in the browser is
+    deleted on load, with one notice. build.py writes no page with a key
+    (index.local.html is gone). tests/ai/no-browser-key.js guards this.
+  - The view: prompt, three examples, the selected model, a model search,
+    model rows with short names; id, full name, context, effective output
+    limit, price per 1M tokens and capabilities on hover, focus and tap.
+    One primary action: GENERATE, a compact Cancel while a job runs, Load
+    after a validated result. No thinking, token, measurement or round
+    controls: that is the server's policy.
+  - Progress is the server's events: stage and "round n of max", the
+    streamed program text, short status lines. No percentage.
+  - measure-request: the page measures the draft against the model's part
+    spec (part.js) and posts the result to the job.
+  - Load opens the result as a NEW program under a free name; the program
+    that was active stays in the list unchanged. Nothing is loaded without
+    the Load button; a failed or cancelled job keeps its draft on screen.
+  - Removed with the old popup: "Change current" (AI edits the open
+    program, Ctrl+Z undoes), the browser-side loop with Continue / Stop,
+    the live block-by-block build in 3-D, the request viewer, the model
+    table with sort and free model id.
+  - Swedish, English, Serbian. Tested against a mock provider only
+    (tests/ai/dialog-state.js, tests/ai/dialog-e2e.mjs). No run against
+    the real API.
 
 TEACHING (lessons.js):
   - LEARN lessons, BREAK IT (famous ways to wreck a machine, each with the

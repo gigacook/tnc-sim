@@ -80,7 +80,7 @@ async function simPage(browser, { width, height, mobile = width <= 900, lang = '
   const errors = [];
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error' && !/fonts\.(googleapis|gstatic)|ERR_FAILED|net::/.test(m.text())) errors.push('console: ' + m.text()); });
-  page.on('requestfailed', (r) => { if (!/fonts\.(googleapis|gstatic)\.com|openrouter\.ai/.test(r.url())) errors.push('requestfailed: ' + r.url()); });
+  page.on('requestfailed', (r) => { if (!/fonts\.(googleapis|gstatic)\.com/.test(r.url())) errors.push('requestfailed: ' + r.url()); });
   await page.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
   await page.goto(url);
   await page.waitForFunction(() => document.querySelectorAll('#plist .blk').length > 5, null, { timeout: 30000 });
@@ -386,83 +386,27 @@ async function desktopFlows(browser, tag) {
   await ctx.close();
 }
 
-/* AI against a mocked OpenRouter: the route answers, nothing leaves the machine, no key is spent */
-async function aiMocked(browser, tag) {
+/* AI without a server (this suite opens the plain file): the AI choice is one line of text. No key field, no request to
+   OpenRouter, a key an older build left in the browser is deleted, the manual path is whole. The AI flow itself (key on the
+   server, models, stages, cancel, a repair round, the measurement, Load) runs against the real server and a mock provider in
+   tests/ai/dialog-e2e.mjs. The browser-key flow that ui.js had (plan step, Continue / Stop, modify + Ctrl+Z, the model
+   table) was removed with its code and has no successor here. */
+async function aiOffline(browser, tag) {
   const { ctx, page, errors } = await simPage(browser, { width: 390, height: 844, storage: { 'tnc426.orkey': 'test-key-not-real' } });
-  const L = `[${tag}] AI (mocked)`;
-  const PROGRAM = ['BEGIN PGM MOCK MM', 'BLK FORM 0.1 Z X+0 Y+0 Z-20', 'BLK FORM 0.2 X+100 Y+80 Z+0', 'TOOL CALL 4 Z S3000',
-    'L Z+50 R0 FMAX M3', 'L X+10 Y+10 R0 FMAX', 'L Z+2 R0 FMAX', 'L Z-1 R0 F150', 'L X+90 R0 F500', 'L Z+50 R0 FMAX M5', 'M30', 'END PGM MOCK MM'].join('\n');
-  const SPEC = { blank: { x: [0, 100], y: [0, 80], z: [-20, 0] }, features: [{ id: 'S1', type: 'slot', from: [10, 10], to: [90, 10], w: 6, z: -1 }] };
-  let calls = 0, sawKey = false;
-  await page.route('https://openrouter.ai/**', async (route) => {
-    const u = route.request().url();
-    if (u.endsWith('/models')) return route.fulfill({ json: { data: [{ id: 'deepseek/deepseek-v4.1-flash', name: 'DeepSeek: V4.1 Flash', created: 1, pricing: { prompt: '0.000000035', completion: '0.00000029' }, context_length: 128000 }] } });
-    if (u.endsWith('/chat/completions')) {
-      calls++; sawKey = (route.request().headers().authorization || '') === 'Bearer test-key-not-real';
-      const req = JSON.parse(route.request().postData() || '{}'), planStep = /STEP 1 of 2/.test(JSON.stringify(req.messages || []));
-      const chunk = (o) => 'data: ' + JSON.stringify(o) + '\n\n';
-      const content = planStep ? '```partspec\n' + JSON.stringify(SPEC) + '\n```' : '```klartext\n' + PROGRAM + '\n```';
-      const body = chunk({ choices: [{ delta: { content }, finish_reason: 'stop' }] }) + chunk({ choices: [], usage: { prompt_tokens: 10, completion_tokens: 20, cost: 0 } }) + 'data: [DONE]\n\n';
-      return route.fulfill({ status: 200, headers: { 'content-type': 'text/event-stream' }, body });
-    }
-    return route.fulfill({ status: 404, body: '{}' });
-  });
+  const L = `[${tag}] AI (no server)`;
+  const out = [];
+  page.on('request', (r) => { if (!/^(file:|data:|blob:)/.test(r.url()) && !/fonts\.(googleapis|gstatic)\.com/.test(r.url())) out.push(r.url()); });
+  ok(await page.evaluate(() => localStorage.getItem('tnc426.orkey') === null && sessionStorage.getItem('tnc426.orkey') === null), `${L}: a key an older build stored in the browser is deleted on load`);
   await page.click('#b-menu'); await page.click('#b-new');
   await page.click('#new-t-ai');
-  ok(await page.evaluate(() => !document.getElementById('m-new').hidden && !document.getElementById('new-ai').hidden), `${L}: AI dialog opens from the drawer`);
-  await page.fill('#ai-prompt', 'A 100 x 80 plate, one facing pass 1 mm deep.');
-  const pb = await box(page, '#ai-go');
-  ok(pb && pb.y >= 0 && pb.y + pb.height <= 844, `${L}: Generate button on screen without scrolling`, JSON.stringify(pb));
-  await page.click('#ai-go');
-  await page.waitForFunction(() => /MOCK/.test(document.getElementById('hdr-stat').textContent), null, { timeout: 15000 }).catch(() => {});
-  ok(calls === 2 && sawKey, `${L}: plan + program = two requests to the mocked endpoint with the BYOK header`, `calls=${calls} key=${sawKey}`);
-  ok(await page.evaluate(() => /Measured against the spec: 1\d\d|Measured against the spec: 9\d/.test(document.getElementById('ailive') ? document.getElementById('ailive').textContent : '')),
-    `${L}: the program is measured against the planned part (high match)`, await page.evaluate(() => (document.getElementById('ailive') || {}).textContent));
-  ok(await page.evaluate(() => /MOCK/.test(document.getElementById('hdr-stat').textContent)), `${L}: generated program opened`);
-  ok(errors.length === 0, `${L}: no page errors`, errors.slice(0, 3).join(' | '));
-  await ctx.close();
-}
-
-/* the repair loop: a failing round asks Continue / Stop, Enter continues; the Auto checkbox and any max-tokens number stick */
-async function aiRepairMocked(browser, tag) {
-  const { ctx, page, errors } = await simPage(browser, { width: 390, height: 844, storage: { 'tnc426.orkey': 'test-key-not-real' } });
-  const L = `[${tag}] AI repair (mocked)`;
-  const prog = (cut) => ['BEGIN PGM MOCK MM', 'BLK FORM 0.1 Z X+0 Y+0 Z-20', 'BLK FORM 0.2 X+100 Y+80 Z+0', 'TOOL CALL 4 Z S3000',
-    'L Z+50 R0 FMAX M3', 'L X+10 Y+10 R0 FMAX', 'L Z+2 R0 FMAX', cut, 'L X+90 R0 F500', 'L Z+50 R0 FMAX M5', 'M30', 'END PGM MOCK MM'].join('\n');
-  const SPEC = { blank: { x: [0, 100], y: [0, 80], z: [-20, 0] }, features: [{ id: 'S1', type: 'slot', from: [10, 10], to: [90, 10], w: 6, z: -1 }] };
-  const progs = [prog('L Z-1 R0 FMAX'), prog('L Z-1 R0 F150')];          // round 1 rapids into the blank, round 2 is clean
-  let calls = 0;
-  await page.route('https://openrouter.ai/**', async (route) => {
-    const u = route.request().url();
-    if (u.endsWith('/models')) return route.fulfill({ json: { data: [{ id: 'deepseek/deepseek-v4.1-flash', name: 'DeepSeek: V4.1 Flash', created: 1, pricing: { prompt: '0.000000035', completion: '0.00000029' }, context_length: 128000 }] } });
-    if (u.endsWith('/chat/completions')) {
-      calls++;
-      const req = JSON.parse(route.request().postData() || '{}'), planStep = /STEP 1 of 2/.test(JSON.stringify(req.messages || []));
-      const chunk = (o) => 'data: ' + JSON.stringify(o) + '\n\n';
-      const content = planStep ? '```partspec\n' + JSON.stringify(SPEC) + '\n```' : '```klartext\n' + progs.shift() + '\n```';
-      const body = chunk({ choices: [{ delta: { content }, finish_reason: 'stop' }] }) + chunk({ choices: [], usage: { prompt_tokens: 10, completion_tokens: 20, cost: 0 } }) + 'data: [DONE]\n\n';
-      return route.fulfill({ status: 200, headers: { 'content-type': 'text/event-stream' }, body });
-    }
-    return route.fulfill({ status: 404, body: '{}' });
-  });
-  await page.click('#b-menu'); await page.click('#b-new');
-  await page.click('#new-t-ai');
-  await page.fill('#ai-maxtok', '500000'); await page.dispatchEvent('#ai-maxtok', 'change');
-  ok(await page.evaluate(() => localStorage.getItem('tnc426.aimaxtok') === '500000' && document.getElementById('ai-maxtok').value === '500000'),
-    `${L}: max tokens keeps 500000`, await page.evaluate(() => localStorage.getItem('tnc426.aimaxtok')));
-  await page.check('#ai-auto'); const autoOn = await page.evaluate(() => localStorage.getItem('tnc426.aiauto'));
-  await page.uncheck('#ai-auto'); const autoOff = await page.evaluate(() => localStorage.getItem('tnc426.aiauto'));
-  ok(autoOn === '1' && autoOff === '0', `${L}: the Auto checkbox is stored`, `${autoOn}/${autoOff}`);
-  await page.fill('#ai-prompt', 'A 100 x 80 plate with one slot 1 mm deep.');
-  await page.click('#ai-go');
-  await page.waitForSelector('#ai-more', { timeout: 15000 }).catch(() => {});
-  ok(await page.evaluate(() => !!document.getElementById('ai-more') && !!document.getElementById('ai-stop')), `${L}: a failing round asks Continue / Stop`,
-    await page.evaluate(() => (document.getElementById('ailive') || {}).textContent));
-  ok(calls === 2, `${L}: nothing is sent while the question is open`, `calls=${calls}`);
-  await page.keyboard.press('Enter');
-  await page.waitForFunction(() => /MOCK/.test(document.getElementById('hdr-stat').textContent), null, { timeout: 15000 }).catch(() => {});
-  ok(calls === 3, `${L}: Enter continues with round 2`, `calls=${calls}`);
-  ok(await page.evaluate(() => /MOCK/.test(document.getElementById('hdr-stat').textContent)), `${L}: the repaired program opened`);
+  ok(await page.evaluate(() => !document.getElementById('m-new').hidden && !document.getElementById('new-ai').hidden), `${L}: AI choice opens from the drawer`);
+  ok((await page.textContent('#aigen-offline')) === 'AI needs the local or hosted server. Manual creation works as usual.' && await shown(page, '#aigen-offline'), `${L}: one line says AI needs the local or hosted server`, await page.textContent('#aigen-offline'));
+  ok(await page.evaluate(() => [...document.querySelectorAll('#new-ai input, #new-ai textarea, #new-ai button, #new-ai select')].every((n) => !n.checkVisibility()) && !document.querySelector('input[type=password]')), `${L}: no key field, no prompt and no button without a server`);
+  ok(await page.evaluate(() => !document.querySelector('#ai-prompt, #ai-go, #ai-mp, #ai-mode, #ai-key, #ai-keypill, #ai-setup, #ailive')), `${L}: the old AI popup is gone`);
+  await page.click('#new-t-scratch'); await page.fill('#ns-name', 'BY_HAND'); await page.click('#ns-go'); await page.waitForTimeout(300);
+  ok(await page.evaluate(() => TNC_UI.program.name === 'BY_HAND.H' && /BEGIN PGM BY_HAND MM/.test(TNC_UI.program.text)), `${L}: manual creation works as before`);
+  ok(await page.evaluate(() => Object.keys(localStorage).concat(Object.keys(sessionStorage)).every((k) => !/orkey|api.?key|secret/i.test(k))), `${L}: nothing key-like in browser storage`, await page.evaluate(() => Object.keys(localStorage).join()));
+  ok(out.length === 0, `${L}: no request left the page (none to OpenRouter)`, [...new Set(out)].slice(0, 4).join(', '));
   ok(errors.length === 0, `${L}: no page errors`, errors.slice(0, 3).join(' | '));
   await ctx.close();
 }
@@ -595,8 +539,8 @@ async function upload(p, files) {
 /* wait until the page state matches (slow CI boxes load files later than a fixed sleep), then let the check report */
 const until = (p, fn, arg) => p.waitForFunction(fn, arg, { timeout: 10000 }).catch(() => {});
 const hasPgms = (p, names) => until(p, (n) => { const s = TNC_UI.state; return n.every((x) => x in s.pgms[s.machine]); }, names);
-/* the one New dialog: which = 'scratch' (Manual) | 'ai' (new program) | 'modify' (AI: change the program on screen) */
-async function newDialog(p, which) { await p.click('#b-new'); await p.click(which === 'scratch' ? '#new-t-scratch' : '#new-t-ai'); if (which !== 'scratch') await p.click(which === 'modify' ? '#ai-m-mod' : '#ai-m-new'); }
+/* the one New dialog: which = 'scratch' (Manual) | 'ai' */
+async function newDialog(p, which) { await p.click('#b-new'); await p.click(which === 'scratch' ? '#new-t-scratch' : '#new-t-ai'); }
 /* zip entry names, read with the page's own JSZip (inlined by build.py): no unzip binary, no extra package */
 const zipNames = (p, file) => p.evaluate(async (b64) => Object.keys((await JSZip.loadAsync(b64, { base64: true })).files), readFileSync(file).toString('base64'));
 const fileName = (f) => f.split(/[\\/]/).pop();
@@ -618,7 +562,6 @@ async function ioFlows(browser, tag) {
   p.on('request', (r) => { const u = r.url(); if (!/^(file:|data:|blob:)/.test(u)) external.push(u); });
   p.on('dialog', (d) => { dialogs.push(d.message()); d.accept(); });
   await p.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
-  await p.route('https://openrouter.ai/**', (r) => r.fulfill({ status: 599, body: 'blocked by the UI suite' }));
   try {
     await p.goto(SIM_URL); await ready(p); await p.waitForTimeout(800);
     const prof = () => p.locator('#m-prof');
@@ -851,102 +794,11 @@ END PGM ${n} MM
 
     /* 10 */
     ok(!errs.length, `${L} 10: no page or console errors`, errs.slice(0, 4).join(' | '));
-    const ext = external.filter((u) => !/^https:\/\/(openrouter\.ai|fonts\.googleapis\.com|fonts\.gstatic\.com)\//.test(u));
-    ok(!ext.length, `${L} 10: no network requests besides Google Fonts and the (blocked) OpenRouter`, [...new Set(ext)].slice(0, 4).join(', '));
+    const ext = external.filter((u) => !/^https:\/\/(fonts\.googleapis\.com|fonts\.gstatic\.com)\//.test(u));
+    ok(!ext.length, `${L} 10: no network requests besides Google Fonts (none to OpenRouter)`, [...new Set(ext)].slice(0, 4).join(', '));
   } finally { await ctx.close(); rmSync(out, { recursive: true, force: true }); }
 }
 
-/* AI, current flow, against a mocked OpenRouter: plan → program with an error → repair round → saved; then a modify request
-   that Ctrl+Z undoes. Plus the model picker. */
-async function aiFlow(browser, tag) {
-  const L = `[${tag}] AI flow (mocked)`;
-  const { ctx, page: p, errors } = await simPage(browser, { width: 1440, height: 900, mobile: false, storage: { 'tnc426.orkey': 'test-key-not-real' } });
-  const prog = (t, x) => ['BEGIN PGM AITEST MM', 'BLK FORM 0.1 Z X+0 Y+0 Z-20', 'BLK FORM 0.2 X+100 Y+80 Z+0', `TOOL CALL ${t} Z S3000`,
-    'L Z+50 R0 FMAX M3', 'L X+10 Y+10 R0 FMAX', 'L Z+2 R0 FMAX', 'L Z-1 R0 F150', `L X+${x} R0 F500`, 'L Z+50 R0 FMAX M5', 'M30', 'END PGM AITEST MM'].join('\n');
-  const SPEC = { blank: { x: [0, 100], y: [0, 80], z: [-20, 0] }, features: [{ id: 'S1', type: 'slot', from: [10, 10], to: [90, 10], w: 6, z: -1 }] };
-  const answers = [prog(99, 90), prog(4, 90), prog(4, 80)];        // round 1: tool not defined; round 2: clean; modify: shorter slot
-  const chats = [], other = [];
-  await p.route('https://openrouter.ai/**', async (route) => {
-    const u = route.request().url();
-    if (u.endsWith('/api/v1/models')) return route.fulfill({ status: 200, contentType: 'application/json', body: readFileSync(join(FX, 'openrouter-models.json'), 'utf8') });
-    if (u.endsWith('/chat/completions')) {
-      const req = JSON.parse(route.request().postData() || '{}'); chats.push(req);
-      const planStep = /STEP 1 of 2/.test(JSON.stringify(req.messages || []));
-      const content = planStep ? '```partspec\n' + JSON.stringify(SPEC) + '\n```' : '```klartext\n' + (answers.shift() || prog(4, 90)) + '\n```';
-      const chunk = (o) => 'data: ' + JSON.stringify(o) + '\n\n';
-      return route.fulfill({ status: 200, headers: { 'content-type': 'text/event-stream' },
-        body: chunk({ choices: [{ delta: { content }, finish_reason: 'stop' }] }) + chunk({ choices: [], usage: { prompt_tokens: 10, completion_tokens: 20, cost: 0 } }) + 'data: [DONE]\n\n' });
-    }
-    other.push(u); return route.fulfill({ status: 404, body: '{}' });
-  });
-  try {
-    await newDialog(p, 'ai');
-    ok(await p.isVisible('#m-new') && await p.isVisible('#ai-mp'), `${L}: AI dialog with the model picker`);
-    /* model picker */
-    await p.waitForSelector('#ai-mp .mp-chip', { timeout: 5000 }).catch(() => {});
-    const chips = await p.$$eval('#ai-mp .mp-chip', (bs) => bs.map((b) => b.dataset.pick));
-    ok(chips.length >= 4 && chips.every((c) => /^[\w.-]+\/[\w.:-]+$/.test(c)), `${L}: frontier chips computed from the live list`, chips.join(' '));
-    if (chips.length) {
-      await p.click(`#ai-mp .mp-chip[data-pick="${chips[0]}"]`);
-      ok(await p.evaluate(() => localStorage.getItem('tnc426.ormodel')) === chips[0] && await p.locator(`#ai-mp .mp-chip.sel[data-pick="${chips[0]}"]`).count() === 1, `${L}: a chip click picks and highlights the model`);
-    }
-    await p.click('#ai-mp .mp-all');
-    ok(await p.isVisible('#ai-mp .mp-pal') && await p.evaluate(() => document.activeElement.classList.contains('mp-q')), `${L}: All models opens the table, filter focused`);
-    await p.click('#ai-mp th[data-s=pout] button');
-    const nums = (await p.$$eval('#ai-mp tbody tr[data-i] td:nth-child(5)', (t) => t.map((x) => x.textContent))).map((x) => parseFloat(x.replace(/[^\d.]/g, ''))).filter(isFinite);
-    ok(nums.length > 20 && nums.every((v, i) => !i || nums[i - 1] <= v), `${L}: click $/M out sorts ascending`, nums.slice(0, 6).join(','));
-    await p.focus('#ai-mp .mp-q');
-    await p.keyboard.type('qwen3.8 flash'); await p.keyboard.press('Escape');
-    ok(await p.inputValue('#ai-mp .mp-q') === '' && await p.isVisible('#ai-mp .mp-pal') && await p.isVisible('#m-new'), `${L}: Esc in the filter clears it first; table and dialog stay`);
-    await p.keyboard.type('qwn flsh'); await p.keyboard.press('ArrowDown'); await p.keyboard.press('ArrowUp'); await p.keyboard.press('Enter');
-    ok(await p.evaluate(() => localStorage.getItem('tnc426.ormodel')) === 'qwen/qwen3.8-flash' && !(await p.isVisible('#ai-mp .mp-pal')), `${L}: fuzzy "qwn flsh" + arrows + Enter picks qwen/qwen3.8-flash and closes the table`,
-      await p.evaluate(() => localStorage.getItem('tnc426.ormodel')));
-    await p.click('#ai-mp .mp-all'); await p.keyboard.press('Escape'); await p.waitForTimeout(100);
-    if (await p.inputValue('#ai-mp .mp-q') === '' && await p.isVisible('#ai-mp .mp-pal')) await p.keyboard.press('Escape');
-    ok(!(await p.isVisible('#ai-mp .mp-pal')) && await p.isVisible('#m-new'), `${L}: Esc closes the table, not the dialog`);
-
-    /* new program: plan, round 1 with an error, repair round 2, saved */
-    await p.fill('#ai-prompt', 'A 100 x 80 plate with one slot 1 mm deep.');
-    await p.click('#ai-go');
-    for (let i = 0; i < 3; i++) {                       // answer "Continue" if a round asks (Auto off)
-      await p.waitForFunction(() => (TNC_UI.state.aiLive && TNC_UI.state.aiLive.done) || document.getElementById('ai-more'), null, { timeout: 15000 }).catch(() => {});
-      if (await p.locator('#ai-more').count()) await p.click('#ai-more'); else break;
-    }
-    await p.waitForFunction(() => TNC_UI.state.aiLive && TNC_UI.state.aiLive.done, null, { timeout: 15000 }).catch(() => {});
-    const progReqs = chats.filter((c) => !/STEP 1 of 2/.test(JSON.stringify(c.messages)));
-    ok(chats.length === 3 && progReqs.length === 2, `${L}: plan + two program rounds = three requests`, `chats=${chats.length} program=${progReqs.length}`);
-    ok(chats[0] && /STEP 1 of 2/.test(JSON.stringify(chats[0].messages)), `${L}: the first request is the planning step`);
-    const last2 = progReqs[1] && JSON.stringify(progReqs[1].messages.slice(-2));
-    ok(last2 && /TOOL 99 NOT DEFINED/.test(last2), `${L}: the second program request carries the simulator error`, last2 && last2.slice(-200));
-    ok(chats.every((c) => c.model === 'qwen/qwen3.8-flash' && c.stream === true), `${L}: requests use the picked model, streamed`, chats.map((c) => c.model).join());
-    const log = await p.evaluate(() => (document.getElementById('ailive') || {}).textContent || '');
-    ok(/Round 2/.test(log) && /Saved as AITEST\.H/.test(log), `${L}: live panel shows Round 2 and "Saved as AITEST.H"`, log.slice(-240));
-    let s = await S(p);
-    ok(s.pgm === 'AITEST.H' && s.text.includes('TOOL CALL 4') && !s.errors.length, `${L}: AITEST.H open and valid`, s.pgm + ' ' + s.errors.join('|'));
-    if (await p.locator('#ai-close').count()) await p.click('#ai-close');
-    ok(!(await S(p)).names.includes('AI_LIVE.H'), `${L}: Close removes the live scratch program`);
-
-    /* modify: current program + wish go out, the change lands, Ctrl+Z undoes it */
-    const before = (await S(p)).text;
-    await newDialog(p, 'modify');
-    await p.fill('#ai-prompt', 'Make the slot end at X+80.');
-    await p.click('#ai-go');
-    await p.waitForFunction(() => TNC_UI.state.aiLive && TNC_UI.state.aiLive.done, null, { timeout: 15000 }).catch(() => {});
-    await p.waitForTimeout(400);
-    const m = chats[3], mu = m ? JSON.stringify(m.messages) : '';
-    ok(m && mu.includes('TOOL CALL 4') && mu.includes('L X+90 R0 F500') && mu.includes('Make the slot end at X+80'), `${L}: modify request carries the current program and the wish`, `chats=${chats.length}`);
-    s = await S(p);
-    ok(s.pgm === 'AITEST.H' && s.text.includes('L X+80 R0 F500') && s.text !== before, `${L}: the AI change is applied to AITEST.H`);
-    if (await p.locator('#ai-close').count()) await p.click('#ai-close');
-    await p.waitForTimeout(150);
-    await p.evaluate(() => document.activeElement && document.activeElement.blur());
-    await p.keyboard.press('Control+z'); await p.waitForTimeout(250);
-    s = await S(p);
-    ok(s.text === before, `${L}: Ctrl+Z undoes the AI change`, s.text.includes('X+80') ? 'still X+80' : 'differs otherwise');
-    ok(!other.length, `${L}: only /models and /chat/completions requested`, other.join(','));
-    ok(errors.length === 0, `${L}: no page errors`, errors.slice(0, 3).join(' | '));
-  } finally { await ctx.close(); }
-}
 
 /* ---------- regressions (spec-driven): checks that wait for app fixes are named after the defect ---------- */
 /* a test-side probe, no app hook: a TNC_UI plugin (the documented plugin bus) remembers the tool group */
@@ -1248,14 +1100,14 @@ async function businessChecks(browser, tag) {
     ok(await shown(page, '#m-new') && await page.evaluate(() => !document.querySelector('.hmenu')), `${L}: New opens one dialog, not a menu`);
     const nt = await page.$$eval('#new-tabs [role=tab]', (b) => b.map((x) => x.textContent + ':' + x.getAttribute('aria-selected')));
     ok(nt.join('|') === 'Manual:true|AI:false', `${L}: the dialog offers Manual and AI`, nt.join('|'));
-    ok(await shown(page, '#ns-name') && !(await shown(page, '#ai-prompt')), `${L}: Manual shows the name field`);
+    ok(await shown(page, '#ns-name') && !(await shown(page, '#aigen')), `${L}: Manual shows the name field`);
     await page.focus('#new-t-scratch'); await page.keyboard.press('ArrowRight'); await page.waitForTimeout(200);
-    ok(await shown(page, '#ai-prompt') && await shown(page, '#ai-go') && await shown(page, '#ai-mp') && !(await shown(page, '#ns-name')), `${L}: → on the tabs shows the AI view (prompt, Generate, model picker) in the same dialog`);
-    ok(await page.evaluate(() => [...document.querySelectorAll('#ai-mode button')].map((b) => b.textContent + ':' + b.getAttribute('aria-pressed')).join('|')) === 'New program:true|Change current:false', `${L}: AI: new program or change the current one`);
-    await page.click('#ai-m-mod');
-    ok(/Say what to change in /.test(await page.textContent('#ai-title')) && (await page.textContent('#ai-go')) === 'Change the program', `${L}: "Change current" keeps the modify flow reachable`, await page.textContent('#ai-title'));
-    await page.click('#ai-setup'); await page.waitForTimeout(150);
-    ok(await shown(page, '#m-help') && await page.evaluate(() => document.querySelector('#help-tabs [aria-selected="true"]').dataset.tab === 'ai'), `${L}: AI setup is reachable from the AI view`);
+    ok(await shown(page, '#aigen') && await shown(page, '#aigen-offline') && !(await shown(page, '#ns-name')), `${L}: → on the tabs shows the AI view in the same dialog (here, without a server: its one-line notice)`);
+    ok(await page.evaluate(() => !document.querySelector('#aigen select, #aigen input[type=number], #aigen input[type=checkbox], #ai-mode, #ai-think, #ai-maxtok, #ai-rounds, #ai-auto')), `${L}: the AI view has no thinking, token, round or mode controls`);
+    await page.keyboard.press('Escape'); await page.waitForTimeout(100);
+    await page.evaluate(() => document.activeElement && document.activeElement.blur());
+    await page.keyboard.press('h'); await page.waitForTimeout(150); await page.click('#help-tabs [data-tab="ai"]'); await page.waitForTimeout(100);
+    ok(await shown(page, '#m-help') && /New program › AI/.test(await page.textContent('#help-body')) && /stored on the server, never in this browser/.test(await page.textContent('#help-body')) && await page.evaluate(() => !document.querySelector('#help-body input, #help-body button')), `${L}: Help › AI says where AI lives and that the key is on the server; no key field`, await page.textContent('#help-body'));
     await page.keyboard.press('Escape');
     await page.locator('body').click({ position: { x: 900, y: 450 } }).catch(() => {});
     await page.keyboard.press('n'); await page.waitForTimeout(150);
@@ -1561,7 +1413,7 @@ for (const [type, tag] of [[chromium, 'chromium'], [webkit, 'webkit']]) {
     if (want('layout')) await layoutChecks(b, tag);
     if (want('phone')) { if (type === chromium) await phoneFlows(b, tag); else skipped(`[${tag}] phone flows`, 'swipe tests drive the CDP touch pipeline (Chromium only)'); }
     if (want('desktop')) await desktopFlows(b, tag);
-    if (want('ai')) { await aiMocked(b, tag); await aiRepairMocked(b, tag); await aiFlow(b, tag); }
+    if (want('ai')) await aiOffline(b, tag);
     if (want('io')) await ioFlows(b, tag);
     if (want('regress')) await regressionChecks(b, tag);
     if (want('business')) { await businessChecks(b, tag); await reachChecks(b, tag); await serbianChecks(b, tag); }

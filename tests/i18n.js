@@ -70,5 +70,23 @@ const xs = [...ui.matchAll(/\bX\('((?:[^'\\]|\\.)+)'/g)].map((m) => m[1].replace
 const noX = xs.filter((k) => !(k in TX.sv));
 ok(xs.length > 30 && noX.length === 0, `every X('…') text of ui.js is translated (${noX.join(' | ')})`);
 
+/* the AI view (sim/aigen.js) keeps its own table: the same three languages, the same keys, nothing empty */
+const AG = require('../sim/aigen.js').STR;
+const flatAG = (o, p = '') => Object.keys(o).flatMap((k) => (o[k] && typeof o[k] === 'object' ? flatAG(o[k], p + k + '.') : [[p + k, o[k]]]));
+const ag = { sv: new Map(flatAG(AG.sv)), en: new Map(flatAG(AG.en)), sr: new Map(flatAG(AG.sr)) };
+ok(Object.keys(AG).join() === 'sv,en,sr', 'AI view: sv, en, sr');
+for (const l of ['en', 'sr']) {
+  const gone = [...ag.sv.keys()].filter((k) => !ag[l].has(k)).concat([...ag[l].keys()].filter((k) => !ag.sv.has(k)));
+  ok(gone.length === 0, `AI view: sv and ${l} hold the same keys (${gone.join(', ')})`);
+}
+for (const l of ['sv', 'en', 'sr']) {
+  const bad = [...ag[l]].filter(([k, v]) => typeof v !== 'string' || !v.trim() || holes(v) !== holes(ag.en.get(k)));
+  ok(bad.length === 0, `AI view ${l}: no empty text, {placeholders} kept (${bad.map((b) => b[0]).join(', ')})`);
+}
+const agSr = [...ag.sr.values()].join('\n');
+ok(!/[Ѐ-ӿ]/.test(agSr) && ['č', 'ć', 'š', 'ž'].every((c) => agSr.toLowerCase().includes(c)), 'AI view: Serbian is Latin script with its letters');
+const agSame = [...ag.sr].filter(([k, v]) => v === ag.en.get(k) && /[a-z]{4,}/.test(v) && !/^(model|serverSays)$/.test(k));
+ok(agSame.length === 0, `AI view: Serbian text is not left in English (${agSame.map((b) => b[0]).join(', ')})`);
+
 console.log(fails ? `\n${fails} of ${n} FAILED` : `\nALL ${n} LANGUAGE CHECKS PASS  (shell keys ${Object.keys(SHELL.sr).length}, control text ${Object.keys(TR.sr).length}, script text ${Object.keys(TX.sr).length}, patterns ${PATTERNS.length})`);
 process.exit(fails ? 1 : 0);

@@ -523,77 +523,10 @@ html[data-tips="off"] .sb-hint{display:none}
 .setup-ft .grow{flex:1}
 .setup-nt{font-size:11px;line-height:15px;color:var(--gc-ink-2);padding:0 14px 12px;margin:0}
 /* AI model picker (ui.js mp*): recommended model, quick picks, sortable / filterable table, free id */
-.mp-hd{display:flex;align-items:baseline;gap:12px;margin-bottom:8px}
-.mp-lbl{font-size:12px;font-weight:500;color:var(--gc-ink-2);flex:none}
-.mp-src{font-family:var(--gc-font-mono);font-size:12px;color:var(--gc-ink-2)}
-.mp-src.live::before{content:"\25CF  ";color:var(--gc-success)}
-.mp-rec{display:grid;grid-template-columns:1fr auto;align-items:center;gap:2px 16px;width:100%;text-align:left;padding:10px 12px;border-radius:var(--gc-radius-md);
   background:transparent;border:1px solid var(--gc-line-strong);color:var(--gc-ink)}
-.mp-rec:hover{background:var(--gc-hover)}
-.mp-rec.sel{border-color:var(--gc-accent);box-shadow:var(--gc-inset-ring1-accent)}
-.mp-rec>span{grid-column:1}
-.mp-star{justify-self:start;font-size:11px;font-weight:600;color:var(--gc-ink-2);border:1px solid var(--gc-line-strong);padding:0 6px;border-radius:var(--gc-radius-btn)}
-.mp-rn{font-weight:600;font-size:17px;color:var(--gc-ink);line-height:1.2;margin-top:3px}
-.mp-rid{font-family:var(--gc-font-mono);font-size:12.5px;color:var(--gc-ink-2)}
-.mp-rmeta,.mp-cm{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px;font-family:var(--gc-font-mono);font-size:12.5px;color:var(--gc-ink);font-variant-numeric:tabular-nums}
-.mp-rmeta small,.mp-cm small{font-size:12px;color:var(--gc-ink-2)}
-.mp-why{font-size:13px;color:var(--gc-ink-2);line-height:1.45}
-.mp-rec>.mp-use1{grid-column:2;grid-row:1/span 5;align-self:center;font-weight:500;font-size:13px;padding:6px 14px;border-radius:var(--gc-radius-btn);border:1px solid var(--gc-line-strong);color:var(--gc-ink);white-space:nowrap}
-.mp-rec.sel>.mp-use1{background:var(--gc-accent-fill);border-color:var(--gc-accent-fill);color:var(--gc-on-accent)}
-.mp-frow{display:flex;align-items:flex-start;gap:14px;margin-top:12px}
-.mp-frow>.mp-lbl{padding-top:8px;min-width:9ch}
-.mp-chips{display:flex;flex-wrap:wrap;gap:6px}
-.mp-chip{display:flex;flex-direction:column;gap:1px;text-align:left;min-width:150px;padding:6px 10px;border-radius:var(--gc-radius-md);background:transparent;border:1px solid var(--gc-line-strong);color:var(--gc-ink)}
-.mp-chip .p{font-size:11px;color:var(--gc-ink-2)}
-.mp-chip .n{font-size:13px;font-weight:600;color:var(--gc-ink)}
-.mp-chip .c{font-family:var(--gc-font-mono);font-size:12px;color:var(--gc-ink-2);font-variant-numeric:tabular-nums}
-.mp-chip:hover{background:var(--gc-hover)}
-.mp-chip.sel{border-color:var(--gc-accent);box-shadow:var(--gc-inset-ring1-accent)}
-.mp-chip.sel .p::after{content:" \2713"}
-.mp-dim{color:var(--gc-ink-2);font-family:var(--gc-font-mono);padding-top:9px}
-.mp-curl{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;margin-top:12px;padding:8px 12px;border-radius:var(--gc-radius-md);border:1px solid var(--gc-accent)}
-.mp-curl b{font-size:15px;color:var(--gc-ink)}
-.mp-curl code{font-family:var(--gc-font-mono);font-size:12.5px;color:var(--gc-ink-2)}
-.mp-warn{font-family:var(--gc-font-mono);font-size:12.5px;color:var(--gc-warning)}
-.mp-bar{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
-.mp-all,.mp-use{font-size:13px;background:transparent;color:var(--gc-ink);border:1px solid var(--gc-line-strong);border-radius:var(--gc-radius-btn);padding:0 12px;min-height:36px;white-space:nowrap}
-.mp-all:hover,.mp-use:hover,.mp-all[aria-expanded="true"]{background:var(--gc-hover)}
-.mp-cnt{display:inline-block;margin-left:6px;padding:0 6px;border:1px solid var(--gc-line-strong);border-radius:var(--gc-radius-btn);color:var(--gc-ink-2);font-size:12px}
-.mp-car{display:inline-block;margin-left:8px}
-.mp-all[aria-expanded="true"] .mp-car{transform:rotate(180deg)}
-.mp-id{flex:1;min-width:220px;background:var(--gc-canvas);border:1px solid var(--gc-line-strong);border-radius:var(--gc-radius-md);padding:6px 10px;font-family:var(--gc-font-mono);font-size:13px;color:var(--gc-ink)}
-.mp-id::placeholder,.mp-q::placeholder{color:var(--gc-muted)}
-.mp-pal{margin-top:8px;border:1px solid var(--gc-line-strong);border-radius:var(--gc-radius-md);background:var(--gc-canvas);overflow:hidden}
-.mp-tools{display:flex;align-items:center;gap:10px;padding:6px 10px 6px 12px;border-bottom:1px solid var(--gc-line);background:var(--gc-elevated)}
-.mp-q{flex:1;min-width:0;background:none;border:0;font-size:15px;color:var(--gc-ink);padding:6px 0}
-.mp-prov{background:var(--gc-canvas);border:1px solid var(--gc-line-strong);border-radius:var(--gc-radius-md);padding:5px 8px;font-size:13px;color:var(--gc-ink);max-width:40%}
-.mp-n{font-family:var(--gc-font-mono);font-size:12px;color:var(--gc-ink-2);white-space:nowrap}
-.mp-scroll{max-height:min(360px,42vh);overflow:auto;overscroll-behavior:contain;scroll-padding-top:40px}
-.mp-t{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;font-size:13px}
-.mp-t .c-n{width:44%}.mp-t .c-p{width:15%}.mp-t .c-x{width:11%}.mp-t .c-i{width:15%}.mp-t .c-o{width:15%}
-.mp-t th{position:sticky;top:0;z-index:1;background:var(--gc-elevated);border-bottom:1px solid var(--gc-line-strong);padding:0;text-align:left}
-.mp-t th button{width:100%;background:none;border:0;padding:7px 12px;text-align:inherit;font-size:12px;font-weight:500;color:var(--gc-ink-2)}
-.mp-t th.num{text-align:right}
-.mp-t th button:hover,.mp-t th[aria-sort="ascending"] button,.mp-t th[aria-sort="descending"] button{color:var(--gc-ink);text-decoration:underline}
-.mp-t td{padding:6px 12px;border-bottom:1px solid var(--gc-line);color:var(--gc-ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
-.mp-t td.num{text-align:right;font-family:var(--gc-font-mono);font-variant-numeric:tabular-nums;color:var(--gc-ink)}
-.mp-t td.nm b{font-weight:600;color:var(--gc-ink)}
-.mp-t td.nm span{font-family:var(--gc-font-mono);font-size:12px;color:var(--gc-ink-2);margin-left:10px}
-.mp-t tbody tr:hover td{background:var(--gc-hover)}
-.mp-t tr.act td{background:var(--gc-accent-soft)!important}
-.mp-t tr.act td:first-child{box-shadow:var(--gc-inset-l3-accent)}
-.mp-t tr.sel td.nm b::before{content:"\25CF  ";color:var(--gc-accent)}
-.mp-t tr.empty td{text-align:center;padding:18px;color:var(--gc-ink-2);cursor:default}
-.mp-keys{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;padding:6px 12px;border-top:1px solid var(--gc-line);font-size:12px;color:var(--gc-ink-2);background:var(--gc-elevated)}
-.mp-keys kbd{font-family:var(--gc-font-mono);font-size:12px;color:var(--gc-ink);border:1px solid var(--gc-line-strong);border-radius:var(--gc-radius-btn);padding:0 5px}
-@media (max-width:700px){ .mp-t .c-n{width:52%} .mp-t .c-p,.mp-t .c-x{width:0} .mp-t td:nth-child(2),.mp-t td:nth-child(3),.mp-t th:nth-child(2),.mp-t th:nth-child(3){display:none}
-  .mp-t td.nm span{display:none} .mp-rec{grid-template-columns:1fr} .mp-rec>.mp-use1{grid-column:1;grid-row:auto;justify-self:start} .mp-frow{flex-direction:column;gap:6px} }
 .ai-spin{display:inline-block;width:10px;height:10px;border-radius:50%;border:2px solid currentColor;border-top-color:transparent;margin-right:6px;vertical-align:-1px}
 html[data-motion="full"] .ai-spin{animation:ai-spin var(--gc-dur-spin) linear infinite}
 @keyframes ai-spin{to{transform:rotate(360deg)}}
-.ailive .ailine{font-family:var(--gc-font-mono);font-size:14px;color:var(--gc-ink)}
-.ailive .aithink{font-family:var(--gc-font-mono);font-size:12px;color:var(--gc-ink-2);margin-top:6px;max-height:4.8em;overflow:hidden;white-space:pre-wrap}
-.ailive .ailog{font-family:var(--gc-font-mono);font-size:12.5px;margin-top:8px;max-height:18vh;overflow:auto}.ailive .ailog .ok{color:var(--gc-success)}.ailive .ailog .bad{color:var(--gc-danger)}.ailive .ailog .dim{color:var(--gc-ink-2)}
 html[data-motion="reduced"] *,html[data-motion="reduced"] *::before,html[data-motion="reduced"] *::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}
 
 .mtabs,.hdr-m,.hdr-menu,.dhead,.dock,.skpager,.gear-row{display:none}
@@ -728,7 +661,7 @@ html[data-motion="reduced"] *,html[data-motion="reduced"] *::before,html[data-mo
   .setnav button[aria-selected="true"]{box-shadow:var(--gc-inset-b2-accent)}
   .swatch{grid-template-columns:1fr 1fr}
   /* the dialog's main action stays on screen (and above the keyboard) while the form scrolls */
-  #new-ai>.actrow,#new-scratch>.actrow{position:sticky;bottom:calc(-16px - env(safe-area-inset-bottom,0px));z-index:2;background:var(--gc-surface);margin:0 -16px;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--gc-line)}
+  #new-scratch>.actrow{position:sticky;bottom:calc(-16px - env(safe-area-inset-bottom,0px));z-index:2;background:var(--gc-surface);margin:0 -16px;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--gc-line)}
   .setup{right:8px;left:8px;width:auto;bottom:calc(var(--dock-h,0px) + 8px)}
   /* the 3-D view's text stays small so the blank and tool keep most of the view; nothing is dropped */
   .col-gfx .ovl{font-size:12px;line-height:1.45}
@@ -960,21 +893,8 @@ html[data-motion="reduced"] *,html[data-motion="reduced"] *::before,html[data-mo
       <div class="actrow"><button class="cbtn pri" id="ns-go" type="button" data-i18n="new.create">Skapa</button></div>
     </div>
 
-    <div id="new-ai" role="tabpanel" aria-labelledby="new-t-ai" hidden>
-      <div class="seg" id="ai-mode" role="group" aria-label="AI" style="margin-bottom:12px">
-        <button type="button" id="ai-m-new" data-mode="new" aria-pressed="true" data-i18n="ai.mode.new">Nytt program</button>
-        <button type="button" id="ai-m-mod" data-mode="modify" aria-pressed="false" data-i18n="ai.mode.mod">Ändra aktuellt</button>
-      </div>
-      <div class="prose"><h4 id="ai-title"></h4><p id="ai-lead"></p></div>
-      <label class="fld wide"><span id="ai-plabel" data-i18n="ai.prompt">Vad ska programmet göra?</span>
-        <textarea id="ai-prompt" data-autosave></textarea></label>
-      <div class="actrow">
-        <button class="cbtn pri" id="ai-go" type="button">Generate</button>
-        <span class="pill" id="ai-keypill">no key</span>
-        <button class="cbtn" id="ai-setup" type="button" data-i18n="ai.setup">AI-inställning</button>
-      </div>
-      <div class="aistat" id="ai-stat" hidden></div>
-    </div>
+    <!-- the AI view is built by sim/aigen.js (prompt, model, key on the server, progress, Load); empty without that module -->
+    <div id="new-ai" role="tabpanel" aria-labelledby="new-t-ai" hidden></div>
   </div>
  </div>
 </div>

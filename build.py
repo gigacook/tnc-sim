@@ -3,7 +3,7 @@
 
   python3 build.py          -> index.html        (public, pushed; never contains a key)
                             -> docs/index.html   (the same file, for GitHub Pages)
-                            -> index.local.html  (only if private/.env has OPENROUTER_API_KEY; gitignored)
+  No build holds a key: the OpenRouter key lives on the server only (docs/AI_API.md).
   python3 build.py --wasm   first rebuilds the engine (server/crates/tnc-core -> sim/engine/tnc_core.wasm; needs
                             cargo and `rustup target add wasm32-unknown-unknown`). Without it the committed module is used.
 
@@ -68,6 +68,7 @@ MODULES = [
     ('profile.js',   'User profile storage'),
     ('part.js',      'Part spec: target geometry, lettering, measured comparison (AI loop)'),
     ('ai.js',        'AI program generation (OpenRouter)'),
+    ('aigen.js',     'AI view of the New program dialog (server generation API)'),
     ('bridge.js',    'Bridge to the TNC server (when there is one) and to the web app around the page (same-origin iframe)'),
     ('viz.js',       'View aids: axis vectors, click to pick'),
     ('dialogs.js',   'Programming dialogs: path functions, CYCL DEF, TOOL CALL'),
@@ -166,7 +167,7 @@ scripts += tag('start: instantiate the engine, then run the modules above in ord
 });
 })();""")
 
-def page(extra=''):
+def page():
     return f"""<!DOCTYPE html>
 <html lang="sv">
 <head>
@@ -177,20 +178,15 @@ def page(extra=''):
 </head>
 <body>
 {body}
-{extra}{scripts}</body>
+{scripts}</body>
 </html>
 """
 
 doc = page()
 key = env_key()
-if key and key in doc:
+if key and key in doc:   # a guard only: the key is read to prove it is NOT in the page, never to put it there
     sys.exit('build: the OpenRouter key leaked into the public build — aborting')
 (d / 'index.html').write_text(doc, encoding='utf-8', newline='\n')
 (d / 'docs' / 'index.html').write_text(doc, encoding='utf-8', newline='\n')  # GitHub Pages serves main -> /docs
 print(f'built index.html  {len(doc):,} bytes  modules: {" ".join(included)}' + (f'  showcase: {len(sc["sources"])} programs' if sc else ''))
 
-if key:
-    local = page(tag('local-only key from .env — never commit this file',
-                     f'window.TNC_AI_LOCAL_KEY = {json.dumps(key)};'))
-    (d / 'index.local.html').write_text(local, encoding='utf-8', newline='\n')
-    print(f'built index.local.html  {len(local):,} bytes  (with .env key — gitignored)')
