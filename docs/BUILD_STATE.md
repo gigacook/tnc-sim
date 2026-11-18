@@ -61,7 +61,7 @@ sim -> app
 |---|---|
 | Lead (simulator) | `sim/**`, `build.py`, `tests/ui/**`, `tests/polar.js`, `tests/bridge.js`, `index.html`, `docs/index.html`, `docs/FEATURES.txt` |
 | Web shell + Play | `web/**`, root `package.json` scripts, `desktop/**`, `tests/play/**`, `tests/e2e/**` |
-| Showcase + media + docs | `examples/**`, `scripts/showcase-*.mjs`, `tests/showcase.js`, `media/**`, `docs/*.md`, `README.md`, `THIRD_PARTY_NOTICES.md` |
+| Showcase + media + docs | `examples/**`, `scripts/showcase-*.mjs`, `tests/showcase.js`, `cinematic/**`, `docs/*.md`, `README.md`, `THIRD_PARTY_NOTICES.md` |
 | Supervisor | this file, commits, `artifacts/` layout |
 
 ## Phases

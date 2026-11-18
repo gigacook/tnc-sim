@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Play landing hero loop</title>
+    <!-- Everything this page loads is a local file: assets/vendor and assets/fonts are
+         filled from node_modules by render.mjs. No network. -->
+    <script src="assets/vendor/gsap.min.js"></script>
+    <!-- colours and faces: the brand blue and ink, plus this film's own tones -->
+    <link rel="stylesheet" href="tokens.css" />
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--gc-film-ground); }
+      #root { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--gc-film-ground); }
+      #film { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="15" data-fps="30" data-width="1920" data-height="1080">
+      <!-- the film itself: five WebGL shots drawn from the seek time (assets/film/main.js) -->
+      <canvas id="film" width="1920" height="1080" data-layout-allow-overflow></canvas>
+      <!-- the overlay: badge, shot labels, read-out (compositions/hud.html) -->
+      <div id="hud" data-composition-id="hud" data-composition-src="compositions/hud.html" data-start="0" data-duration="15" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+    </div>
+
+    <script>
+      // The WebGL build reports through one readiness promise; the first seek waits for it.
+      window.__hf = window.__hf || {};
+      window.__hf.buildReady = window.__hf.buildReady || {};
+      window.__hf.buildReady["film"] = new Promise((resolve, reject) => {
+        window.__filmReady = resolve;
+        window.__filmFailed = reject;
+      });
+
+      // The root holds only the film canvas and the overlay; its timeline carries the length.
+      const tl = gsap.timeline({ paused: true });
+      tl.to({}, { duration: 15 }, 0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+    <script type="module" src="assets/film/main.js"></script>
+  </body>
+</html>

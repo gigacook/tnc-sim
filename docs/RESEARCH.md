@@ -104,6 +104,10 @@ Notes under the table:
   Apache-2.0, engines `node >=22` (2026-11-18). `packages/cli/package.json` in the repository gives the same three
   values under the name `@hyperframes/cli`. The README also lists FFmpeg as a requirement. Node on this machine is
   v26.2.0, which meets `>=22`. The package is not installed in this checkout.
+  Later the same day: `hyperframes@0.9.65` is pinned exactly and installed project-locally in
+  `cinematic/landing-hyperframes/` (own `package.json` and `package-lock.json`; `npx hyperframes --version` there
+  prints 0.9.65). 0.9.65 is the `latest` dist-tag, eleven patch releases after the 0.9.54 the brief had seen;
+  same licence and engine range.
 - `shorepine/kenney`: the repository is a re-organised copy of Kenney's asset library made by a third party
   (`README.md`: built by `tools/build_tree.py` from a Kenney all-in-1 dump; `3d/` holds 4,812 glTF-binary models in
   49 kits). The CC0 statement for all art comes from that README; the one licence file names a single kit. A code or
@@ -139,6 +143,18 @@ Showcase decisions taken while writing the programs (2026-11-18):
 | Native comparison through a small runner over `tnc_engine::check_now`, generated into `local/showcase-native/` and built with cargo | The repository has no native command-line entry; `mcp/tnc-mcp.mjs` uses the WASM module | 2026-11-18, 31 of 31 runs agree |
 | Linear travel is checked as a span against `sim/machines.js` limits, not as absolute positions | The engine enforces limits for the rotary axes only (`LIMIT SWITCH A / B`); the X / Y / Z limits are machine coordinates with no datum offset modelled | 2026-11-18, read in `server/crates/tnc-core/src/lib.rs` |
 | Thumbnails move the simulator's own camera to frame the blank and copy the WebGL canvas | The default view frames the retracted tool as well, and the canvas shape depends on the layout being redesigned | 2026-11-18, 16 pictures viewed |
+
+Hero film decisions (`cinematic/landing-hyperframes/`, 2026-11-18):
+
+| Decision | Why | Verified / decided on |
+|---|---|---|
+| The film is an original WebGL piece; no owner animation was reused | The owner's motion library (`motion-fx.html`, `motion-fx.js`, `motion.html` and the `fx` folder of the brand folder) holds interface effects (path draw, glare sweep, stagger, beams), no large industrial grid animation. Substitution: an original mechanical grid reveal, steel blocks locking in from the centre over a blue light well | 2026-11-18, those four places opened and read |
+| No HyperFrames registry block is used | `hyperframes catalog --query "mechanical grid reveal blueprint lines industrial"` returned transition showcases (`transitions-mechanical`, `transitions-grid`) and UI reveals, nothing that is a 3D grid build | 2026-11-18, word-match tier |
+| Five three.js shots drawn from the `hf-seek` time; the overlay is a HyperFrames sub-composition with GSAP | HyperFrames seeks frames out of order: every frame is a pure function of the time, random values come from a seeded generator, no timers or clocks | 2026-11-18, `hyperframes check` passes with 0 errors |
+| The loop is closed by a wipe that ends on the last frame | Each shot is wiped in during the 0.5 s before its cut and already moves under the wipe, so the wipe into shot 1 runs out exactly where the film restarts | 2026-11-18, first and last frame compared side by side |
+| GSAP, three.js and the JetBrains Mono files come from `node_modules` at render time and are not tracked | Nothing is fetched while rendering, and no third-party file enters the repository for the film | 2026-11-18, `npm ci` then `node render.mjs` from a fresh `node_modules` |
+| Size limits decide the encoder quality: `render.mjs` raises the CRF until `hero.mp4` is under 6 MB and `hero.webm` under 5 MB | The film is dense (hard edges, moving highlights); a fixed quality would miss the limits | 2026-11-18, H.264 CRF 29 gives 5.55 MB, VP9 CRF 48 gives 4.59 MB; decoded frames viewed, text readable |
+| The controller is a panel of its own design with generic key legends and conversational program text | No real product is copied; the program lines are plain NC text of the kind the simulator runs | 2026-11-18 |
 
 ## 4. Rejected approaches
 

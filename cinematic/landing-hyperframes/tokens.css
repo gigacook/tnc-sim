@@ -1,0 +1,29 @@
+/* Tokens of the hero film. The blue and the ink are the gigacook brand values
+   (dark side of --gc-accent and --gc-ink in the brand tokens.css); the ice, ground
+   and plate tones belong to this film. The 3D colours live in assets/film/util.js (COL). */
+@font-face {
+  font-family: "Hero Mono";
+  src: url("assets/fonts/JetBrainsMono-400.woff2") format("woff2");
+  font-weight: 400;
+}
+@font-face {
+  font-family: "Hero Mono";
+  src: url("assets/fonts/JetBrainsMono-700.woff2") format("woff2");
+  font-weight: 700;
+}
+/* DIN-style face installed with Windows; falls back to the mono face elsewhere. */
+@font-face {
+  font-family: "Hero Din";
+  src: local("Bahnschrift"), url("assets/fonts/JetBrainsMono-700.woff2") format("woff2");
+  font-weight: 300 700;
+  font-stretch: 75% 100%;
+}
+:root {
+  --gc-film-accent: #2997ff;
+  --gc-film-ink: #f5f5f7;
+  --gc-film-ice: #bfe3ff;
+  --gc-film-ground: #06080b;
+  --gc-film-plate: rgba(6, 8, 11, 0.78);
+  --gc-film-font-din: "Hero Din", "Hero Mono", sans-serif;
+  --gc-film-font-mono: "Hero Mono", monospace;
+}

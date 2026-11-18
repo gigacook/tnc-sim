@@ -5,6 +5,7 @@
   "description": "Build + QA tooling for the single-file simulator (build.py), the Tauri 2 shell (desktop/) and the browser regression suite (tests/ui/). Not shipped.",
   "license": "MIT",
   "scripts": {
+    "render:hero": "node cinematic/landing-hyperframes/render.mjs",
     "build:sim": "python3 build.py",
     "test:manual": "node tests/manual.js",
     "test:ui": "node tests/ui/run.mjs",

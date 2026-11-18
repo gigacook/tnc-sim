@@ -105,9 +105,23 @@ sections 1, 3 and 4.
 |---|---|---|
 | Icons (`assets/tnc-sim.ico`, `tnc-sim.ico`, `desktop/src-tauri/icons/*`, `web/public/favicon.svg`) and screenshots (`docs/shots/*`) | this repository | own work, MIT |
 | Showcase programs, manifest and thumbnails (`examples/showcase/`) | written by `scripts/showcase-gen.mjs`, pictures taken from this simulator by `scripts/showcase-thumbs.mjs` | own work, MIT. The lettering uses the generator's own single-stroke glyphs, no font file |
+| Play landing hero film (`web/public/play/hero.mp4`, `hero.webm`, `hero-poster.jpg`, `hero-poster.webp`), its source (`cinematic/landing-hyperframes/`) and proof frames (`artifacts/hero/`) | rendered on this machine by `cinematic/landing-hyperframes/render.mjs` from the composition in that folder; every shape, texture and screen in it is drawn by that code (no stock footage, no product artwork, no game material, no sound) | own work, MIT. The rendered pictures contain glyphs of two fonts, see the next table; no font file is in the repository |
 
 At the starting commit the repository tracks no third-party font, 3-D model, audio or video file
 (`git ls-files` holds no `.woff`, `.woff2`, `.ttf`, `.otf`, `.glb`, `.gltf`, `.mp3`, `.ogg`, `.wav`, `.mp4`, `.webm`).
+
+### Hero film tooling (`cinematic/landing-hyperframes/package.json`, pinned exactly, not shipped)
+
+Installed only in `cinematic/landing-hyperframes/node_modules` (ignored). `render.mjs` copies the files it needs into
+`assets/vendor/` and `assets/fonts/` there (both ignored), so none of them is tracked or served by the app.
+
+| Item | Version | Source | Licence | Modifications |
+|---|---|---|---|---|
+| HyperFrames CLI | 0.9.65 | https://github.com/heygen-com/hyperframes, npm `hyperframes@0.9.65`, integrity `sha512-Rr/bhaA9e4ytXQRRsboG1m6kgOIzaE22FIFoHJsag2uls0mWbQW6MK/Vxm7plVBEn35p7piCv1SN7jCrfxdgNQ==` | Apache-2.0 (package.json) | none; local render only, telemetry and update check switched off by `render.mjs`; no registry block is used |
+| three.js (`build/three.module.js`, `build/three.core.js`) | 0.186.1 | npm `three@0.186.1`, same integrity as in section 1 | MIT | none; draws the film's frames at render time |
+| GSAP (`dist/gsap.min.js`) | 3.15.0 | https://gsap.com, npm `gsap@3.15.0`, integrity `sha512-dMW4CWBTUK1AEEDeZc1g4xpPGIrSf9fJF960qbTZmN/QwZIWY5wgliS6JWl9/25fpTGJrMRtSjGtOmPnfjZB+A==` | GSAP "Standard 'no charge' license", https://gsap.com/standard-license (package.json; not an OSI licence). Not verified: the licence text itself was not read | none; the HyperFrames timeline runtime, used at render time only |
+| JetBrains Mono 400 and 700 (`.woff2`) | as shipped inside `hyperframes@0.9.65` (`dist/skills/hyperframes/assets/frame-presets/code-editorial/fonts/`) | https://github.com/JetBrains/JetBrainsMono | SIL Open Font License 1.1 (`OFL-jetbrains-mono.txt` beside the files) | none; rendered into the film's pictures (read-out, program text), the font files are not redistributed |
+| Bahnschrift | the copy installed with Windows 11 on the render machine | Microsoft, loaded with `local("Bahnschrift")` | Microsoft Windows font licence. Not verified: the licence terms were not read; the face is only rendered into the film's pictures (labels, key legends, the 5511 marks), never copied. Without it the film falls back to JetBrains Mono | none |
 
 ## 7. Reference material, nothing copied
 

@@ -1,0 +1,9 @@
+/local/
+node_modules/
+# filled from node_modules by render.mjs
+assets/vendor/
+assets/fonts/
+# HyperFrames working state and render output
+.hyperframes/
+renders/
+out/

@@ -1,0 +1,59 @@
+<!-- Overlay of the hero film: frame marks, the 5511 shop badge, one label per shot,
+     a read-out and five progress ticks. Colours and faces come from tokens.css.
+     The read-out and the ticks are filled by assets/film/main.js on every seek. -->
+<template>
+  <style>
+    #root { position: absolute; inset: 0; }
+    #hud-frame { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+    #hud-frame path { fill: none; stroke: var(--gc-film-ice); stroke-width: 2; opacity: 0.7; }
+    .hud { position: absolute; font-family: var(--gc-film-font-din); color: var(--gc-film-ink); }
+    #hud-badge { left: 96px; top: 76px; display: flex; align-items: stretch; height: 64px; background: var(--gc-film-plate); border: 2px solid var(--gc-film-ice); }
+    #hud-badge-bar { width: 12px; background: var(--gc-film-accent); }
+    #hud-badge-no { padding: 0 18px 0 16px; font-size: 46px; font-weight: 700; line-height: 60px; letter-spacing: 0.06em; }
+    .hud-label { right: 96px; top: 76px; height: 64px; }
+    .hud-label-in { display: flex; align-items: center; gap: 18px; height: 64px; padding: 0 20px; background: var(--gc-film-plate); border-right: 6px solid var(--gc-film-accent); font-size: 34px; font-weight: 700; letter-spacing: 0.12em; line-height: 64px; white-space: nowrap; }
+    .hud-label-in b { color: var(--gc-film-ice); font-family: var(--gc-film-font-mono); font-weight: 400; font-size: 30px; letter-spacing: 0; }
+    #hud-read { left: 96px; bottom: 76px; display: flex; gap: 26px; padding: 0 18px; height: 52px; background: var(--gc-film-plate); border-left: 6px solid var(--gc-film-accent); font-family: var(--gc-film-font-mono); font-size: 28px; line-height: 52px; white-space: pre; }
+    #hud-ticks { position: absolute; right: 96px; bottom: 90px; width: 296px; height: 24px; }
+    #hud-ticks rect { fill: var(--gc-film-plate); stroke: var(--gc-film-ice); stroke-width: 2; }
+    #hud-ticks rect.on { fill: var(--gc-film-accent); stroke: var(--gc-film-accent); }
+  </style>
+  <div id="root" data-composition-id="hud" data-width="1920" data-height="1080">
+    <svg id="hud-frame" viewBox="0 0 1920 1080" aria-hidden="true" data-layout-ignore>
+      <path d="M48 108 V48 H108 M1812 48 H1872 V108 M1872 972 V1032 H1812 M108 1032 H48 V972" />
+      <path d="M936 48 H984 M936 1032 H984 M48 516 V564 M1872 516 V564" />
+    </svg>
+
+    <div id="hud-badge" class="hud">
+      <div id="hud-badge-bar"></div>
+      <div id="hud-badge-no">5511</div>
+    </div>
+
+    <!-- Shot labels. Each one arrives half-way through the wipe that brings its shot;
+         the times follow CUTS in assets/film/main.js (cut minus 0.25 s). -->
+    <div id="hud-label-1" class="hud hud-label clip" data-start="0" data-duration="2.75" data-track-index="1"><div class="hud-label-in"><b>01/05</b>GRID</div></div>
+    <div id="hud-label-2" class="hud hud-label clip" data-start="2.75" data-duration="3.2" data-track-index="1"><div class="hud-label-in"><b>02/05</b>CUTTER</div></div>
+    <div id="hud-label-3" class="hud hud-label clip" data-start="5.95" data-duration="2.8" data-track-index="1"><div class="hud-label-in"><b>03/05</b>COOLANT</div></div>
+    <div id="hud-label-4" class="hud hud-label clip" data-start="8.75" data-duration="3.2" data-track-index="1"><div class="hud-label-in"><b>04/05</b>CONTROL</div></div>
+    <div id="hud-label-5" class="hud hud-label clip" data-start="11.95" data-duration="2.8" data-track-index="1"><div class="hud-label-in"><b>05/05</b>PART</div></div>
+    <div id="hud-label-1-wrap" class="hud hud-label clip" data-start="14.75" data-duration="0.25" data-track-index="1" data-layout-ignore><div class="hud-label-in"><b>01/05</b>GRID</div></div>
+
+    <div id="hud-read" class="hud"><span id="hud-x">X+0000.000</span><span id="hud-y">Y+0000.000</span><span id="hud-z">Z+0000.000</span></div>
+    <svg id="hud-ticks" viewBox="0 0 296 24" aria-hidden="true" data-layout-ignore>
+      <rect x="1" y="1" width="50" height="22" />
+      <rect x="62" y="1" width="50" height="22" />
+      <rect x="123" y="1" width="50" height="22" />
+      <rect x="184" y="1" width="50" height="22" />
+      <rect x="245" y="1" width="50" height="22" />
+    </svg>
+  </div>
+  <script>
+    // Labels 2-5 slide in. Label 1 holds still at 0: its twin (hud-label-1-wrap) has
+    // already arrived by the end of the film, so the loop point shows no change.
+    const tl = gsap.timeline({ paused: true });
+    [["#hud-label-2", 2.75], ["#hud-label-3", 5.95], ["#hud-label-4", 8.75], ["#hud-label-5", 11.95], ["#hud-label-1-wrap", 14.75]].forEach(([sel, at]) => {
+      tl.fromTo(sel + " .hud-label-in", { x: 36, opacity: 0 }, { x: 0, opacity: 1, duration: 0.2, ease: "power3.out" }, at);
+    });
+    window.__timelines["hud"] = tl;
+  </script>
+</template>

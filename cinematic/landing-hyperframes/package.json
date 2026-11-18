@@ -1,0 +1,21 @@
+{
+  "name": "landing-hyperframes",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Source of the Play landing hero loop (HyperFrames composition, rendered locally).",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "check": "hyperframes check --json",
+    "preview": "hyperframes preview",
+    "render": "node render.mjs"
+  },
+  "devDependencies": {
+    "gsap": "3.15.0",
+    "hyperframes": "0.9.65",
+    "three": "0.186.1"
+  }
+}
