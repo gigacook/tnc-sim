@@ -4,6 +4,7 @@
 //! The router is a library so a desktop shell (Tauri) or tests can embed it; `main.rs` is the CLI.
 
 pub mod ai;
+pub mod aigen;
 pub mod auth;
 pub mod config;
 pub mod db;

@@ -27,7 +27,8 @@ pub struct Config {
     pub secure_cookies: bool,
     #[arg(long, env = "TNC_SESSION_DAYS", default_value_t = 30)]
     pub session_days: i64,
-    /// The OpenRouter key. Without it the AI proxy is off. OpenRouter only — never another provider.
+    /// The OpenRouter key. Without it (and without a key stored through `PUT /api/v1/ai/key`, which wins)
+    /// AI is off. OpenRouter only — never another provider.
     #[arg(long, env = "OPENROUTER_API_KEY", hide_env_values = true)]
     pub openrouter_api_key: Option<String>,
     #[arg(long, env = "TNC_OPENROUTER_BASE", default_value = "https://openrouter.ai/api/v1")]
@@ -45,6 +46,18 @@ pub struct Config {
     /// Per user per calendar month, in US$ as OpenRouter reports it.
     #[arg(long, env = "TNC_AI_MONTHLY_BUDGET_USD", default_value_t = 5.0)]
     pub ai_monthly_budget_usd: f64,
+    /// Generation job: stop an upstream answer that sends nothing at all for this long (milliseconds).
+    #[arg(long, env = "TNC_AI_IDLE_TIMEOUT_MS", default_value_t = 120_000)]
+    pub ai_idle_timeout_ms: u64,
+    /// Generation job: how long to wait for the client's answer to a measure-request (milliseconds).
+    #[arg(long, env = "TNC_AI_MEASURE_TIMEOUT_MS", default_value_t = 30_000)]
+    pub ai_measure_timeout_ms: u64,
+    /// Generation job: the longest a whole job may run (milliseconds).
+    #[arg(long, env = "TNC_AI_JOB_TIMEOUT_MS", default_value_t = 1_800_000)]
+    pub ai_job_timeout_ms: u64,
+    /// Generation job: pause before the one announced retry of a request that failed before any answer (milliseconds).
+    #[arg(long, env = "TNC_AI_RETRY_DELAY_MS", default_value_t = 2_000)]
+    pub ai_retry_delay_ms: u64,
     /// Interpreter threads.
     #[arg(long, env = "TNC_ENGINE_WORKERS", default_value_t = 2)]
     pub engine_workers: usize,
@@ -74,6 +87,18 @@ impl Config {
     pub fn allowed_hosts(&self) -> Vec<String> {
         self.allowed_hosts.iter().map(|s| s.trim().to_ascii_lowercase()).filter(|s| !s.is_empty()).collect()
     }
+    pub fn ai_idle_timeout(&self) -> std::time::Duration {
+        std::time::Duration::from_millis(self.ai_idle_timeout_ms.max(1))
+    }
+    pub fn ai_measure_timeout(&self) -> std::time::Duration {
+        std::time::Duration::from_millis(self.ai_measure_timeout_ms)
+    }
+    pub fn ai_job_timeout(&self) -> std::time::Duration {
+        std::time::Duration::from_millis(self.ai_job_timeout_ms.max(1))
+    }
+    pub fn ai_retry_delay(&self) -> std::time::Duration {
+        std::time::Duration::from_millis(self.ai_retry_delay_ms)
+    }
     pub fn ai_models(&self) -> Vec<String> {
         self.ai_models.iter().map(|s| s.trim().to_owned()).filter(|s| !s.is_empty()).collect()
     }
@@ -94,6 +119,10 @@ impl Config {
             ai_default_model: "deepseek/deepseek-v4.1-flash".into(),
             ai_max_tokens: 0,
             ai_monthly_budget_usd: 5.0,
+            ai_idle_timeout_ms: 120_000,
+            ai_measure_timeout_ms: 30_000,
+            ai_job_timeout_ms: 1_800_000,
+            ai_retry_delay_ms: 2_000,
             engine_workers: 1,
             allowed_hosts: vec![],
             csp: None,

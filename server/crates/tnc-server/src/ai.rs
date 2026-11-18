@@ -29,15 +29,11 @@ pub fn routes() -> Router<AppState> {
         .route("/usage", get(usage))
 }
 
-fn key_of(st: &AppState) -> ApiResult<&str> {
-    st.cfg
-        .openrouter_api_key
-        .as_deref()
-        .filter(|k| !k.trim().is_empty())
-        .ok_or_else(|| AppError::Unavailable("AI is off on this server (no OPENROUTER_API_KEY)".into()))
+fn key_of(st: &AppState) -> ApiResult<String> {
+    st.ai_key.get().ok_or_else(|| AppError::Unavailable("AI is off on this server (no OpenRouter key)".into()))
 }
 
-async fn spent(st: &AppState, user: &str) -> ApiResult<(f64, i64)> {
+pub(crate) async fn spent(st: &AppState, user: &str) -> ApiResult<(f64, i64)> {
     let (cost, n): (Option<f64>, i64) = sqlx::query_as("SELECT SUM(cost), COUNT(*) FROM ai_usage WHERE user_id = ? AND created_at >= ?")
         .bind(user)
         .bind(util::month_start())
@@ -61,7 +57,7 @@ async fn usage(State(st): State<AppState>, CurrentUser(u): CurrentUser) -> ApiRe
     let (cost, calls) = spent(&st, &u.id).await?;
     Ok(Json(json!({
         "month_start": util::month_start(), "cost_usd": cost, "calls": calls,
-        "budget_usd": st.cfg.ai_monthly_budget_usd, "enabled": st.cfg.ai_enabled(),
+        "budget_usd": st.cfg.ai_monthly_budget_usd, "enabled": st.ai_key.present(),
     })))
 }
 
@@ -92,7 +88,7 @@ async fn models(State(st): State<AppState>, _: CurrentUser) -> ApiResult<Respons
 }
 
 async fn chat(State(st): State<AppState>, CurrentUser(u): CurrentUser, body: Bytes) -> ApiResult<Response> {
-    let key = key_of(&st)?.to_owned();
+    let key = key_of(&st)?;
     let mut req: Value = serde_json::from_slice(&body).map_err(|_| AppError::bad("body must be JSON"))?;
     let obj = req.as_object_mut().ok_or_else(|| AppError::bad("body must be a JSON object"))?;
     let model = obj.get("model").and_then(Value::as_str).unwrap_or(&st.cfg.ai_default_model).to_owned();
@@ -174,15 +170,20 @@ async fn chat(State(st): State<AppState>, CurrentUser(u): CurrentUser, body: Byt
 }
 
 async fn record(st: &AppState, user: &str, model: &str, scan: &UsageScan, status: u16) {
+    record_usage(st, user, model, scan.prompt_tokens, scan.completion_tokens, scan.cost, status).await;
+}
+
+/// One row of `ai_usage` per upstream request (the proxy and the generation job both write here).
+pub(crate) async fn record_usage(st: &AppState, user: &str, model: &str, prompt_tokens: Option<i64>, completion_tokens: Option<i64>, cost: f64, status: u16) {
     let r = sqlx::query(
         "INSERT INTO ai_usage (id, user_id, model, prompt_tokens, completion_tokens, cost, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(util::new_id())
     .bind(user)
     .bind(model)
-    .bind(scan.prompt_tokens)
-    .bind(scan.completion_tokens)
-    .bind(scan.cost)
+    .bind(prompt_tokens)
+    .bind(completion_tokens)
+    .bind(cost)
     .bind(status as i64)
     .bind(util::now())
     .execute(&st.db)

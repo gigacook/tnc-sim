@@ -16,6 +16,12 @@ pub struct AppState {
     pub http: reqwest::Client,
     pub limiter: Arc<Limiter>,
     pub models_cache: Arc<Mutex<Option<(Instant, bytes::Bytes)>>>,
+    /// The OpenRouter key (stored file, else environment). Never serialized, never logged.
+    pub ai_key: Arc<crate::aigen::keystore::KeyStore>,
+    /// The reduced model catalog, see `aigen/catalog.rs`.
+    pub ai_catalog: Arc<crate::aigen::catalog::Cache>,
+    /// Running generation jobs, see `aigen/job.rs`.
+    pub ai_jobs: Arc<crate::aigen::job::Jobs>,
     /// One-time sign-in links (SHA-256 of the token -> user id, issued at), see `local.rs`.
     pub sign_in_links: Arc<Mutex<HashMap<String, (String, Instant)>>>,
 }
@@ -36,8 +42,12 @@ impl AppState {
             .timeout(Duration::from_secs(900))
             .user_agent(concat!("tnc-server/", env!("CARGO_PKG_VERSION")))
             .build()?;
+        let ai_key = Arc::new(crate::aigen::keystore::KeyStore::load(&cfg.data_dir, cfg.openrouter_api_key.as_deref()));
         Ok(AppState {
             db,
+            ai_key,
+            ai_catalog: Arc::default(),
+            ai_jobs: Arc::default(),
             cfg: Arc::new(cfg),
             engine,
             http,

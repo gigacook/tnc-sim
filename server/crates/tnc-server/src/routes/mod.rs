@@ -1,4 +1,5 @@
-//! `/api` — everything under `/api/v1` is the versioned JSON API; `/api/ai/v1` is the OpenRouter proxy.
+//! `/api` — everything under `/api/v1` is the versioned JSON API (`/api/v1/ai/…` is AI generation, see
+//! `aigen`); `/api/ai/v1` is the OpenRouter proxy.
 
 mod account;
 mod admin;
@@ -23,6 +24,7 @@ pub fn api() -> Router<AppState> {
         .merge(tools::routes())
         .merge(shares::routes())
         .merge(admin::routes())
+        .merge(crate::aigen::routes())
         .merge(io::routes().layer(DefaultBodyLimit::max(64 << 20)))
         .layer(DefaultBodyLimit::max(8 << 20));
     Router::new()

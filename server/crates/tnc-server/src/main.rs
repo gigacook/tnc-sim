@@ -66,7 +66,7 @@ async fn serve(cfg: Config) -> anyhow::Result<()> {
         env!("CARGO_PKG_VERSION"),
         st.cfg.data_dir.display(),
         if st.engine.is_some() { tnc_engine::interpreter_version() } else { "OFF".into() },
-        if st.cfg.ai_enabled() { "via OpenRouter" } else { "off (no OPENROUTER_API_KEY)" },
+        if st.ai_key.present() { "via OpenRouter" } else { "off (no OpenRouter key)" },
     );
     let listener = tokio::net::TcpListener::bind(bind).await?;
     tnc_server::serve(listener, st, async {

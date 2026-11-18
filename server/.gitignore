@@ -1,0 +1,4 @@
+# the server data folder (TNC_DATA_DIR, default ./data): the database and the stored OpenRouter key
+/data/
+openrouter.key
+openrouter.key.tmp

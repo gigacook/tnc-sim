@@ -30,7 +30,7 @@ async fn info(State(st): State<AppState>) -> ApiResult<Json<Value>> {
         "local": st.cfg.local_mode,
         "signup": users == 0 || st.cfg.allow_signup,
         "ai": {
-            "enabled": st.cfg.ai_enabled(),
+            "enabled": st.ai_key.present(),
             "provider": "openrouter",
             "default_model": st.cfg.ai_default_model,
             "models": st.cfg.ai_models(),
