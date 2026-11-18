@@ -17,10 +17,10 @@ for (const bt of (process.env.BROWSERS || 'chromium').split(',')) {
   page.setDefaultTimeout(8000);
   page.on('pageerror', e => errors.push(`${bt} pageerror: ${e.message}`));
   const drafts = () => page.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith('gc:draft:')));
-  const load = async () => { await page.goto(URL_); await page.waitForSelector('#b-new'); await page.waitForSelector('#boot', { state: 'hidden', timeout: 20000 }).catch(() => {}); await page.locator('#m-prof').waitFor({ state: 'visible', timeout: 3000 }).catch(() => {}); await page.keyboard.press('Escape'); };
-  const openManual = async () => { await page.click('#b-new'); await page.getByText('NEW PRG — MANUAL').click(); await page.waitForSelector('#ns-name', { state: 'visible' }); };
-  const openAI = async () => { await page.click('#b-new'); await page.getByText('NEW PRG — AI').click(); await page.waitForSelector('#ai-prompt', { state: 'visible' }); };
-  const openProj = async () => { await page.click('#tab-progs'); await page.evaluate(() => { document.getElementById('pj-box').open = true; }); await page.waitForSelector('#proj-name', { state: 'visible' }); };
+  const load = async () => { await page.goto(URL_); await page.waitForSelector('#b-new'); await page.waitForFunction(() => window.TNC_UI && TNC_UI.state.res, null, { timeout: 20000 }); await page.waitForTimeout(300); if (await page.locator('#setup:not([hidden])').count()) await page.click('#setup-skip'); };
+  const openManual = async () => { await page.click('#b-new'); await page.click('#new-t-scratch'); await page.waitForSelector('#ns-name', { state: 'visible' }); };
+  const openAI = async () => { await page.click('#b-new'); await page.click('#new-t-ai'); await page.waitForSelector('#ai-prompt', { state: 'visible' }); };
+  const openProj = async () => { if (await page.getAttribute('#b-insp', 'aria-pressed') === 'false') await page.click('#b-insp'); await page.click('#tab-progs'); await page.evaluate(() => { document.getElementById('pj-box').open = true; }); await page.waitForSelector('#proj-name', { state: 'visible' }); };
   await load(); await page.evaluate(() => localStorage.clear()); await load();
 
   await openManual(); await page.fill('#ns-name', 'DRAFT_PART');

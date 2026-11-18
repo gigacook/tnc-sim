@@ -82,7 +82,6 @@ var TNC_TOOLS3D = (function () {
     return g;
   }
 
-  function disc(r0, r1, h, segs) { return frustum(r0, r1, h, segs); }
 
   function mesh(geo, material) {
     var m = new THREE.Mesh(geo, material);
@@ -146,20 +145,6 @@ var TNC_TOOLS3D = (function () {
 
   // Adds `nFlutes` helical flute tubes (grooves) on a shank of radius r,
   // from z=z0 to z=z0+len, to `group` using `material`.
-  function addFlutes(THREE_, group, r, z0, len, nFlutes, turnsPerLen, material) {
-    nFlutes = nFlutes || 2;
-    var turns = Math.max(0.6, len * (turnsPerLen || 0.045));
-    var tubeR = Math.max(0.12, r * 0.16);
-    var tubularSegs = Math.max(8, Math.round(24 * turns));
-    for (var i = 0; i < nFlutes; i++) {
-      var phase = (i * 2 * Math.PI) / nFlutes;
-      var curve = helixCurve(r * 0.86, turns, len, phase);
-      var g = new THREE.TubeGeometry(curve, tubularSegs, tubeR, 5, false);
-      g.translate(0, 0, z0);
-      var f = mesh(g, material);
-      group.add(f);
-    }
-  }
 
   // Box with chamfered edges (bevelled vertical edges; enough to catch the highlight on an insert)
   function chamferedBox(w, h, d, c) {
@@ -293,24 +278,6 @@ var TNC_TOOLS3D = (function () {
   }
 
   // Diamond-crosshatch knurl for the ER collet nut's grip band.
-  function knurlTexture() {
-    var w = 128, h = 64;
-    var cv = mkCanvas(w, h), cx = cv.getContext('2d');
-    cx.fillStyle = 'rgb(150,152,157)'; cx.fillRect(0, 0, w, h);
-    cx.strokeStyle = 'rgba(68,70,75,0.9)'; cx.lineWidth = 1.4;
-    var step = 8;
-    cx.beginPath();
-    for (var i = -h; i < w + h; i += step) { cx.moveTo(i, 0); cx.lineTo(i + h, h); }
-    cx.stroke();
-    cx.beginPath();
-    for (var j = -h; j < w + h; j += step) { cx.moveTo(j, 0); cx.lineTo(j - h, h); }
-    cx.stroke();
-    var tex = new THREE.CanvasTexture(cv);
-    tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(3, 1.4);
-    tex.needsUpdate = true;
-    return tex;
-  }
 
   // Two drive-key slots + an orientation notch as a dark decal band (no CSG
   // available to actually remove material, so the recess is faked with a

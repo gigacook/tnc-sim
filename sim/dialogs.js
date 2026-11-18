@@ -16,6 +16,11 @@
           'm'       M function; ENT = none
           'text'    free text (formula)
    Parameter names and defaults follow the TNC 426/430 user manual, NC SW 280 476.
+
+   Numbers: a dialog answer may use a decimal comma or a decimal point. The comma becomes a point in answer()
+   (the numeric boundary) and nowhere else; program text and comments are never rewritten. The stored program keeps
+   the engine's spelling (decimal point, FMAX). show() is the screen form only: F MAX, and a decimal comma when the
+   decimal-character setting (MP 7280; default: follow the language) says so.
    ============================================================ */
 var TNC_DIALOGS = (function () {
   'use strict';
@@ -272,6 +277,97 @@ var TNC_DIALOGS = (function () {
       return ''; }
   };
 
-  return { PATH: PATH, PAD: PAD, GROUPS: GROUPS, cycleList: cycleList, cycleSpec: cycleSpec, probeList: probeList, probeSpec: probeSpec };
+  /* ---- one dialog answer: checked and normalised. ui.js shows the message; tests/polar.js runs the same code. ----
+     o.skip = NO ENT, o.axes = the machine's axes. Returns {v} or {err, entry: true when nothing was entered}. */
+  /* decimal comma -> point inside a number: "157,5" "-,5" "X10,5 Y-2,25"; "1,2,3" becomes 1.2.3 and fails as a number */
+  function decPoint(v) { return String(v).replace(/(\d),(?=\d|\s|$)/g, '$1.').replace(/(^|[^\d.,]),(?=\d)/g, '$1.'); }
+  var allowEmpty = function (st) { return !!(st.opt || st.type === 'feed' || st.type === 'm'); };
+  function answer(st, raw, o) {
+    o = o || {};
+    var skip = !!o.skip, numeric = !!st.pol || /^(num|tool|feed|coords)$/.test(st.type);
+    var v = String(raw == null ? '' : raw).trim(), d = st.dflt != null && st.dflt !== '' ? st.dflt : null, e, u, bare, f, c;
+    if (numeric) { if (/[.,]\d*[.,]/.test(v)) return { err: 'ENTER A NUMBER: ONE DECIMAL SIGN (1,5 OR 1.5)' }; v = decPoint(v); }
+    if (v === '') {
+      if (d != null && !skip) v = d;
+      else if (!(allowEmpty(st) || st.type === 'choice' || (skip && d != null))) return { err: 'ENTRY REQUIRED — ' + st.ask, entry: true };
+      else if (skip && d != null && !st.opt) v = d;
+    }
+    if (v !== '') {
+      if (st.pol) { e = PAD.polar(v, st.k.toUpperCase()); if (e) return { err: e }; }
+      else if (st.type === 'num' || st.type === 'tool') { if (!NUMRE.test(v)) return { err: 'ENTER A NUMBER (OR Q PARAMETER)' }; }
+      else if (st.type === 'choice') { u = v.toUpperCase(); bare = function (x) { return x.replace(/[^A-Z0-9]/g, ''); };   // the exact key first: "DR-" is not "DR+"
+        v = st.opts.filter(function (x) { return x === u; })[0] || st.opts.filter(function (x) { return bare(x) === bare(u); })[0] || (d != null ? d : st.opts[0]); }
+      else if (st.type === 'feed') { f = v.toUpperCase().replace(/\s+/g, ''); v = /^F?MAX$/.test(f) ? 'FMAX' : /^F?AUTO$/.test(f) ? 'FAUTO' : f.replace(/^F/, '');
+        if (!/^(FMAX|FAUTO)$/.test(v) && !NUMRE.test(v)) return { err: 'FEED RATE: A NUMBER, F MAX OR F AUTO' }; }
+      else if (st.type === 'm') { v = v.toUpperCase().replace(/M/g, ' ').trim(); if (!/^\d+([\s,]+\d+)*$/.test(v)) return { err: 'M FUNCTION: A NUMBER, e.g. 3 OR 3 8' }; }
+      else if (st.type === 'coords') { c = PAD.coords(v, o.axes); if (!c) return { err: 'COORDINATES: e.g. X+10 Y-5 or 10 -5' }; v = c; }
+    }
+    return { v: v };
+  }
+
+  /* ---- a stored path block back into its dialog: {id, v} with the answers that build() turns into the same block,
+     or null (not a path block, or a word this dialog cannot hold: the block is then edited as text and nothing is lost).
+     L LP CC C CP CR CT CTP RND CHF. Text after ';' is a comment and is not read. ---- */
+  var numTok = function (t) { return t.replace(/\+/g, '').replace(/\d*\.?\d+/g, function (n) { return String(parseFloat(n)); }); };
+  var sameWords = function (a, b) { var k = function (x) { return x.trim().split(/\s+/).map(numTok).sort().join(' '); }; return k(a) === k(b); };
+  function parseBlock(raw) {
+    var s = String(raw == null ? '' : raw), ci = s.indexOf(';'); if (ci >= 0) s = s.slice(0, ci);
+    s = s.trim().replace(/^\d+\s+/, '').toUpperCase().replace(/\bF\s+(MAX|AUTO)\b/g, 'F$1');
+    var m = /^(LP|CTP|CP|CC|CT|CR|CHF|RND|L|C)(?:\s+(.*))?$/.exec(s); if (!m) return null;
+    var spec = PATH[m[1]], keys = {}, v = {}, xyz = [], ms = [], toks = (m[2] || '').split(/\s+/).filter(Boolean);
+    spec.steps.forEach(function (st) { keys[st.k] = 1; });
+    var val = function (t, n) { return decPoint(t.slice(n)).replace(/^\+/, ''); }, num = '[+-]?(?:\\d+[.,]?\\d*|[.,]\\d+|Q\\d+)$';
+    var i, t, k, x, inc, w;
+    for (i = 0; i < toks.length; i++) { t = toks[i]; k = null; x = undefined;
+      if (/^(R0|RL|RR)$/.test(t)) { k = 'rc'; x = t; }
+      else if (/^DR[+-]$/.test(t)) { k = 'dr'; x = t; }
+      else if (/^(FMAX|FAUTO)$/.test(t)) { k = 'f'; x = t; }
+      else if (new RegExp('^F' + num).test(t)) { k = 'f'; x = val(t, 1); }
+      else if (/^M\d+$/.test(t)) { ms.push(t.slice(1)); continue; }
+      else if (new RegExp('^I?P[RA]' + num).test(t)) { inc = /^I/.test(t); w = t.replace(/^I/, ''); k = w.slice(0, 2).toLowerCase(); x = (inc ? 'I' : '') + val(w, 2); }
+      else if (m[1] === 'CP' && new RegExp('^IZ' + num).test(t)) { k = 'iz'; x = val(t, 2); }
+      else if (new RegExp('^I?[XYZABC]' + num).test(t)) { xyz.push(decPoint(t)); continue; }
+      else if (new RegExp('^R' + num).test(t)) { k = 'r'; x = val(t, 1); }
+      else if (m[1] === 'CHF' && new RegExp('^' + num).test(t)) { k = 'l'; x = val(t, 0); }
+      else return null;
+      if (!keys[k] || v[k] != null) return null; v[k] = x; }
+    if (xyz.length) { if (!keys.xyz) return null; v.xyz = xyz.join(' '); }
+    if (ms.length) { if (!keys.m) return null; v.m = ms.join(' '); }
+    spec.steps.forEach(function (st) { if (v[st.k] == null) v[st.k] = ''; });
+    var back; try { back = spec.build(v); } catch { return null; }
+    if (/NaN|undefined/.test(back) || !sameWords(back, decPoint(s))) return null;
+    return { id: m[1], v: v };
+  }
+  /* the dialog of a stored block: the same questions, each with its present value as the default (ENT keeps it, NO ENT clears it) */
+  function reopenSpec(id, v) {
+    var spec = PATH[id]; if (!spec) return null;
+    return { key: spec.key, title: spec.title, polar: null, reopen: id, build: spec.build,
+      steps: spec.steps.map(function (st) { var c = {}; for (var k in st) c[k] = st[k];
+        c.opt = allowEmpty(st); delete c.dflt; if (v[st.k] != null && v[st.k] !== '') c.dflt = v[st.k]; return c; }) };
+  }
+  /* true for the dialogs that ask for PR / PA */
+  function isPolar(spec) { return !!spec && spec.steps.some(function (st) { return !!st.pol; }); }
+  /* the block as far as it is answered (the preview line): build() with what is there, unfinished words left out */
+  function preview(spec, v) {
+    var vv = {}; spec.steps.forEach(function (st) { vv[st.k] = v[st.k] != null ? v[st.k] : ''; });
+    try { return spec.build(vv).split('\n')[0].split(' ').filter(function (w) { return w && !/NaN|undefined/.test(w); }).join(' '); } catch { return ''; }
+  }
+  /* ---- the screen form of a block or of one value. Never stored: F MAX / F AUTO with a space, and a decimal comma when
+     comma === true (the resolved decimal-character setting: TNC_SETTINGS.decimalComma(), MP 7280).
+     Only number words get the comma: "BLK FORM 0.1", "CYCL DEF 7.1", "TCH PROBE 0.0", "FN 0:" and names keep their point,
+     and a comment (after ';') is left exactly as written.
+     F MAX: the manual's listings print "F MAX" (e.g. 7 LP PR+60 PA+180 R0 F MAX, p. 155) and "FMAX"; the screen spelling is supported by
+     those listings but not confirmed from a screen photo (open placeholder in CONTINUE.md). The stored form stays FMAX. ---- */
+  function show(raw, comma) {
+    var s = String(raw == null ? '' : raw), ci = s.indexOf(';'), code = ci >= 0 ? s.slice(0, ci) : s, cm = ci >= 0 ? s.slice(ci) : '', prev = '';
+    code = code.replace(/\bF(MAX|AUTO)\b/g, 'F $1');
+    if (comma === true) {
+      code = code.replace(/\S+/g, function (t) { var keep = /^(FORM|DEF|PROBE|PGM|FN)$/.test(prev); prev = t.toUpperCase();
+        return keep ? t : t.replace(/(\d)\.(?=\d)/g, '$1,'); }); }
+    return code + cm;
+  }
+
+  return { PATH: PATH, PAD: PAD, GROUPS: GROUPS, cycleList: cycleList, cycleSpec: cycleSpec, probeList: probeList, probeSpec: probeSpec,
+    answer: answer, decPoint: decPoint, parseBlock: parseBlock, reopenSpec: reopenSpec, isPolar: isPolar, preview: preview, show: show };
 })();
 if (typeof module !== 'undefined') module.exports = TNC_DIALOGS;

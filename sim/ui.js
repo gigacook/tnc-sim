@@ -10,13 +10,18 @@
 /* ================= basics ================= */
 const $=id=>document.getElementById(id);
 const T=k=>window.TNC_I18N?TNC_I18N.t(k):k;           // shell text (i18n.js SHELL)
-const TR=m=>window.TNC_I18N?TNC_I18N.tr(m):m;         // UPPERCASE control text (i18n.js TR_SV)
+const TR=m=>window.TNC_I18N?TNC_I18N.tr(m):m;         // UPPERCASE control text (i18n.js TR)
+/* text written here in English, shown in the interface language (i18n.js TX); v fills {name} places */
+const X=(m,v)=>window.TNC_I18N?TNC_I18N.x(m,v):(v?m.replace(/\{(\w+)\}/g,(a,k)=>v[k]==null?a:String(v[k])):m);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-const REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const SET=window.TNC_SETTINGS||null;                    // presentation settings (settings.js, "tnc.settings.v1")
+const LANG=()=>window.TNC_I18N?TNC_I18N.lang:'en';
+const LOCALES=(SET&&SET.LOCALES)||{en:{html:'en',name:'English',comma:false}};
+let REDUCED=SET?SET.reducedMotion():matchMedia('(prefers-reduced-motion: reduce)').matches;   // follows Settings › Motion
 
 const toastEl=$('toast');
-function say(msg){ toastEl.textContent=msg; toastEl.classList.add('on');
+function say(msg){ toastEl.textContent=window.TNC_I18N?TNC_I18N.toast(msg):msg; toastEl.classList.add('on');   // toasts are written in English and translated here
   clearTimeout(say._t); say._t=setTimeout(()=>toastEl.classList.remove('on'),1900); }
 
 /* prose from lessons: **bold**, `code`, blank-line paragraphs, "- " bullets */
@@ -60,7 +65,7 @@ function dlPlain(name, blob){
 }
 
 /* ================= storage: programs & projects in localStorage, prefs in a cookie ================= */
-const LS_KEY='tnc426.v1', KEY_LS='tnc426.orkey', MODEL_LS='tnc426.ormodel', BOOT_SS='tnc426.boot';
+const LS_KEY='tnc426.v1', KEY_LS='tnc426.orkey', MODEL_LS='tnc426.ormodel';
 const local={ get:k=>{ try{ return localStorage.getItem(k); }catch(e){ return null; } },
               set:(k,v)=>{ try{ localStorage.setItem(k,v); return true; }catch(e){ return false; } },
               del:k=>{ try{ localStorage.removeItem(k); }catch(e){} } };
@@ -84,26 +89,41 @@ function writePrefs(){
 }
 const prefsNow=()=>({speed:S.speed, ovr:S.ovr, view:S.view, mode:S.mode, fx:S.fx, cool:S.fxCool, fire:S.fxFire, labels:S.labels, vice:S.vice, sound:S.sound, machine:S.machine, flow:S.flowView, focus:S.focusView, side:S.sideTab, ref:S.ref});
 
+/* per-edition preferences: "tnc.edition.<edition>.v1" (docs/BUILD_STATE.md). Other fields in it are kept as they are. */
+const ED_LS='tnc.edition.'+((SET&&SET.edition)||'core')+'.v1';
+function edPref(){ try{ const o=JSON.parse(local.get(ED_LS)||'{}'); return o&&typeof o==='object'&&!Array.isArray(o)?o:{}; }catch{ return {}; } }
+function edSet(k,v){ const o=edPref(); o[k]=v; local.set(ED_LS,JSON.stringify(o)); }
+
 /* ================= machines ================= */
+/* showcase programs: window.TNC_SHOWCASE = {manifest, sources:{FILE.H:text}}. An entry may name its machines
+   ("machines":["430"] or "machine":"430"); without one it is offered on both. */
+const SHOWCASE=(()=>{ const sc=window.TNC_SHOWCASE; if(!sc||!sc.sources) return {list:[],by:{}};
+  const man=Array.isArray(sc.manifest)?sc.manifest:((sc.manifest&&(sc.manifest.programs||sc.manifest.items))||[]), list=[], by={};
+  const upper=n=>String(n).split(/[\\/]/).pop().toUpperCase().replace(/\.[HI]$/,'')+'.H';
+  Object.keys(sc.sources).sort().forEach(f=>{ const e=man.find(m=>m&&upper(m.file||m.name||m.id||'')===upper(f))||{};
+    const ms=[].concat(e.machines||e.machine||[]).map(String).filter(m=>m==='426'||m==='430');
+    const it={name:upper(f),text:String(sc.sources[f]).replace(/\r/g,'').trim(),machines:ms.length?ms:['426','430'],entry:e}; list.push(it); by[it.name]=it; });
+  return {list,by}; })();
+const showcaseFor=id=>{ const o={}; SHOWCASE.list.forEach(it=>{ if(it.machines.includes(id)) o[it.name]=it.text; }); return o; };
 const MACHINES={
   '426':{ id:'426', label:'TNC 426', axes:['X','Y','Z'], tools:TNC.TOOLS,
     run:t=>TNC.run(t,{tools:mtools('426'),holder:holderOpt('426'),programs:S.pgms['426']}), expand:r=>TNC_SIM.expand(r),
     analyse:(r,ex)=>TNC_SIM.analyse(r,ex,TNC_SIM.grid(r.stock,ex.segs)),
-    programs:window.TNC_PROGRAMS||{}, lessons:window.TNC_LESSONS||null }
+    programs:Object.assign({},window.TNC_PROGRAMS||{},showcaseFor('426')), lessons:window.TNC_LESSONS||null }
 };
 /* TNC 430: the operator's machine parameters live in machines.js (shared with the server's engine). */
 const MACHINE_430=(window.TNC_MACHINE_CONFIGS||{})['430']||{};
 MACHINES['430']={ id:'430', label:'TNC 430', axes:['X','Y','Z','B','A'], tools:TNC.TOOLS, machine:MACHINE_430,
   run:t=>TNC.run(t,{tools:mtools('430'),machine:MACHINE_430,holder:holderOpt('430'),programs:S.pgms['430']}), expand:r=>TNC_SIM.expand(r),
   analyse:(r,ex)=>TNC_SIM.analyse(r,ex,TNC_SIM.grid(r.stock,ex.segs)),
-  programs:window.TNC_PROGRAMS||{}, lessons:window.TNC_LESSONS||null };
+  programs:Object.assign({},window.TNC_PROGRAMS||{},showcaseFor('430')), lessons:window.TNC_LESSONS||null };
 Object.keys(window.TNC_MACHINES||{}).forEach(k=>{ MACHINES[k]=window.TNC_MACHINES[k]; });
 const M=()=>MACHINES[S.machine];
 
 /* ================= state ================= */
 const P=readPrefs();
 const S={
-  machine: MACHINES[P.machine]?P.machine:'426',
+  machine: MACHINES[edPref().machine]?edPref().machine:(MACHINES[P.machine]?P.machine:'426'),   // the edition's own choice first (a file:// page has no cookie)
   pgms:{}, orig:{}, cur:{}, tools:{}, meta:{}, mset:{}, projects:[], active:null, pgm:null, text:'',
   res:null, ex:{segs:[],total:0}, segs:[], total:0, events:[], evIdx:0,
   t:0, stampT:0, running:false,
@@ -112,8 +132,9 @@ const S={
   view:['3D','TOP','FRONT','SIDE'].includes(P.view)?P.view:'3D',
   cursor:0, editing:false, raw:false, mgt:false, mgtSel:0, flowView:!!P.flow,
   fx:P.fx!==undefined?!!P.fx:!REDUCED, fxCool:P.cool!==undefined?!!P.cool:true, fxFire:!!P.fire,
-  labels:P.labels!==undefined?!!P.labels:true, vice:P.vice!==undefined?!!P.vice:true, sound:P.sound!==undefined?!!P.sound:true,
-  cmpRef:null, pos:null, seg:null, shake:0, lesson:null, focus:null, focusView:!!P.focus, sideTab:P.side||'diag', ref:P.ref||'keys', pickPath:null, execB:-1, wiz:null, pick:null, tt:false
+  labels:P.labels!==undefined?!!P.labels:true, vice:P.vice!==undefined?!!P.vice:true, sound:SET?!!SET.get('sound'):(P.sound!==undefined?!!P.sound:true),
+  /* focusView = the inspector (right pane) is closed: the default layout. F or the Inspector control opens it; the choice is kept. */
+  cmpRef:null, pos:null, seg:null, shake:0, lesson:null, focus:null, focusView:typeof edPref().inspector==='boolean'?!edPref().inspector:(P.focus!==undefined?!!P.focus:true), lock:null, cam:null, cutting:false, sideTab:P.side||'diag', ref:P.ref||'keys', pickPath:null, execB:-1, wiz:null, pick:null, tt:false
 };
 const TEMP='LESSON.H';
 const pg=()=>S.pgms[S.machine]||(S.pgms[S.machine]={});
@@ -214,12 +235,12 @@ const nOf=i=>{ const b=S.res&&S.res.blocks[i]; return b&&b.n!=null?b.n:'--'; };
 const canvas=$('gl'), gfxEl=$('gfx');
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-const scene=new THREE.Scene(); scene.background=new THREE.Color(0x04070d);
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0x0b0b0d);   // applyEnv() sets it from the environment
 const camera=new THREE.PerspectiveCamera(40,1,1,6000); camera.up.set(0,0,1);
 const controls=new THREE.OrbitControls(camera,renderer.domElement);
 controls.enableDamping=true; controls.dampingFactor=.09;
 const LK=(+THREE.REVISION>=155)?Math.PI:1;       // r155+: physical light units; x PI keeps the r128 brightness
-scene.add(new THREE.HemisphereLight(0x9fc4ff,0x0a0f18,.6*LK));
+const hemiL=new THREE.HemisphereLight(0x9fc4ff,0x0a0f18,.6*LK); scene.add(hemiL);
 const keyL=new THREE.DirectionalLight(0xffffff,1.35*LK); keyL.position.set(180,-140,260); scene.add(keyL);
 const fillL=new THREE.DirectionalLight(0x6fa8ff,.5*LK); fillL.position.set(-200,160,120); scene.add(fillL);
 
@@ -233,12 +254,18 @@ const UIAPI={ THREE, scene, camera, renderer, controls, lights:{key:keyL,fill:fi
   on:(ev,fn)=>{ (BUS[ev]=BUS[ev]||[]).push(fn); }, render:null,
   get state(){ return S; }, surfaceAt:(x,y)=>surfaceAt(x,y), say:m=>say(m),
   get program(){ return {name:S.pgm, machine:S.machine, text:S.text}; },
-  open:(name,text,o)=>openExternal(name,text,o||{}) };
+  open:(name,text,o)=>openExternal(name,text,o||{}),
+  /* bridge v2 (bridge.js): everything goes through the simulator's own controls */
+  exec:cmd=>({start:ncStart,stop:stop,step:stepBlock,reset:reset}[cmd]||(()=>{}))(),
+  lock:(on,reason)=>setLock(on,reason), cameraPreset:v=>camPreset(v), setMachine:id=>setMachine(id),
+  tools:{ get:()=>mtools().map(t=>({t:t.t,name:t.name,l:t.l,r:t.r})), set:list=>setTools(list) },
+  inspect:panel=>inspPanel(panel),
+  runState:()=>runState(), get lang(){ return LANG(); } };
 window.TNC_UI=UIAPI;
 
 let world=null, partRoot=null, toolRoot=null, rig=null, stockH=null;
 let gStock=null, gSkirt=null, gFloor=null, gPath=null, gTool=null, toolCutter=null, toolHolder=null, curToolT=null;
-let HM=null, NX=0, NY=0, DX=0, DY=0, ST=null, hmDirty=false, CO=null;
+let HM=null, NX=0, NY=0, DX=0, DY=0, ST=null, hmDirty=false, CO=null, gGrid=null;
 
 function disposeTree(o){ if(!o) return; o.parent&&o.parent.remove(o);
   o.traverse(c=>{ c.geometry&&c.geometry.dispose();
@@ -247,7 +274,7 @@ function disposeTree(o){ if(!o) return; o.parent&&o.parent.remove(o);
 function buildScene(){
   if(CO){ CO.dispose(); CO=null; }
   if(stockH){ try{ stockH.dispose(); }catch(e){} stockH=null; }
-  disposeTree(world); rig=null; gTool=null; curToolT=null;
+  disposeTree(world); rig=null; gTool=null; curToolT=null; gGrid=null;
   world=new THREE.Group(); scene.add(world);
   const m=M(); ST=S.res.stock;
   const w=ST.x1-ST.x0, h=ST.y1-ST.y0;
@@ -259,8 +286,7 @@ function buildScene(){
   } else {                                           // 3-axis: part fixed, height field
     partRoot=new THREE.Group(); toolRoot=new THREE.Group(); world.add(partRoot); world.add(toolRoot);
     buildHeightField();
-    const grid=new THREE.GridHelper(Math.max(w,h)*2,20,0x1d3752,0x122437);
-    grid.rotation.x=Math.PI/2; grid.position.set((ST.x0+ST.x1)/2,(ST.y0+ST.y1)/2,ST.z0-0.3); partRoot.add(grid);
+    gGrid=makeGrid(); partRoot.add(gGrid);
   }
   /* datum axes at the blank's min corner, top face */
   const L=Math.max(w,h)*0.22, ax=new THREE.Group();
@@ -446,7 +472,26 @@ function traceTick(dt){
 
 /* ---------- views ---------- */
 function fitView(){ setView(S.view); }
-function setView(v){ S.view=v; fitCamera(); viewLabel(); writePrefs(); }
+function setView(v){ S.cam=null; S.view=v; fitCamera(); viewLabel(); writePrefs(); }
+/* camera presets (bridge tnc:camera): orbit = the 3-D view, plan = from above, part = the blank alone from the far corner,
+   tool = close on the cutter, pov = from the spindle down the tool. tool and pov follow the tool while the run moves it. */
+const CAMS=['orbit','pov','tool','part','plan'];
+let camAt=null;
+function toolWorld(){ const p=S.pos||{x:0,y:0,z:0}; return toWorld(p); }
+function camPreset(v){
+  if(!CAMS.includes(v)||!ST) return false;
+  if(v==='orbit'){ setView('3D'); return true; }
+  if(v==='plan'){ setView('TOP'); return true; }
+  const st=ST, span=Math.max(st.x1-st.x0,st.y1-st.y0,40);
+  if(v==='part'){ S.cam='part'; const c=new THREE.Vector3((st.x0+st.x1)/2,(st.y0+st.y1)/2,st.z1);
+    camera.position.copy(c).add(new THREE.Vector3(-.8,-1,.75).normalize().multiplyScalar(span*1.7)); controls.target.copy(c); }
+  else { renderDro(0); const t=toolWorld(), e=toolEntry(curToolT), r=e?e.r:3, L=e&&e.l>0?e.l:80; S.cam=v; camAt=t.clone();
+    if(v==='tool'){ const d=Math.max(45,r*14); camera.position.copy(t).add(new THREE.Vector3(.9,-1,.55).normalize().multiplyScalar(d)); controls.target.copy(t).add(new THREE.Vector3(0,0,r)); }
+    else { camera.position.copy(t).add(new THREE.Vector3(r*2.5+14,-(r*2.5+14),L*.9+20)); controls.target.copy(t); } }
+  camera.lookAt(controls.target); viewFitted=false; viewLabel(); return true;
+}
+function camFollow(){ if(S.cam!=='tool'&&S.cam!=='pov') return; const t=toolWorld(); if(!camAt){ camAt=t.clone(); return; }
+  const d=t.clone().sub(camAt); if(d.lengthSq()<1e-12) return; camera.position.add(d); controls.target.add(d); camAt.copy(t); }
 /* the blank's corners and the tool's (holder included) bounding box, world coordinates */
 function framePoints(){
   const st=ST, P=[];
@@ -501,7 +546,7 @@ UIAPI.framing=()=>{ const g=gfxEl.getBoundingClientRect(), fp=framePoints(), doc
       x0=Math.min(x0,x); x1=Math.max(x1,x); y0=Math.min(y0,y); y1=Math.max(y1,y); }); return {x0,y0,x1,y1}; };
   return {view:{x0:Math.max(0,g.left),y0:Math.max(0,g.top),x1:Math.min(innerWidth,g.right),y1:Math.min(dock,g.bottom)},
     blank:rect(fp.blank),tool:rect(fp.tool),fitted:viewFitted}; };
-function viewLabel(){ $('gfx-rt').textContent=S.view==='3D'?T('gfx.3d'):T('gfx.plan')+' '+S.view; }
+function viewLabel(){ $('gfx-rt').textContent=S.cam?T('cam.'+S.cam):(S.view==='3D'?T('gfx.3d'):T('gfx.plan')+' '+S.view); }
 
 /* ================= effects (fx.js) ================= */
 let FXO=null;
@@ -572,7 +617,14 @@ function stepFor(block){                                 // the next time this b
   for(let k=0;k<E.length;k++) if(E[k]===block) return k; return -1;
 }
 function reset(){ S.running=false; hideAlarm(); if(FXO) FXO.clear(); S.k=0; selectStep(0); setState('READY'); }
+/* interlock (bridge tnc:lock, the Play edition): while locked NC START is refused and the reason is shown. Not part of the interpreter. */
+function setLock(on,reason){ S.lock=on?{reason:String(reason||'').slice(0,160)}:null; if(S.lock&&S.running) stop();
+  const el=$('sb-lock'), txt=S.lock?T('lock.title')+' · '+(S.lock.reason||T('lock.default')):'';
+  if(el){ el.hidden=!S.lock; el.textContent=txt; } $('b-start').setAttribute('aria-disabled',S.lock?'true':'false');
+  if(!S.lock) hideAlarm('warn'); return !!S.lock; }
+function locked(){ if(!S.lock) return false; showAlarm('warn',T('lock.title'),S.lock.reason||T('lock.default'),6000); beep('warn'); return true; }
 function start(){
+  if(locked()) return;
   if(!S.segs.length){ say('NO MOVES TO RUN'); return; }
   if(S.t>=S.total-1e-6){ seek(0,false); if(FXO) FXO.clear(); }
   hideAlarm('crash'); S.running=true; setState(S.mode==='single'?'SINGLE BLOCK':'RUNNING');
@@ -583,6 +635,7 @@ function stop(){ if(S.running){ S.running=false; setState('FEED HOLD'); } }
 function ncStart(){ if(S.mode==='single') stepBlock(); else if(S.mode==='edit') say('PROGRAM MODE — NC START WORKS IN 2 TEST, 3 SINGLE-BLOCK, 4 FULL-RUN'); else start(); }
 function runMax(){ S.running=false; seek(S.total,true); if(S.t>=S.total-1e-6) setState('PROGRAM END'); }
 function stepBlock(){                                   // NC START in SINGLE-BLOCK: exactly the highlighted block, then the next one is highlighted
+  if(locked()) return;
   const E=EX(); if(!E.length) return;
   let k=S.k==null?stepFor(S.cursor):S.k; if(k<0) k=0;
   if(E[k]!==S.cursor){ const k2=stepFor(S.cursor); if(k2>=0) k=k2; }
@@ -592,24 +645,32 @@ function stepBlock(){                                   // NC START in SINGLE-BL
   S.k=k+1; S.cursor=S.k<E.length?E[S.k]:Math.max(0,S.res.blocks.length-1); S.execB=S.cursor; markRows(true); flowHighlight(); traceFor(S.cursor);
   setState(S.k>=E.length?'PROGRAM END':'SINGLE BLOCK');
 }
-function setState(s){ $('run-state').textContent=TR(s); if(s!==setState.last){ setState.last=s; hdrStat(); announce(s); } }
+function setState(s){ $('run-state').textContent=TR(s); const sb=$('sb-state'); if(sb) sb.textContent=TR(s); if(s!==setState.last){ setState.last=s; hdrStat(); announce(s); } }
+/* what the web app is told about the run (bridge tnc:state) */
+function runState(){ const s=S.seg, e=toolEntry(curToolT), p=S.pos, u=s?clamp((S.t-s.t0)/Math.max(1e-9,s.t1-s.t0),0,1):0;
+  const ax=k=>s&&s.a&&s.a[k]!=null?s.a[k]+((s.b[k]||0)-s.a[k])*u:0, sp=s?(s.spindle||0):0;
+  return {running:!!S.running, cutting:!!S.cutting, mode:S.mode, machine:S.machine, tool:e?{t:e.t,r:+e.r,l:+e.l}:null,
+    pos:p?{x:+p.x.toFixed(4),y:+p.y.toFixed(4),z:+p.z.toFixed(4),a:+ax('a').toFixed(4),b:+ax('b').toFixed(4)}:null,
+    spindle:{on:sp!==0,rpm:s&&s.sRpm!=null?+s.sRpm:Math.abs(sp)}, coolant:!!(s&&s.coolant),
+    progress:S.total>0?+clamp(S.t/S.total,0,1).toFixed(4):0, errors:(S.res&&S.res.errors?S.res.errors.length:0)+S.events.filter(x=>x.sev==='crash').length,
+    done:S.total>0&&S.t>=S.total-1e-6, locked:!!S.lock}; }
 
 /* ================= alarms ================= */
 const alarmEl=$('alarm'); let alarmT=0;
 function raise(ev){
   const at=ev.at?` · T${ev.tool} X${ev.at.x.toFixed(2)} Y${ev.at.y.toFixed(2)} Z${ev.at.z.toFixed(2)}`:'';
   if(ev.sev==='crash'){
-    showAlarm('crash','CRASH',`BLOCK ${nOf(ev.block)} · ${(window.TNC_I18N?TNC_I18N.tr(ev.msg):ev.msg).replace(/^CRASH:\s*/,'')}${at}`);
+    showAlarm('crash','CRASH',`BLOCK ${nOf(ev.block)} · ${TR(ev.msg.replace(/^CRASH:\s*/,'CRASH: ')).replace(/^[^:]{3,12}:\s*/,'')}${at}`);
     S.shake=REDUCED?0:1; beep('crash');
     if(FXO&&ev.at) try{ FXO.crash(toWorld(ev.at)); }catch(e){}
     emit('crash',ev);
   } else if(ev.sev==='warn'){
-    showAlarm('warn','WARNING',`BLOCK ${nOf(ev.block)} · ${ev.msg.replace(/^WARNING:\s*/,'')}`,6000); beep('warn');
+    showAlarm('warn','WARNING',`BLOCK ${nOf(ev.block)} · ${TR(ev.msg).replace(/^[^:]{3,12}:\s*/,'')}`,6000); beep('warn');
   } else say(ev.msg);
 }
 function showAlarm(kind,title,text,ms){
   alarmEl.className='alarm '+kind; alarmEl.hidden=false;
-  alarmEl.innerHTML=`<b>${esc(title)}</b><span>${esc(text)}</span><button type="button" aria-label="Acknowledge">CE</button>`;
+  alarmEl.innerHTML=`<b>${esc(TR(title))}</b><span>${esc(text)}</span><button type="button" aria-label="CE">CE</button>`;
   alarmEl.querySelector('button').onclick=()=>hideAlarm();
   clearTimeout(alarmT); if(ms) alarmT=setTimeout(()=>hideAlarm(kind),ms);
   if(isPhone()&&paneNow()!=='gfx') say(title+' · '+text);
@@ -620,10 +681,12 @@ function hideAlarm(kind){ if(kind&&!alarmEl.classList.contains(kind)) return; al
 const plist=$('plist'), crt=$('crt'), raw=$('raw');
 const HL=[
   [/(^|\s)(BEGIN PGM|END PGM|BLK FORM|TOOL CALL|CYCL DEF|CYCL CALL|CALL LBL|LBL|STOP|FN \d+:)/g,'$1<i class="t-key">$2</i>'],
-  [/\b(FMAX)\b/g,'<i class="t-f">$1</i>'],[/\b(F\d+(?:\.\d+)?|FQ\d+)\b/g,'<i class="t-f">$1</i>'],
+  [/\b(F ?MAX|F ?AUTO)\b/g,'<i class="t-f">$1</i>'],[/\b(F\d+(?:[.,]\d+)?|FQ\d+)\b/g,'<i class="t-f">$1</i>'],
   [/\b(M\d+)\b/g,'<i class="t-m">$1</i>'],[/\b(Q\d+)\b/g,'<i class="t-q">$1</i>'],
-  [/\b([XYZABC]|IX|IY|IZ|R|S)([+-]?\d+(?:\.\d+)?)/g,'$1<i class="t-num">$2</i>']
+  [/\b(I?[XYZABC]|I?P[RA]|R|S)([+-]?\d+(?:[.,]\d+)?)/g,'$1<i class="t-num">$2</i>']
 ];
+/* a block as the screen shows it; the stored text is never changed (dialogs.js show) */
+const shown=t=>DLG?DLG.show(t,SET?SET.decimalComma():false):t;   // the resolved decimal-character setting (MP 7280)
 function hl(s){ const ci=s.indexOf(';'); let code=ci>=0?s.slice(0,ci):s; const cm=ci>=0?s.slice(ci):'';
   code=esc(code); for(const [re,rp] of HL) code=code.replace(re,rp);
   return code+(cm?'<i class="t-cm">'+esc(cm)+'</i>':''); }
@@ -632,7 +695,7 @@ function renderList(){
   evBlocks={}; S.events.forEach(e=>{ if(e.sev==='crash'||e.sev==='warn') evBlocks[e.block]=evBlocks[e.block]==='crash'?'crash':e.sev; });
   plist.innerHTML=(S.res.blocks||[]).map((b,i)=>{
     const c=['blk']; if(b.indent) c.push('ind'); if(b.error||evBlocks[i]==='crash') c.push('err'); else if(evBlocks[i]==='warn') c.push('warn');
-    return `<div class="${c.join(' ')}" data-i="${i}"><span class="bn">${b.indent||b.n==null?'':b.n}</span><span class="bt">${hl(b.raw||'')}</span></div>`;
+    return `<div class="${c.join(' ')}" data-i="${i}"><span class="bn">${b.indent||b.n==null?'':b.n}</span><span class="bt">${hl(shown(b.raw||''))}</span></div>`;
   }).join('');
   markRows(true);
 }
@@ -741,13 +804,16 @@ const SK={
   tt:    [['ADD\nMISSING','ttmiss'],['IMPORT\nTOOL.T','load'],['EXPORT\nTOOL.T','ttexp'],['',''],['',''],['',''],['',''],['END','ttend']],
   mgt:   [['NEW','new'],['OPEN','open'],['LOAD\nFROM PC','load'],['SAVE\n.H','save'],['RESTORE\nORIGINAL','restore'],['DELETE','mdel'],['ADD TO\nPROJECT','padd'],['END','end']]
 };
-function skRows(){ if(S.wiz) return wizSK(); if(S.pick) return S.pick; if(S.mgt) return SK.mgt; if(S.tt) return SK.tt; return SK[S.mode]||SK.test; }
+/* a block open on the block line: DIALOG turns a path block (L LP CC C CP CR CT CTP RND CHF) back into its questions */
+function lineSK(){ const b=S.res.blocks[S.cursor], d=DLG&&b&&!S.insertPending&&DLG.parseBlock(b.raw);
+  return [d?['DIALOG','redlg']:['',''],['',''],['',''],['',''],['',''],['',''],['ENT','edok'],['ESC','edesc']]; }
+function skRows(){ if(S.wiz) return wizSK(); if(S.editing) return lineSK(); if(S.pick) return S.pick; if(S.mgt) return SK.mgt; if(S.tt) return SK.tt; return SK[S.mode]||SK.test; }
 /* soft keys: the same look and the same behaviour everywhere; NC START green, NC STOP red; a path row when nested */
 const SKKEY={ed:'E',ins:'I',del:'DEL',undo:'CTRL Z',redo:'CTRL Y',rawt:'TAB',tt:'T',mgt:'M',focus:'F',flow:'V',start:'SPACE',stop:'ESC',reset:'R',
   v3:'G',vt:'G',vf:'G',vs:'G',ovrd:'−',ovru:'+',cycldef:'Y','w:TOOLCALL':'W',apprdep:'A','w:Q':'Q',load:'CTRL O',save:'CTRL S',new:'N',mdel:'DEL',restore:'R',end:'ESC',
-  ttend:'ESC',pickend:'ESC',wend:'END',wcancel:'ESC',wskip:'⇧ ENTER',wok:'ENTER',wsign:'− / +',wact:'#',wce:'DELETE'};
+  ttend:'ESC',pickend:'ESC',wend:'END',wcancel:'ESC',wskip:'⇧ ENTER',wok:'ENTER',wsign:'− / +',wact:'#',wce:'DELETE',redlg:'F2',edok:'ENTER',edesc:'ESC',wtext:'F2'};
 function skKey(a){ if(a==='step') return S.mode==='single'?'SPACE / S':'S'; if(a.startsWith('wa:')) return 'XYZ'.includes(a.slice(3))?'':a.slice(3); return SKKEY[a]||''; }
-function skClass(a){ const on=(a==='rawt'&&S.raw)||(a==='flow'&&S.flowView)||(a==='focus'&&S.focusView)||(a==='tt'&&S.tt)||(a==='mgt'&&S.mgt);
+function skClass(a){ const on=(a==='rawt'&&S.raw)||(a==='flow'&&S.flowView)||(a==='tt'&&S.tt)||(a==='mgt'&&S.mgt);
   return (a==='start'||(a==='step'&&S.mode==='single'))?' go':(a==='stop'?' stop':(on?' on':'')); }
 function renderSK(){ const tr=window.TNC_I18N?(x=>TNC_I18N.tr(x)):(x=>x);
   sks.innerHTML=skRows().map(([l,a])=>{ const k=skKey(a); return `<button class="sk${skClass(a)}" data-a="${esc(a)}">${esc(tr(l.replace(/\n/g,' '))===l.replace(/\n/g,' ')?l:tr(l.replace(/\n/g,' '))).replace(/\n/g,'<br>')}${k?`<small class="kh">${esc(k)}</small>`:''}</button>`; }).join('');
@@ -755,12 +821,13 @@ function renderSK(){ const tr=window.TNC_I18N?(x=>TNC_I18N.tr(x)):(x=>x);
 function renderPath(){
   const el=$('skpath'); if(!el) return; let path=null, back='';
   if(S.wiz){ path=['PROGRAM',S.wiz.spec.title,'QUESTION '+(S.wiz.i+1)+' / '+S.wiz.spec.steps.length]; back='DEL (ESC) = ABORT · END = FINISH'; }
+  else if(S.editing){ path=['PROGRAM','BLOCK '+nOf(S.cursor)]; back='ENT = STORE · ESC = CANCEL'; }
   else if(S.pick){ path=(S.pickPath||['PROGRAM']); back='ESC = ONE LEVEL UP'; }
   else if(S.mgt){ path=['PROGRAMS']; back='ESC / M = BACK TO THE PROGRAM'; }
   else if(S.tt){ path=['TOOL LIST','TOOL.T']; back='ESC / T / END = BACK'; }
   el.hidden=!path; if(path) el.innerHTML=path.map((x,i)=>i===path.length-1?`<b>${esc(x)}</b>`:esc(x)).join(' › ')+`<span class="back">${esc(back)}</span>`;
 }
-sks.addEventListener('click',e=>{ const b=e.target.closest('.sk'); if(b&&b.dataset.a) act(b.dataset.a); if(S.wiz) dlgIn.focus(); });
+sks.addEventListener('click',e=>{ const b=e.target.closest('.sk'); if(b&&b.dataset.a) act(b.dataset.a); if(S.wiz||S.editing) dlgIn.focus(); });
 function act(a){
   if(a.startsWith('w:')){ startWiz(DLG&&DLG.PATH[a.slice(2)]); return; }
   if(a.startsWith('cg:')){ const L=DLG.cycleList(a.slice(3));
@@ -779,7 +846,8 @@ function act(a){
     case 'wi': ckInc(); break; case 'wp': ckPolar(); break; case 'wq': ckQ(); break; case 'wsign': ckSign(); break; case 'wact': ckActual(); break; case 'wce': ckCE(); break;
     case 'ttmiss': addMissingTools(); break;
     case 'ttexp': if(window.TNC_PROFILE) download('TOOL_TNC'+S.machine+'.T',new Blob([TNC_PROFILE.toolT(mtools())],{type:'text/plain'}),'TOOL-TABLES'); break;
-    case 'ttend': closeTT(); break; case 'focus': toggleFocus(); break;
+    case 'ttend': closeTT(); break;
+    case 'redlg': reopenBlock(); break; case 'edok': endEdit(true); break; case 'edesc': endEdit(false); break; case 'wtext': wizToText(); break;
     case 'start': start(); break; case 'stop': stop(); break; case 'step': stepBlock(); break;
     case 'reset': reset(); break; case 'rs': reset(); start(); break;
     case 'v3': setView('3D'); break; case 'vt': setView('TOP'); break; case 'vf': setView('FRONT'); break; case 'vs': setView('SIDE'); break;
@@ -795,21 +863,27 @@ function act(a){
     case 'padd': addToProject(mgtNames()[S.mgtSel]); break; case 'end': closeMgt(); break;
   }
 }
-function showTools(){
-  const rows=mtools().map(t=>`T${String(t.t).padStart(2)}  ${String(t.name).padEnd(14)} L${(+t.l).toFixed(2).padStart(7)}  R${(+t.r).toFixed(3).padStart(6)}${t.mine?'  *':''}`);
-  $('elist').innerHTML=rows.map(r=>`<div class="info">${esc(r)}</div>`).join(''); $('errc').textContent='TOOL TABLE'; say('TOOL TABLE IN THE CHECKS PANEL');
-}
 
 /* ================= block editing — the dialog line ================= */
 const dlgIn=$('dlg-in'), dlgPr=$('dlg-pr'), dlgHint=$('dlg-hint');
 const lines=()=>S.text.split('\n');
 function srcLine(bi){ return clamp(bi,0,lines().length-1); }     // one source line per block, blank lines included
-function beginEdit(){
+/* E / ENTER / double click on a block. A polar block (LP, CP, CTP) opens in its dialog, question by question with the
+   present values; every other block opens as text on the block line, as before (DIALOG there does the same for L, C …). */
+function beginEdit(asText){
   const b=S.res.blocks[S.cursor]; if(!b) return;
+  if(asText!==true&&DLG&&!S.insertPending){ const d=DLG.parseBlock(b.raw); if(d&&DLG.isPolar(DLG.PATH[d.id])){ reopenBlock(d); return; } }
   S.editing=true; S.running=false; dlgIn.disabled=false; dlgIn.value=b.raw||'';
   dlgPr.textContent='BLOCK '+(b.n==null?'':b.n); dlgHint.textContent='ENT accept · ESC cancel · TAB takes the grey suggestion';
-  dlgIn.focus(); dlgIn.select(); ghostUpdate();
+  dlgIn.focus(); dlgIn.select(); ghostUpdate(); renderSK();
   setTimeout(()=>{ if(S.editing&&document.activeElement!==dlgIn){ dlgIn.focus(); ghostUpdate(); } },0);   // after a dialog closes
+}
+/* the block under the cursor back in its programming dialog (dialogs.js parseBlock / reopenSpec); storing it replaces the block */
+function reopenBlock(d){
+  const at=S.cursor, b=S.res.blocks[at]; if(!b||!DLG) return; d=d||DLG.parseBlock(b.raw);
+  if(!d){ say('THIS BLOCK HAS NO DIALOG — EDIT IT AS TEXT'); return; }
+  if(S.editing){ S.insertPending=false; S.editing=false; dlgIn.value=''; ghostShow(''); }
+  startWiz(DLG.reopenSpec(d.id,d.v),at);
 }
 
 /* ================= ghost autosuggest in the block line (like zsh): low-contrast rest of a block, TAB takes it =================
@@ -863,7 +937,7 @@ function endEdit(accept){
   dlgPr.textContent='BLOCK'; dlgHint.textContent=T('dlg.hint');
   if(accept){ const ls=lines(), i=srcLine(S.cursor), ind=(ls[i].match(/^\s*/)||[''])[0];
     ls[i]=(S.res.blocks[S.cursor]&&S.res.blocks[S.cursor].indent?ind:'')+val.trim(); edit(ls.join('\n'),S.cursor,'BLOCK '+nOf(S.cursor)+' STORED'); }
-  document.activeElement&&document.activeElement.blur();
+  document.activeElement&&document.activeElement.blur(); renderSK();
 }
 function insertBlock(){ const ls=lines(); let i=srcLine(S.cursor); if(/^\s*(\d+\s+)?END\s+PGM/i.test(ls[i]||'')) i--;
   ls.splice(i+1,0,''); edit(ls.join('\n'),i+1); S.insertPending=true; beginEdit(); }
@@ -872,12 +946,13 @@ function deleteBlock(){ const ls=lines(); if(ls.length<=1) return; const i=srcLi
 function copyBlock(){ const ls=lines(), i=srcLine(S.cursor); ls.splice(i+1,0,ls[i]); edit(ls.join('\n'),S.cursor+1,'BLOCK COPIED'); }
 dlgIn.addEventListener('keydown',e=>{ if(S.wiz){ if(wizKey(e)) e.preventDefault(); e.stopPropagation(); return; }
   if(S.editing&&(e.key==='Tab'||(e.key==='ArrowRight'&&dlgIn.selectionStart===dlgIn.value.length))&&ghostEl&&ghostEl.dataset.full){ e.preventDefault(); ghostAccept(); e.stopPropagation(); return; }
+  if(S.editing&&e.key==='F2'){ e.preventDefault(); e.stopPropagation(); reopenBlock(); return; }
   if(e.key==='Enter'){ e.preventDefault(); endEdit(true); }
   else if(e.key==='Escape'){ e.preventDefault(); endEdit(false); } e.stopPropagation(); });
 function toggleRaw(){
   S.raw=!S.raw; raw.hidden=!S.raw; crt.hidden=S.raw;
   renderSK(); if(S.raw){ raw.value=S.text; raw.focus(); say('RAW TEXT — TAB TO RETURN'); }
-  else { if(raw.value!==S.text) edit(raw.value,S.cursor,'PROGRAM RE-COMPILED'); }
+  else { if(raw.value!==S.text) edit(raw.value,S.cursor,'PROGRAM RE-COMPILED'); try{ crt.focus({preventScroll:true}); }catch{} }   // focus stays in the program, TAB goes on from there
 }
 raw.addEventListener('keydown',e=>{
   if(e.key==='Tab'){ e.preventDefault(); toggleRaw(); }
@@ -914,7 +989,7 @@ function addPgm(name,text,{open=true,project=true}={}){
 function deletePgm(name){
   if(!name) return;
   if(S.orig[S.machine][name]!=null){ say('BUILT-IN PROGRAM — USE RESTORE ORIGINAL INSTEAD'); return; }
-  if(!confirm('Delete '+name+'? This cannot be undone.')) return;
+  if(!confirm(X('Delete {n}? This cannot be undone.',{n:name}))) return;
   delete pg()[name]; if(S.meta[S.machine]) delete S.meta[S.machine][name]; S.projects.forEach(p=>p.pgms=p.pgms.filter(r=>!(r.m===S.machine&&r.name===name)));
   if(S.pgm===name){ S.pgm=Object.keys(pg())[0]; S.text=pg()[S.pgm]; compile(); }
   S.mgtSel=Math.min(S.mgtSel,mgtNames().length-1); persist(); renderMgt(); renderProjects(); say(name+' DELETED');
@@ -1012,15 +1087,15 @@ function renderProjects(){
   $('proj-t').textContent=S.projects.length+(act?' · '+act.name:'');
   $('proj').innerHTML=S.projects.length?S.projects.map(p=>`<div class="prow${p.id===S.active?' on':''}">
       <input type="radio" name="proj" value="${p.id}"${p.id===S.active?' checked':''} aria-label="Make ${esc(p.name)} active">
-      <span class="nm" title="${esc(p.name)}">${esc(p.name)}</span><span class="ct">${p.pgms.length} PGM</span>
-      <span><button data-zip="${p.id}" title="Download as .zip">ZIP</button> <button data-del="${p.id}" title="Delete project" aria-label="Delete project">×</button></span></div>`).join('')
-    :'<p class="note">No projects yet. Create one and every program you make lands in it.</p>';
+      <span class="nm" data-tip="${esc(p.name)}">${esc(p.name)}</span><span class="ct">${p.pgms.length} PGM</span>
+      <span><button data-zip="${p.id}" data-tip="${esc(X('Download as .zip'))}">ZIP</button> <button data-del="${p.id}" data-tip="${esc(X('Delete project'))}" aria-label="${esc(X('Delete project'))}">×</button></span></div>`).join('')
+    :`<p class="note">${esc(X('No projects yet. Create one and every program you make lands in it.'))}</p>`;
 }
 $('proj').addEventListener('change',e=>{ if(e.target.name==='proj'){ S.active=e.target.value; persist(); renderProjects(); } });
 $('proj').addEventListener('click',e=>{
   const z=e.target.closest('[data-zip]'), d=e.target.closest('[data-del]');
   if(z) zipProject(z.dataset.zip);
-  if(d){ const p=S.projects.find(p=>p.id===d.dataset.del); if(p&&confirm('Delete project "'+p.name+'"? Its programs stay on the control.')){
+  if(d){ const p=S.projects.find(p=>p.id===d.dataset.del); if(p&&confirm(X('Delete project "{n}"? Its programs stay on the control.',{n:p.name}))){
     S.projects=S.projects.filter(x=>x!==p); if(S.active===p.id) S.active=(S.projects[0]||{}).id||null; persist(); renderProjects(); if(S.mgt) renderMgt(); } }
 });
 $('b-proj-new').onclick=()=>{ const inp=$('proj-name'), name=inp.value.trim()||('PROJECT '+(S.projects.length+1));
@@ -1059,7 +1134,7 @@ function toggleFlow(){
     catch(e){ say('FLOW VIEW FAILED TO START'); return; } }
   S.flowView=!S.flowView; if(S.mgt) closeMgt();
   plist.hidden=S.flowView; $('flow').hidden=!S.flowView; $('b-view').setAttribute('aria-pressed',S.flowView);
-  $('b-view').textContent=S.flowView?'Listing':'Flow'; if(S.flowView) flowUpdate(); writePrefs(); showPane('pgm'); renderSK();
+  $('b-view').firstElementChild.textContent=T(S.flowView?'btn.listing':'btn.flow'); if(S.flowView) flowUpdate(); writePrefs(); showPane('pgm'); renderSK();
 }
 $('b-view').onclick=toggleFlow;
 if(!window.TNC_FLOW) $('b-view').hidden=true;
@@ -1081,8 +1156,8 @@ function startLesson(kind,idx){
   const Ls=lessonsOf(); if(!Ls) return; const L=(kind==='learn'?Ls.learn:Ls.breakit)[idx]; if(!L) return;
   closeModal(); if(S.mgt) closeMgt();
   S.lesson={kind,idx,L,steps:stepsFor(kind,L),i:0,prev:S.lesson?S.lesson.prev:S.pgm};
-  coach.hidden=false; document.querySelector('.tp').classList.add('lesson'); $('coach-k').textContent=kind==='learn'?'LEARN':'BREAK IT';
-  $('coach-k').style.color=kind==='learn'?'var(--mint)':'var(--red)'; $('coach-t').textContent=L.title;
+  coach.hidden=false; document.querySelector('.tp').classList.add('lesson'); $('coach-k').textContent=T(kind==='learn'?'coach.learn':'coach.break');
+  $('coach-t').textContent=L.title;
   coachStep(0); showPane('gfx');
 }
 function coachStep(i){
@@ -1093,7 +1168,7 @@ function coachStep(i){
   markRows();
   $('coach-bd').innerHTML=md(st.say); $('coach-bd').scrollTop=0;
   $('coach-pg').textContent=(i+1)+' / '+Ls.steps.length;
-  $('coach-back').disabled=i===0; $('coach-next').textContent=i===Ls.steps.length-1?'Finish':'Next';
+  $('coach-back').disabled=i===0; $('coach-next').textContent=T(i===Ls.steps.length-1?'coach.finish':'coach.next');
   if(st.run){ reset(); if(S.speed===0) setSpeed(16,true); start(); } else if(st.program){ reset(); }
 }
 function endLesson(silent){
@@ -1102,12 +1177,16 @@ function endLesson(silent){
 }
 $('coach-x').onclick=()=>endLesson(false);
 $('coach-back').onclick=()=>coachStep(S.lesson.i-1);
-$('coach-next').onclick=()=>{ if(S.lesson.i>=S.lesson.steps.length-1){ endLesson(false); say('LESSON DONE'); } else coachStep(S.lesson.i+1); };
+$('coach-next').onclick=()=>{ if(S.lesson.i>=S.lesson.steps.length-1){ lessonDone(S.lesson.kind,S.lesson.idx,S.lesson.L); endLesson(false); say('LESSON DONE'); } else coachStep(S.lesson.i+1); };
+const LESSON_LS='tnc.lessons.v1';
+function lessonsDone(){ try{ const o=JSON.parse(local.get(LESSON_LS)||'{}'); return o&&typeof o==='object'?o:{}; }catch{ return {}; } }
+const lessonKey=(kind,idx,L)=>kind+':'+((L&&L.id)||idx);
+function lessonDone(kind,idx,L){ const o=lessonsDone(); o[lessonKey(kind,idx,L)]=1; local.set(LESSON_LS,JSON.stringify(o)); }
 
 /* ================= modals ================= */
 let openModalEl=null;
 let modalReturn=null;
-function openModal(id){ const back=openModalEl?modalReturn:document.activeElement; closeModal(true); closeDrawer(true); closeMenu();
+function openModal(id){ const back=openModalEl?modalReturn:document.activeElement; closeModal(true); closeDrawer(true); tipHide();
   const m=$(id); m.hidden=false; openModalEl=m; modalReturn=back; S.running=false; setInert(true);
   const f=m.querySelector('[data-close]'); f&&f.focus(); }
 function closeModal(keep){ if(!openModalEl) return; openModalEl.hidden=true; openModalEl=null; setInert(false);
@@ -1135,24 +1214,23 @@ function openHelp(tab){ helpTab=tab||helpTab; openModal('m-help'); renderHelp();
 $('help-tabs').addEventListener('click',e=>{ const b=e.target.closest('[data-tab]'); if(b){ helpTab=b.dataset.tab; renderHelp(); } });
 function renderHelp(){
   [...$('help-tabs').children].forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===helpTab));
-  const Ls=lessonsOf(), body=$('help-body');
+  const Ls=lessonsOf(), body=$('help-body'); body.onclick=null;
   if(helpTab==='ai'){ body.innerHTML=aiSetupHTML(); wireAiSetup(); return; }
-  if(!Ls){ body.innerHTML='<div class="prose"><p>Lessons are not in this build.</p></div>'; return; }
+  if(helpTab==='keys'){ body.innerHTML='<div class="klist">'+KEYS.map(([k,d])=>`<div><kbd>${esc(X(k))}</kbd><span>${esc(X(d))}</span></div>`).join('')+'</div>'; return; }
+  if(!Ls){ body.innerHTML=`<div class="prose"><p>${esc(T('help.none'))}</p></div>`; return; }
   if(helpTab==='learn'||helpTab==='break'){
-    const list=helpTab==='learn'?Ls.learn:Ls.breakit, kind=helpTab==='learn'?'learn':'breakit';
-    body.innerHTML=`<div class="prose" style="margin-bottom:12px">${helpTab==='learn'
-      ?'<p>Each lesson loads its own program, highlights the blocks it talks about and runs the machine for you. Your programs are left alone.</p>'
-      :'<p>Eight famous ways to wreck a machine — crashed safely here, then fixed. The crash alarms are the <strong>simulator\'s</strong> checks; a real TNC 426 had no collision checking in its test graphics.</p>'}</div>`+
-      `<div class="lgrid">${list.map((L,i)=>`<button class="lcard ${helpTab==='learn'?'learn':'break'}" data-i="${i}"><span class="n">${helpTab==='learn'?'LESSON':'PITFALL'} ${i+1}</span><span class="t">${esc(L.title)}</span><span class="b">${esc(L.blurb||'')}</span></button>`).join('')}</div>`;
+    const learn=helpTab==='learn', list=learn?Ls.learn:Ls.breakit, kind=learn?'learn':'breakit', done=lessonsDone();
+    body.innerHTML=`<div class="prose" style="margin-bottom:12px"><p>${esc(T(learn?'help.learn.lead':'help.break.lead'))}</p></div>`+
+      `<div class="lgrid">${list.map((L,i)=>`<button type="button" class="lcard ${learn?'learn':'break'}" data-i="${i}"><span class="n">${esc(T(learn?'help.lesson':'help.pitfall'))} ${i+1}</span><span class="t">${esc(L.title)}</span>${done[lessonKey(kind,i,L)]?`<span class="dn">✓ ${esc(T('help.done'))}</span>`:''}<span class="b">${esc(L.blurb||'')}</span></button>`).join('')}</div>`;
     body.onclick=e=>{ const c=e.target.closest('.lcard'); if(c) startLesson(kind,+c.dataset.i); };
     return;
   }
-  body.onclick=null;
   body.innerHTML='<div class="prose help-manual">'+(Ls.manual||[]).map(sec=>`<details><summary>${esc(sec.title)}</summary>${md(sec.body)}`+
     (sec.rows&&sec.rows.length?`<div class="tblw"><table><thead><tr>${sec.rows[0].map(c=>`<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${
       sec.rows.slice(1).map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`:'')+'</details>').join('')+'</div>';
 }
 $('b-help').onclick=()=>openHelp();
+$('help-setup').onclick=()=>{ closeModal(true); setupOpen(0); };
 
 /* ---------- AI setup + generation (ai.js) ---------- */
 const AI=window.TNC_AI||null;
@@ -1353,12 +1431,8 @@ function aiTokHint(){ const h=$('ai-tokhint'); if(!h) return; const r=aiTokRec()
   h.style.color=r&&v>r?'#ffb347':''; }
 
 /* ---------- NEW PROGRAM ---------- */
-function openNew(which){
-  openModal('m-new'); $('new-opts').hidden=true; $('new-scratch').hidden=true; $('new-ai').hidden=true;
-  if(which!=='ai'){ S.aiMode='new'; $('m-new-t').textContent='New program'; }
-  $('ns-tool').innerHTML=mtools().map(t=>`<option value="${t.t}"${t.t===4?' selected':''}>T${t.t} ${esc(t.name)} (R${t.r})</option>`).join('');
-  keyPill(); newGo(which||'scratch');
-}
+/* NEW PROGRAM: one dialog, two tabs. Manual = the name, then block by block; AI = describe the part (or change the program on screen). */
+function openNew(which){ openModal('m-new'); keyPill(); newGo(which||'scratch'); }
 /* ================= MODEL PICKER — one catalogue (TNC_AI.listModels): the recommended model, frontier quick picks
    computed from OpenRouter's live list, a sortable / filterable table (↑↓ Enter Esc), and any id typed by hand.
    The pick is stored under MODEL_LS in this browser (as before); every request uses getModel(). ================= */
@@ -1483,83 +1557,77 @@ function aiModelUI(){
 }
 
 /* AI: 'new' writes a new program, 'modify' changes the program on screen (undoable) */
-function openAI(mode){ S.aiMode=mode; openNew('ai'); aiModelUI();
-  $('m-new-t').textContent=mode==='modify'?'AI — change '+S.pgm:'AI — new program';
-  $('ai-title').textContent=mode==='modify'?'Say what to change in '+S.pgm:'Describe the part';
-  $('ai-lead').textContent=mode==='modify'?'The AI gets this program and your words, returns the whole changed program, and the simulator checks it (one repair round). CTRL+Z undoes it.'
-    :'Blank size, material, features, tools if you care. The AI writes Klartext for this simulator, the simulator runs every check on it, and anything that fails goes back to the AI once for a fix.';
-  $('ai-go').textContent=mode==='modify'?'Change the program':'Generate';
-  $('ai-prompt').placeholder=mode==='modify'?'e.g. make the pocket 8 mm deep in 4 passes, and add a 1 mm chamfer around the outside':'e.g. 120 x 80 x 15 aluminium plate. Face 0.5 mm. A 60 x 30 pocket 6 mm deep in the middle, 4 passes.'; }
+function aiMode(mode){ S.aiMode=mode==='modify'?'modify':'new'; const mod=S.aiMode==='modify', f=k=>T(k).replace('{pgm}',S.pgm);
+  [...$('ai-mode').children].forEach(b=>{ b.setAttribute('aria-pressed',b.dataset.mode===S.aiMode); });
+  $('ai-title').textContent=f(mod?'ai.title.mod':'ai.title.new'); $('ai-lead').textContent=f(mod?'ai.lead.mod':'ai.lead.new');
+  $('ai-go').textContent=T(mod?'ai.go.mod':'ai.go.new'); $('ai-prompt').placeholder=T(mod?'ai.ph.mod':'ai.ph.new'); }
 function newGo(w){
-  if(w==='learn'){ openHelp('learn'); return; }
-  $('new-opts').hidden=true; $('new-scratch').hidden=w!=='scratch'; $('new-ai').hidden=w!=='ai';
+  w=w==='ai'?'ai':'scratch';
+  [...$('new-tabs').children].forEach(b=>{ b.setAttribute('aria-selected',b.dataset.go===w); });
+  $('new-scratch').hidden=w!=='scratch'; $('new-ai').hidden=w!=='ai';
+  if(w==='ai'){ aiMode(S.aiMode||'new'); aiModelUI(); }
   (w==='scratch'?$('ns-name'):$('ai-prompt')).focus();
 }
-$('m-new').addEventListener('click',e=>{ const g=e.target.closest('[data-go]'); if(g) newGo(g.dataset.go);
-  if(e.target.closest('[data-back]')) closeModal(); });
+$('new-tabs').addEventListener('click',e=>{ const g=e.target.closest('[data-go]'); if(g) newGo(g.dataset.go); });
+$('ai-mode').addEventListener('click',e=>{ const b=e.target.closest('[data-mode]'); if(b) aiMode(b.dataset.mode); });
 $('ai-go').onclick=aiGenerate; $('ai-setup').onclick=()=>openHelp('ai');
-const sgn=v=>{ v=+v; return (v<0?'-':'+')+Math.abs(v); };
 $('ns-go').onclick=()=>{
   const name=($('ns-name').value.trim()||'MY_PART').toUpperCase().replace(/[^A-Z0-9_]/g,'_').slice(0,16);
   const txt=[`BEGIN PGM ${name} MM`,`END PGM ${name} MM`].join('\n');     // what the control creates: nothing else
   GCDraft.clear($('ns-name')); closeModal(); addPgm(name,txt); setMode('edit'); moveCursor(0); showPane('pgm'); insertBlock();
   say('NEW PROGRAM — TYPE A BLOCK · TAB TAKES THE GREY SUGGESTION · ENT STORES · I INSERTS THE NEXT');
 };
-/* the New dialog asks for the name only; the rest is written block by block */
-['ns-axis','ns-tool','ns-x0','ns-y0','ns-z0','ns-x1','ns-y1','ns-z1','ns-s'].forEach(id=>{ const f=$(id)&&$(id).closest('.fld'); if(f) f.hidden=true; });
 
 /* ---------- DEV ---------- */
 let devTab='features';
-const DEVTXT={features:()=>window.TNC_DEVLOG,history:()=>window.TNC_HISTORY,releases:()=>window.TNC_RELEASES};
+const DEVTXT={features:()=>window.TNC_DEVLOG,history:()=>window.TNC_HISTORY};
 function renderDev(){ [...$('dev-tabs').children].forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===devTab));
   $('dev-pre').textContent=(DEVTXT[devTab]&&DEVTXT[devTab]())||'Not written yet — in progress.'; }
 $('dev-tabs').addEventListener('click',e=>{ const b=e.target.closest('[data-tab]'); if(b){ devTab=b.dataset.tab; renderDev(); } });
-$('b-dev').onclick=()=>{ openModal('m-dev'); renderDev(); };
+function openDev(){ openModal('m-dev'); renderDev(); }
 
 /* ================= PROFILE: name, autosave, export / import, tool table ================= */
 function profChip(saved){
   const b=$('b-prof'); if(!b) return;
   b.textContent=(PROF&&PROF.name)?PROF.name:T('prof.who');
-  const t=PSTORE.lastSaved; b.title=(PROF&&PROF.name?PROF.name+' · ':'')+(t?'autosaved '+t.toLocaleTimeString():'not saved yet')+(saved===false?' · STORAGE BLOCKED — EXPORT TO KEEP YOUR WORK':'');
+  const t=PSTORE.lastSaved; b.setAttribute('data-tip',(PROF&&PROF.name?PROF.name+' · ':'')+(t?X('autosaved {t}',{t:t.toLocaleTimeString()}):X('not saved yet'))+(saved===false?' · '+X('STORAGE BLOCKED — EXPORT TO KEEP YOUR WORK'):''));
   b.classList.toggle('warn',saved===false);
-  if(openModalEl===$('m-prof')) { const st=$('prof-saved'); if(st) st.textContent=t?'Autosaved '+t.toLocaleTimeString()+' — in this browser':'Not saved yet'; }
+  if(openModalEl===$('m-prof')) { const st=$('prof-saved'); if(st) st.textContent=t?X('Autosaved {t} — in this browser',{t:t.toLocaleTimeString()}):X('Not saved yet'); }
 }
 function openProfile(){ openModal('m-prof'); renderProfile(); }
 function profCounts(){ let pg_=0; for(const id in S.pgms) for(const n in S.pgms[id]) if(n!==TEMP&&S.pgms[id][n]!==S.orig[id][n]) pg_++;
   return {programs:pg_, projects:S.projects.length, tools:Object.values(S.tools).reduce((a,t)=>a+(t||[]).length,0)}; }
 function renderProfile(){
-  const c=profCounts(), t=PSTORE.lastSaved, tools=mtools();
-  $('prof-body').innerHTML=`<div class="prose">${PROF&&PROF.name?'':'<h4>Welcome. What\'s your name?</h4><p>Everything you make — programs, projects, tools, settings — is kept under your name in this browser and saved automatically. Export it to move it to another computer.</p>'}</div>
+  const c=profCounts(), t=PSTORE.lastSaved;
+  $('prof-body').innerHTML=`<div class="prose">${PROF&&PROF.name?'':`<h4>${esc(X('Welcome. What\'s your name?'))}</h4><p>${esc(X('Everything you make — programs, projects, tools, settings — is kept under your name in this browser and saved automatically. Export it to move it to another computer.'))}</p>`}</div>
 <div class="fgrid" style="max-width:760px">
- <label class="fld wide"><span>YOUR NAME</span><input id="prof-name" data-autosave-exempt="saved to the profile on every keystroke" maxlength="40" autocomplete="name" spellcheck="false" value="${esc(PROF&&PROF.name||'')}" placeholder="your name"></label>
+ <label class="fld wide"><span>${esc(X('YOUR NAME'))}</span><input id="prof-name" data-autosave-exempt="saved to the profile on every keystroke" maxlength="40" autocomplete="name" spellcheck="false" value="${esc(PROF&&PROF.name||'')}" placeholder="${esc(X('your name'))}"></label>
 </div>
-<p class="note" id="prof-saved" style="margin:8px 0 0">${t?'Autosaved '+t.toLocaleTimeString()+' — in this browser':'Not saved yet'}</p>
-<p class="note" style="margin:4px 0 0">${c.programs} program(s) of yours · ${c.projects} project(s) · ${c.tools} tool(s) of yours · machines: ${Object.values(MACHINES).map(m=>esc(m.label)).join(', ')}</p>
-<div class="fgrid" style="max-width:760px;margin-top:8px"><label class="fld"><span>CONTROL LANGUAGE</span><select id="prof-lang"><option value="en">English</option><option value="sv">Svenska (MP 7230 = 7)</option></select></label></div>
-<div class="actrow"><button class="cbtn" id="prof-dldir">Downloads folder…</button><span class="note" id="prof-dlnote">${window.showDirectoryPicker?'Pick your Downloads folder once: files go to TNC-SIMULATOR/AI-GEN, USER-GEN, SETTINGS, TOOL-TABLES.':'This browser saves to Downloads as TNC-SIMULATOR_AI-GEN_… (Chrome/Edge can write the folders).'}</span></div>
-<div class="actrow"><button class="cbtn pri" id="prof-export">Export profile (.zip)</button><button class="cbtn" id="prof-import">Import…</button>
- <button class="cbtn" id="prof-new">Start a new profile…</button></div>
+<p class="note" id="prof-saved" style="margin:8px 0 0">${esc(t?X('Autosaved {t} — in this browser',{t:t.toLocaleTimeString()}):X('Not saved yet'))}</p>
+<p class="note" style="margin:4px 0 0">${esc(X('{p} program(s) of yours · {j} project(s) · {t} tool(s) of yours · machines: {m}',{p:c.programs,j:c.projects,t:c.tools,m:Object.values(MACHINES).map(m=>m.label).join(', ')}))}</p>
+
+<div class="actrow"><button class="cbtn" id="prof-dldir">${esc(X('Downloads folder…'))}</button><span class="note" id="prof-dlnote">${esc(X(window.showDirectoryPicker?'Pick your Downloads folder once: files go to TNC-SIMULATOR/AI-GEN, USER-GEN, SETTINGS, TOOL-TABLES.':'This browser saves to Downloads as TNC-SIMULATOR_AI-GEN_… (Chrome/Edge can write the folders).'))}</span></div>
+<div class="actrow"><button class="cbtn pri" id="prof-export">${esc(X('Export profile (.zip)'))}</button><button class="cbtn" id="prof-import">${esc(X('Import…'))}</button>
+ <button class="cbtn" id="prof-new">${esc(X('Start a new profile…'))}</button></div>
 <div id="prof-ask"></div>
-<p class="note" style="margin-top:14px">The tool list (TOOL.T) is under <b>TOOL LIST</b>, next to PROGRAMS, or key T.</p>`;
+<p class="note" style="margin-top:14px">${esc(X('The tool list (TOOL.T) is under Tools, next to Save .H, or key T.'))}</p>`;
   const nm=$('prof-name');
   nm.addEventListener('input',()=>{ PROF.name=nm.value.trim().slice(0,40); profChip(); persist(); });
   nm.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); nm.blur(); } });
   $('prof-export').onclick=exportProfile;
   $('prof-dldir').onclick=pickDlDir;
-  const pl=$('prof-lang'); if(pl){ pl.value=(window.TNC_I18N&&TNC_I18N.lang)||'en'; pl.disabled=!window.TNC_I18N;
-    pl.onchange=()=>{ try{ TNC_I18N.set(pl.value); }catch(e){} renderSK(); renderChecks(); renderCompare(); renderUserPrograms(); viewLabel(); profChip(); setMode(S.mode); say(pl.value==='sv'?'SPRÅK: SVENSKA':'LANGUAGE: ENGLISH'); }; }
   $('prof-import').onclick=loadFromDisk;
   $('prof-new').onclick=newProfile;
   if(!(PROF&&PROF.name)) setTimeout(()=>nm.focus(),30);
 }
 function toolTableHTML(){
-  return `<div class="tblw"><table class="ttab"><thead><tr><th>T</th><th>NAME</th><th>L</th><th>R</th><th></th></tr></thead><tbody>${
+  return `<div class="tblw"><table class="ttab"><thead><tr><th>T</th><th>${esc(X('NAME'))}</th><th>L</th><th>R</th><th></th></tr></thead><tbody>${
   mtools().map(x=>`<tr data-t="${x.t}"${x.mine?' class="mine"':''}${x.t===curToolT?' data-cur="1"':''}><td>${x.t}${x.mine?' *':''}</td><td><input data-k="name" data-autosave="tool-${S.machine}-${x.t}-name" data-autosave-commit value="${esc(x.name)}" maxlength="16" aria-label="T${x.t} name"></td>
    <td><input data-k="l" data-autosave="tool-${S.machine}-${x.t}-l" data-autosave-commit inputmode="decimal" value="${(+x.l).toFixed(3)}" aria-label="T${x.t} length"></td><td><input data-k="r" data-autosave="tool-${S.machine}-${x.t}-r" data-autosave-commit inputmode="decimal" value="${(+x.r).toFixed(3)}" aria-label="T${x.t} radius"></td>
-   <td>${x.mine?`<button data-del="${x.t}" title="Remove your entry" aria-label="Remove T${x.t}">×</button>`:''}</td></tr>`).join('')}</tbody></table></div>
-<div class="actrow"><label class="fld" style="flex-direction:row;align-items:center;gap:6px"><span>T</span><input data-tt="new" data-autosave="new-tool" inputmode="numeric" style="width:70px" aria-label="New tool number"></label>
- <button class="cbtn" data-tt="add">Add tool</button><button class="cbtn" data-tt="missing">Add tools this program calls</button>
- <button class="cbtn" data-tt="import">Import TOOL.T</button><button class="cbtn" data-tt="export">Export TOOL.T</button></div>`;
+   <td>${x.mine?`<button data-del="${x.t}" data-tip="${esc(X('Remove your entry'))}" aria-label="${esc(X('Remove your entry'))} T${x.t}">×</button>`:''}</td></tr>`).join('')}</tbody></table></div>
+<div class="actrow"><label class="fld" style="flex-direction:row;align-items:center;gap:6px"><span>T</span><input data-tt="new" data-autosave="new-tool" inputmode="numeric" style="width:70px" aria-label="${esc(X('New tool number'))}"></label>
+ <button class="cbtn" data-tt="add">${esc(X('Add tool'))}</button><button class="cbtn" data-tt="missing">${esc(X('Add tools this program calls'))}</button>
+ <button class="cbtn" data-tt="import">${esc(X('Import TOOL.T'))}</button><button class="cbtn" data-tt="export">${esc(X('Export TOOL.T'))}</button></div>`;
 }
 function wireToolTable(root,rerender){
   root.querySelectorAll('[data-tt]').forEach(b=>{ const k=b.dataset.tt; if(k==='new') return; b.onclick=()=>{
@@ -1609,32 +1677,33 @@ function exportProfile(){
 function profImportAsk(inc,fname){
   const box=$('prof-ask'); if(!box) return;
   const n=Object.values(inc.machines||{}).reduce((a,m)=>a+Object.keys(m.pgms||{}).length,0);
-  box.innerHTML=`<div class="warnbox" style="margin-top:12px"><b>${esc(fname)}</b> — profile “${esc(inc.name||'unnamed')}”, ${n} program(s), ${(inc.projects||[]).length} project(s).<br>
-   <b>Merge</b> adds its programs, projects and tools to yours (name clashes get _IMP). <b>Replace</b> throws yours away — export first if unsure.
-   <div class="actrow"><button class="cbtn pri" id="imp-merge">Merge into mine</button><button class="cbtn" id="imp-replace">Replace mine</button><button class="cbtn" id="imp-cancel">Cancel</button></div></div>`;
+  box.innerHTML=`<div class="warnbox" style="margin-top:12px"><b>${esc(fname)}</b> — ${esc(X('profile “{n}”, {p} program(s), {j} project(s).',{n:inc.name||X('unnamed'),p:n,j:(inc.projects||[]).length}))}<br>
+   ${esc(X('Merge adds its programs, projects and tools to yours (name clashes get _IMP). Replace throws yours away — export first if unsure.'))}
+   <div class="actrow"><button class="cbtn pri" id="imp-merge">${esc(X('Merge into mine'))}</button><button class="cbtn" id="imp-replace">${esc(X('Replace mine'))}</button><button class="cbtn" id="imp-cancel">${esc(X('Cancel'))}</button></div></div>`;
   $('imp-cancel').onclick=()=>{ box.innerHTML=''; };
   $('imp-merge').onclick=async()=>{ const m=TNC_PROFILE.merge(profileNow(),inc); m.profile.name=(PROF&&PROF.name)||inc.name||''; await finishImport(m.profile,'MERGED'+(m.renamed?' · '+m.renamed+' RENAMED':'')); };
-  $('imp-replace').onclick=async()=>{ if(!confirm('Replace your whole profile with '+(inc.name||'this one')+'? Your current programs will be gone.')) return; await finishImport(inc,'REPLACED'); };
+  $('imp-replace').onclick=async()=>{ if(!confirm(X('Replace your whole profile with {n}? Your current programs will be gone.',{n:inc.name||X('this one')}))) return; await finishImport(inc,'REPLACED'); };
 }
 async function finishImport(prof,msg){
   clearTimeout(persistT); PROF=prof; await PSTORE.save(PROF); sess.set('tnc.flash','PROFILE '+msg);
   location.reload();                                  // a clean start on the imported state
 }
 async function newProfile(){
-  if(!confirm('Start a new, empty profile? Your programs, projects and tools in this browser will be deleted.\n\nPress Cancel and use “Export profile” first if you want to keep them.')) return;
+  if(!confirm(X('Start a new, empty profile? Your programs, projects and tools in this browser will be deleted.\n\nPress Cancel and use “Export profile” first if you want to keep them.'))) return;
   clearTimeout(persistT); await PSTORE.wipe(); try{ localStorage.removeItem(LS_KEY); }catch(e){}
-  PROF=PSTORE.blank(''); await PSTORE.save(PROF); location.reload();
+  PROF=PSTORE.blank(''); await PSTORE.save(PROF); sess.set('tnc.askname','1'); location.reload();   // the new profile asks for its name once
 }
 if($('b-prof')) $('b-prof').onclick=openProfile;
 
 
 /* ================= programming dialogs (dialogs.js): one question per step, soft keys for the choices ================= */
 const DLG=window.TNC_DIALOGS||null;
-function startWiz(spec){
+/* at = the block this dialog rewrites (a stored block opened again); without it the finished block is inserted after the cursor */
+function startWiz(spec,at){
   if(!spec) return;
   if(S.mode!=='edit') setMode('edit');
   if(S.editing) endEdit(false); if(S.raw) toggleRaw(); if(S.mgt) closeMgt(); if(S.tt) closeTT();
-  S.pick=null; S.running=false; S.wiz={spec, i:0, v:{}};
+  S.pick=null; S.running=false; S.wiz={spec, i:0, v:{}, at:at==null?null:at};
   dlgIn.disabled=false; wizShow();
 }
 function wizStep(){ return S.wiz.spec.steps[S.wiz.i]; }
@@ -1643,8 +1712,12 @@ function wizShow(){
   dlgPr.textContent=st.ask;
   dlgHint.textContent=S.wiz.spec.title+' · '+(S.wiz.i+1)+'/'+S.wiz.spec.steps.length+' · ENT '+(d!=null?'= '+d:(st.opt||st.type==='feed'||st.type==='m'?'= NONE':''))
     +(padStep(st)?' · '+(st.type==='coords'?'X 10 Y 20 · ':'')+'I INCR.'+(st.type==='coords'?' · P POLAR':''):'')+' · ⇧ENT NO ENT · END · ESC DEL';
-  dlgIn.value=''; dlgIn.placeholder=d!=null?d:''; renderSK(); dlgIn.focus();
+  dlgIn.value=''; dlgIn.placeholder=d!=null?shown(String(d)):''; renderSK(); wizPreview(); dlgIn.focus();
 }
+/* the block as far as it is answered, in its screen form; a polar dialog says so */
+function wizPreview(){ const el=$('dlg-prev'); if(!el) return; if(!S.wiz){ el.hidden=true; el.textContent=''; return; }
+  const w=S.wiz, vv=Object.assign({},w.v); w.spec.steps.forEach((st,i)=>{ if(i>=w.i&&vv[st.k]==null&&st.dflt!=null&&w.at!=null) vv[st.k]=st.dflt; });
+  el.hidden=false; el.innerHTML=(DLG.isPolar(w.spec)?`<span class="sys" id="dlg-sys">${esc(T('sys.polar'))}</span>`:'')+`<span class="blkp" id="dlg-blk">${esc(shown(DLG.preview(w.spec,vv)))}</span>`; }
 function wizSK(){
   const st=wizStep(), tail=[['NO\nENT','wskip'],['ENT','wok'],['END','wend'],['DEL','wcancel']];   // manual 4.5 p. 67: NO ENT ignores, END ends, DEL aborts
   let k=[];
@@ -1652,30 +1725,18 @@ function wizSK(){
   else if(padStep(st)) k=wizPad(st);
   else if(st.type==='feed') k=[['F MAX','wv:FMAX'],['F AUTO','wv:FAUTO']];
   else if(st.type==='tool') k=mtools().slice(0,13).map(t=>['T'+t.t+'\n'+String(t.name).slice(0,10),'wv:'+t.t]);
+  if(S.wiz.at!=null&&!padStep(st)) k=k.concat([['TEXT','wtext']]);          // a stored block: back to the block line
   return k.concat(tail);
 }
-const NUMRE=/^[+-]?(?:\d+\.?\d*|\.\d+|Q\d+)$/i;
+function wizToText(){ if(!S.wiz||S.wiz.at==null) return; const at=S.wiz.at; wizDone(); S.cursor=at; markRows(); beginEdit(true); }
+/* one answer: checked and normalised by TNC_DIALOGS.answer (dialogs.js; decimal comma or point, tested in tests/polar.js) */
 function wizAccept(raw,skip){
   if(!S.wiz) return;
-  const st=wizStep(); let v=String(raw==null?'':raw).trim().replace(/,/g,'.'), d=st.dflt!=null&&st.dflt!==''?st.dflt:null;
-  if(v===''){
-    if(d!=null&&!skip) v=d;
-    else if(!(st.opt||st.type==='feed'||st.type==='m'||st.type==='choice'||(skip&&d!=null))){ say('ENTRY REQUIRED — '+st.ask); dlgIn.focus(); return; }
-    else if(skip&&d!=null&&!st.opt) v=d;
-  }
-  if(v!==''){
-    if(st.pol){ const e=DLG.PAD.polar(v,st.k.toUpperCase()); if(e){ say(e); dlgIn.select(); return; } }
-    else if(st.type==='num'||st.type==='tool'){ if(!NUMRE.test(v)){ say('ENTER A NUMBER (OR Q PARAMETER)'); dlgIn.select(); return; } }
-    else if(st.type==='choice'){ const u=v.toUpperCase(); v=st.opts.find(o=>o===u||o.replace(/[^A-Z0-9]/g,'')===u.replace(/[^A-Z0-9]/g,''))||(d!=null?d:st.opts[0]); }
-    else if(st.type==='feed'){ const u=v.toUpperCase().replace(/\s+/g,''); v=/^F?MAX$/.test(u)?'FMAX':/^F?AUTO$/.test(u)?'FAUTO':u.replace(/^F/,''); if(!/^(FMAX|FAUTO)$/.test(v)&&!NUMRE.test(v)){ say('FEED RATE: A NUMBER, F MAX OR F AUTO'); dlgIn.select(); return; } }
-    else if(st.type==='m'){ v=v.toUpperCase().replace(/M/g,' ').trim(); if(!/^\d+(\s+\d+)*$/.test(v)){ say('M FUNCTION: A NUMBER, e.g. 3 OR 3 8'); dlgIn.select(); return; } }
-    else if(st.type==='coords'){ const c=wizCoords(v); if(!c){ say('COORDINATES: e.g. X+10 Y-5 or 10 -5'); dlgIn.select(); return; } v=c; }
-  }
-  S.wiz.v[st.k]=v; S.wiz.i++;
+  const st=wizStep(), r=DLG.answer(st,raw,{skip:!!skip,axes:M().axes||['X','Y','Z']});
+  if(r.err){ say(r.err); if(r.entry) dlgIn.focus(); else dlgIn.select(); return; }
+  S.wiz.v[st.k]=r.v; S.wiz.i++;
   if(S.wiz.i>=S.wiz.spec.steps.length) wizFinish(); else wizShow();
 }
-/* the COORDINATES ? answer -> block words: TNC_DIALOGS.PAD.coords (dialogs.js) */
-function wizCoords(v){ return DLG.PAD.coords(v,M().axes||['X','Y','Z']); }
 /* ---- the coordinate keypad (TNC 426/430 keyboard, manual inside front cover: "Coordinate axes and numbers"):
    axis keys X Y Z IV V, 0-9, decimal point, -/+, P polar, I incremental, Q parameter, actual-position capture,
    NO ENT, ENT, END, CE, DEL. Every key works on the word being entered = the last word on the line.
@@ -1705,7 +1766,7 @@ function ckPolar(){ if(!S.wiz) return; const sp=S.wiz.spec, t=sp.polar&&DLG&&DLG
   if(wizStep().type!=='coords') return;
   if(!t){ say(sp.key==='CC'?'P: THE POLE CC IS ENTERED IN CARTESIAN COORDINATES ONLY':'P: NO POLAR FORM OF '+sp.title); return; }
   const no=sp.polarIf&&sp.polarIf(S.wiz.v); if(no){ say(no); return; }
-  S.wiz={spec:t, i:S.wiz.i, v:S.wiz.v}; wizShow();                       // answers so far are kept (APPR/DEP: the form)
+  S.wiz={spec:t, i:S.wiz.i, v:S.wiz.v, at:null}; wizShow();              // answers so far are kept (APPR/DEP: the form)
   say('POLAR COORDINATES — '+(S.wiz.v.form?t.key.split(' ')[0]+' P'+S.wiz.v.form:t.title)); }
 /* the simulator's "actual position" = the tool position at the current point of the run (the DRO) */
 function actPos(){ const p=S.pos||{x:0,y:0,z:0}, s=S.seg, o={X:p.x,Y:p.y,Z:p.z}, u=s?clamp((S.t-s.t0)/Math.max(1e-9,s.t1-s.t0),0,1):0;
@@ -1723,6 +1784,7 @@ function wizKey(e){
   if(k==='Enter'){ if(e.shiftKey) wizAccept('',true); else wizAccept(dlgIn.value); return true; }
   if(k==='Escape'){ wizCancel(); return true; }
   if(k==='End'){ wizEnd(); return true; }
+  if(k==='F2'&&S.wiz.at!=null){ wizToText(); return true; }
   const st=wizStep(); if(!padStep(st)) return false;
   if(k==='Delete'){ ckCE(); return true; }
   if(k==='#'&&st.type==='coords'){ ckActual(); return true; }
@@ -1741,10 +1803,13 @@ function wizEnd(){
   }
   if(S.wiz) wizFinish();
 }
-function wizDone(){ S.wiz=null; dlgIn.value=''; dlgIn.placeholder=''; dlgIn.disabled=true; dlgPr.textContent='BLOCK'; dlgHint.textContent=T('dlg.hint'); renderSK(); }
+function wizDone(){ S.wiz=null; dlgIn.value=''; dlgIn.placeholder=''; dlgIn.disabled=true; dlgPr.textContent='BLOCK'; dlgHint.textContent=T('dlg.hint'); wizPreview(); renderSK(); }
 function wizCancel(){ if(!S.wiz) return; wizDone(); say('DIALOG CANCELLED'); }
 function wizFinish(){
-  const txt=S.wiz.spec.build(S.wiz.v), add=txt.split('\n'), ls=lines();
+  const txt=S.wiz.spec.build(S.wiz.v), add=txt.split('\n'), ls=lines(), at=S.wiz.at;
+  if(at!=null){                                                                       // a stored block opened again: it is replaced, its indent kept
+    const j=srcLine(at), ind=S.res.blocks[at]&&S.res.blocks[at].indent?(ls[j].match(/^\s*/)||[''])[0]:'';
+    ls[j]=ind+add[0]; wizDone(); edit(ls.join('\n'),at,'BLOCK '+nOf(at)+' STORED — '+shown(add[0])); markRows(true); return; }
   let i=srcLine(S.cursor); if(/^\s*(\d+\s+)?END\s+PGM/i.test(ls[i]||'')) i--;                 // never after END PGM
   ls.splice(i+1,0,...add); wizDone();
   edit(ls.join('\n'),Math.min(i+1,Math.max(0,S.res.blocks.length)),'BLOCK STORED — '+add[0]);
@@ -1763,10 +1828,19 @@ function renderTT(){ const ms=mset(); mgtEl.innerHTML=`<div class="ttview"><div 
   wireToolTable(mgtEl,renderTT); const cur=mgtEl.querySelector('tr[data-cur]'); if(cur){ cur.style.outline='2px solid var(--cyan)'; cur.scrollIntoView({block:'nearest'}); } }
 function closeTT(){ if(!S.tt) return; S.tt=false; mgtEl.hidden=true; plist.hidden=S.flowView&&!!FLOW; $('flow').hidden=!(S.flowView&&FLOW); renderSK(); $('pgm-path').textContent='TNC:\\'+S.pgm; }
 
-/* ================= focus view: listing + graphics only ================= */
-function toggleFocus(){ S.focusView=!S.focusView; document.body.classList.toggle('focus',S.focusView); if($('b-focus')) $('b-focus').setAttribute('aria-pressed',S.focusView);
-  writePrefs(); renderSK(); requestAnimationFrame(()=>{ resize(); requestAnimationFrame(resize); }); say(S.focusView?'FOCUS VIEW — F TO RETURN':'FULL VIEW'); }
-if($('b-focus')) $('b-focus').onclick=toggleFocus;
+/* ================= inspector: the right pane, closed in the default layout =================
+   S.focusView = closed. The Inspector control, its close button and F toggle it; what it shows (tab, reference page,
+   scroll, the stored comparison) stays as it was while it is closed. Phones: it is the Status workspace, always there. */
+function toggleFocus(quiet){ S.focusView=!S.focusView; inspSync(); edSet('inspector',!S.focusView);
+  writePrefs(); renderSK(); requestAnimationFrame(()=>{ resize(); requestAnimationFrame(resize); });
+  if(quiet!==true) say(T(S.focusView?'insp.closed':'insp.opened')); }
+function inspSync(){ document.body.classList.toggle('focus',S.focusView); $('b-insp').setAttribute('aria-pressed',String(!S.focusView)); }
+function inspOpen(tab){ if(S.focusView&&!isPhone()) toggleFocus(true); if(isPhone()) showPane('side'); if(tab) setSideTab(tab); }
+function inspPanel(panel){ const tab={compare:'diag',diag:'diag',ref:'ref',progs:'progs'}[panel]; if(!tab) return false; inspOpen(tab);
+  if(panel==='compare'){ const c=document.querySelector('.card-compare'); if(c) c.scrollIntoView({block:'nearest'}); } return true; }
+$('b-insp').onclick=()=>toggleFocus();
+$('insp-x').onclick=()=>{ if(!S.focusView) toggleFocus(); $('b-insp').focus(); };
+$('sb-chk').onclick=()=>{ inspOpen('diag'); const el=$('elist'); if(el) el.scrollIntoView({block:'nearest'}); };
 
 
 /* ================= right pane: DIAGNOSTICS · REFERENCE · <name>'s PROGRAMS ================= */
@@ -1782,11 +1856,11 @@ $('ref-sel').addEventListener('change',()=>{ S.ref=$('ref-sel').value; renderRef
 $('ref-sel').addEventListener('keydown',e=>e.stopPropagation());
 function renderRef(){
   refOptions(); const v=$('ref-sel').value, b=$('ref-body'), Ls=lessonsOf();
-  if(v==='keys') b.innerHTML='<table>'+KEYS.map(([k,d])=>`<tr><td style="color:var(--amber);white-space:nowrap">${esc(k)}</td><td>${esc(d)}</td></tr>`).join('')+'</table>';
+  if(v==='keys') b.innerHTML='<table>'+KEYS.map(([k,d])=>`<tr><td class="k">${esc(X(k))}</td><td>${esc(X(d))}</td></tr>`).join('')+'</table>';
   else if(v==='cycles'&&DLG) b.innerHTML='<p class="note">Click a cycle to program it (PROGRAM mode, one question per parameter).</p><table>'+
-    DLG.GROUPS.map(g=>`<tr><th colspan="2" style="color:var(--cyan)">${esc(g[1].replace(/\n/g,' '))}</th></tr>`+DLG.cycleList(g[0]).map(c=>`<tr class="cyc" data-cy="${c.num}"><td>${c.num}</td><td>${esc(c.name)}</td></tr>`).join('')).join('')+'</table>';
+    DLG.GROUPS.map(g=>`<tr><th colspan="2">${esc(g[1].replace(/\n/g,' '))}</th></tr>`+DLG.cycleList(g[0]).map(c=>`<tr class="cyc" data-cy="${c.num}"><td>${c.num}</td><td>${esc(c.name)}</td></tr>`).join('')).join('')+'</table>';
   else if(v==='tools') b.innerHTML='<p class="note">T opens the editable list. * = yours.</p><table><tr><th>T</th><th>NAME</th><th>R</th><th>L</th></tr>'+
-    mtools().map(t=>`<tr${t.t===curToolT?' style="color:var(--cyan)"':''}><td>${t.t}${t.mine?' *':''}</td><td>${esc(t.name)}</td><td>${(+t.r).toFixed(3)}</td><td>${(+t.l).toFixed(2)}</td></tr>`).join('')+'</table>';
+    mtools().map(t=>`<tr${t.t===curToolT?' class="now"':''}><td>${t.t}${t.mine?' *':''}</td><td>${esc(t.name)}</td><td>${(+t.r).toFixed(3)}</td><td>${(+t.l).toFixed(2)}</td></tr>`).join('')+'</table>';
   else if(v==='machine'){ const mc=M().machine; b.innerHTML=mc?`<table>
     <tr><td>Axes</td><td>${esc(M().axes.join(' '))}</td></tr>`+Object.entries(mc.limits).map(([a,l])=>`<tr><td>Limit ${a}</td><td>${l[0]} … ${l[1]}${'AB'.includes(a)?'°':' mm'}</td></tr>`).join('')+
     `<tr><td>Spindle max</td><td>${mc.sMax} rpm (MP 3515)</td></tr><tr><td>Feed max</td><td>${mc.fMax} mm/min (MP 1020)</td></tr>
@@ -1816,30 +1890,7 @@ $('uplist').addEventListener('click',e=>{ const r=e.target.closest('tr.pg'); if(
 if($('b-tools')) $('b-tools').onclick=()=>act('tt');
 
 
-/* ================= header menus: + NEW · LESSONS · AI ================= */
-let menuEl=null;
-function closeMenu(){ if(menuEl){ const b=$(menuEl.dataset.for); if(b) b.setAttribute('aria-expanded','false'); menuEl.remove(); menuEl=null; } }
-function openMenu(btn,items){
-  if(menuEl&&menuEl.dataset.for===btn.id){ closeMenu(); return; } closeMenu();
-  const m=document.createElement('div'); m.className='hmenu'; m.setAttribute('role','menu'); m.dataset.for=btn.id;
-  m.innerHTML=items.map((it,i)=>it.head?`<div class="mh">${esc(it.head)}</div>`:`<button role="menuitem" data-i="${i}">${esc(it.label)}</button>`).join('');
-  document.body.appendChild(m); const r=btn.getBoundingClientRect();
-  m.style.left=Math.max(8,Math.min(r.left,innerWidth-m.offsetWidth-8))+'px';
-  m.style.top=(r.bottom+4+m.offsetHeight>innerHeight-8&&r.top>innerHeight/2?Math.max(8,r.top-4-m.offsetHeight):r.bottom+4)+'px';
-  btn.setAttribute('aria-expanded','true');
-  m.onclick=e=>{ const b=e.target.closest('[data-i]'); if(!b) return; const it=items[+b.dataset.i]; closeMenu(); closeDrawer(true); it.act(); };
-  m.addEventListener('keydown',e=>{ e.stopPropagation(); const bs=[...m.querySelectorAll('button')], i=bs.indexOf(document.activeElement);
-    if(e.key==='ArrowDown'){ e.preventDefault(); (bs[i+1]||bs[0]).focus(); } else if(e.key==='ArrowUp'){ e.preventDefault(); (bs[i-1]||bs[bs.length-1]).focus(); }
-    else if(e.key==='Escape'){ e.preventDefault(); closeMenu(); btn.focus(); } });
-  menuEl=m; const f=m.querySelector('button'); if(f) f.focus();
-}
-addEventListener('pointerdown',e=>{ if(menuEl&&!menuEl.contains(e.target)&&!e.target.closest('#b-new,#b-lessons,#b-ai')) closeMenu(); });
-$('b-new').onclick=()=>openMenu($('b-new'),[{label:'NEW PRG — MANUAL',act:()=>openNew('scratch')},{label:'NEW PRG — AI',act:()=>openAI('new')}]);
-$('b-lessons').onclick=()=>{ const L=lessonsOf(); if(!L){ say('LESSONS ARE NOT IN THIS BUILD'); return; }
-  openMenu($('b-lessons'),[{head:'LEARN'},...L.learn.map((x,i)=>({label:(i+1)+' · '+x.title,act:()=>startLesson('learn',i)})),
-    {head:'BREAK IT — crash it safely, then fix it'},...L.breakit.map((x,i)=>({label:(i+1)+' · '+x.title,act:()=>startLesson('breakit',i)}))]); };
-$('b-ai').onclick=()=>openMenu($('b-ai'),[{label:'Change this program ('+S.pgm+')…',act:()=>openAI('modify')},{label:'New program from a description…',act:()=>openAI('new')},
-  {label:'AI setup — OpenRouter key',act:()=>openHelp('ai')}]);
+$('b-new').onclick=()=>openNew();
 
 /* ================= machine selector ================= */
 function setMachine(id){
@@ -1849,49 +1900,50 @@ function setMachine(id){
   S.machine=id; S.pgm=(S.cur[id]&&pg()[S.cur[id]]!=null)?S.cur[id]:Object.keys(pg())[0];
   if(!S.pgm){ S.pgm='NEW.H'; pg()[S.pgm]='BEGIN PGM NEW MM\nEND PGM NEW MM'; }
   S.text=pg()[S.pgm]; raw.value=S.text; S.cursor=0; curToolT=null; compile(); persist(); writePrefs();
-  document.querySelector('.ttl').textContent=M().label; say(M().label+' SELECTED');
+  edSet('machine',id); machSync(); say(M().label+' SELECTED');
 }
-if(Object.keys(MACHINES).length>1){
-  const sel=document.createElement('select'); sel.className='chb'; sel.id='mach-sel'; sel.setAttribute('aria-label','Machine');
-  sel.innerHTML=Object.values(MACHINES).map(m=>`<option value="${m.id}">${esc(m.label)}</option>`).join('');
-  $('pgm-path').before(sel); sel.onchange=()=>{ setMachine(sel.value); sel.blur(); };
-}
+function machSync(){ document.querySelector('.ttl').textContent=M().label;
+  [...$('mach-seg').children].forEach(b=>{ b.setAttribute('aria-pressed',String(b.dataset.m===S.machine)); }); skinApply(); }
+$('mach-seg').innerHTML=Object.values(MACHINES).map(m=>`<button type="button" data-m="${esc(m.id)}" aria-pressed="false" aria-label="${esc(m.label)}">${esc(m.id)}</button>`).join('');
+$('mach-seg').addEventListener('click',e=>{ const b=e.target.closest('[data-m]'); if(b) setMachine(b.dataset.m); });
+$('mach-seg').hidden=Object.keys(MACHINES).length<2;
 
 /* ================= modes, toggles, keyboard ================= */
 function setMode(m){ if(m!=='edit'){ if(S.wiz) wizCancel(); S.pick=null; } S.mode=m; document.body.dataset.mode=m;
-  const tps=$('tp-state'); if(tps) tps.textContent={edit:'1 PRG EDIT · soft keys write blocks · Y CYCL DEF · W TOOL CALL',test:'2 TEST · SPACE = NC START / STOP',single:'3 SINGLE-BLOCK · SPACE = next block · ↑↓ moves the machine',full:'4 FULL-RUN · SPACE = NC START / STOP'}[m]||''; [...document.querySelectorAll('.mode')].forEach(b=>b.setAttribute('aria-pressed',b.dataset.m===m));
+  const tps=$('tp-state'); if(tps) tps.textContent=T('tp.'+m); [...document.querySelectorAll('.mode')].forEach(b=>{ b.setAttribute('aria-pressed',b.dataset.m===m); });
   if(!S.mgt) renderSK(); if(m==='edit'){ S.running=false; setState('EDITING'); } else setState('READY'); writePrefs(); }
 $('modes').addEventListener('click',e=>{ const b=e.target.closest('.mode'); if(b) setMode(b.dataset.m); });
 function setSpeed(v,quiet){ S.speed=v; [...$('spd').children].forEach(b=>b.dataset.on=(+b.dataset.s===v)?'1':'0'); writePrefs();
   if(v===0&&S.running) runMax(); if(!quiet) say(v?'SPEED '+v+'×':'MAX — RUNS TO THE END OR THE FIRST CRASH'); }
 $('spd').addEventListener('click',e=>{ const b=e.target.closest('button'); if(b) setSpeed(+b.dataset.s); });
 function syncToggles(){ $('b-fx').dataset.on=S.fx?'1':'0'; $('b-cool').dataset.on=S.fxCool?'1':'0'; $('b-fire').dataset.on=S.fxFire?'1':'0';
-  $('b-labels').dataset.on=S.labels?'1':'0'; $('b-vice').dataset.on=S.vice?'1':'0'; if(window.TNC_STOCK) TNC_STOCK.VICE.on=S.vice; $('b-sound').dataset.on=S.sound?'1':'0'; fxApply(); if(CO) CO.setVisible(S.labels); writePrefs(); }
+  $('b-labels').dataset.on=S.labels?'1':'0'; $('b-vice').dataset.on=S.vice?'1':'0'; if(window.TNC_STOCK) TNC_STOCK.VICE.on=S.vice;
+  ['b-fx','b-cool','b-fire','b-labels','b-vice'].forEach(id=>{ $(id).setAttribute('aria-pressed',String($(id).dataset.on==='1')); }); fxApply(); if(CO) CO.setVisible(S.labels); writePrefs(); }
 function tog(k,label){ S[k]=!S[k]; syncToggles(); say(label+(S[k]?' ON':' OFF')); }
 $('b-fx').onclick=()=>tog('fx','CHIPS & SPARKS'); $('b-cool').onclick=()=>tog('fxCool','COOLANT');
-$('b-fire').onclick=()=>tog('fxFire','SMOKE & FIRE'); $('b-labels').onclick=()=>tog('labels','LABELS'); $('b-sound').onclick=()=>tog('sound','SOUND');
+$('b-fire').onclick=()=>tog('fxFire','SMOKE & FIRE'); $('b-labels').onclick=()=>tog('labels','LABELS');
 $('b-vice').onclick=()=>{ tog('vice','VICE'); compile(); };   // standard vice (TNC_STOCK.VICE): drawn + crash-checked; off = part on a fixture plate
 if(!window.TNC_FX){ ['b-fx','b-cool','b-fire'].forEach(id=>$(id).hidden=true); }
 if(!window.TNC_CALLOUTS) $('b-labels').hidden=true;
-$('b-start').onclick=ncStart; $('b-stop').onclick=stop; $('b-step').onclick=stepBlock; $('b-reset').onclick=reset;
+$('b-start').onclick=ncStart; $('b-stop').onclick=stop; $('b-reset').onclick=reset;      // run · pause (feed hold) · stop (reset to the start)
 scrub.addEventListener('input',()=>{ S.running=false; seek(+scrub.value/1000*S.total,false); });
 
 const KEYS=[['↑ ↓','Block cursor'],['← →','Scrub the run (Shift ×5)'],['ENTER','Step one block · edit in EDIT mode'],['ESC','Stop · cancel · close'],
   ['SPACE','NC START (what the mode does) / NC STOP'],['S · R','Single block · reset'],['E I D C','Edit · insert · delete · copy'],['CTRL+Z','Undo  (CTRL+SHIFT+Z / CTRL+Y redo)'],
-  ['CTRL+S','Save as .H'],['CTRL+O','Load .H from your computer'],['TAB','Raw text editor'],['M','Programs'],['H','Help, lessons, manual'],
-  ['V','Flowchart view'],['G','3D / TOP / FRONT / SIDE'],['1 – 4','Operating mode'],['5 – 9','Speed 1× 4× 16× 64× MAX'],['T','Tool table'],['F','Focus view (listing + graphics)'],['PRG EDIT','Y CYCL DEF · W TOOL CALL · A APPR/DEP · Q Q-parameter · soft keys for L CC C CR CT CP RND CHF, TOOL DEF, LBL'],
+  ['CTRL+S','Save as .H'],['CTRL+O','Load .H from your computer'],['TAB','Raw text editor (when no control has the focus; otherwise TAB moves the focus)'],['M','Programs'],['N','New program (manual or AI)'],['H','Help, lessons, manual'],
+  [',','Settings'],['F2','A path block as its dialog (while editing a block) · back to text'],
+  ['V','Flowchart view'],['G','3D / TOP / FRONT / SIDE'],['1 – 4','Operating mode'],['5 – 9','Speed 1× 4× 16× 64× MAX'],['T','Tool table'],['F','Inspector: open / close the right pane'],['PRG EDIT','Y CYCL DEF · W TOOL CALL · A APPR/DEP · Q Q-parameter · soft keys for L CC C CR CT CP RND CHF, TOOL DEF, LBL'],
   ['COORDINATES ?','X Y Z (B A) axis · I incremental · P polar · Q parameter · + − sign · # actual position · DELETE = CE · ENTER = ENT · ⇧ENTER = NO ENT · END · ESC = DEL'],['+ / −','Feed override'],
-  ['P K B','Chips · coolant · smoke & fire'],['L','Labels'],['N','Next lesson step'],['HOME/END','First / last block'],['PGUP/PGDN','Page']];
-$('klist').innerHTML=KEYS.map(([k,d])=>`<div><kbd>${k}</kbd><span>${d}</span></div>`).join('');
+  ['P K B','Chips · coolant · smoke & fire'],['L','Labels'],['N (in a lesson)','Next lesson step'],['HOME/END','First / last block'],['PGUP/PGDN','Page']];
 
 const VIEWS=['3D','TOP','FRONT','SIDE'];
 addEventListener('keydown',e=>{
   const k=e.key, mod=e.ctrlKey||e.metaKey;
-  if(!$('boot').hidden){ e.preventDefault(); dismissBoot(); return; }
   if(S.aiLive&&S.aiLive.ask&&!openModalEl){ if(k==='Enter'||k==='Escape'){ e.preventDefault(); S.aiLive.ask.res(k==='Enter'); } return; }
   if(S.aiLive&&!S.aiLive.done&&!openModalEl){ if(k==='Escape'&&aiAbort){ e.preventDefault(); aiAbort.abort(); } return; }
   if(openModalEl){ if(k==='Escape'){ e.preventDefault(); closeModal(); } return; }
   if(drawerOpen()){ if(k==='Escape'){ e.preventDefault(); closeDrawer(); } return; }
+  if(!$('setup').hidden&&(k==='Escape'||$('setup').contains(e.target))){ if(k==='Escape'){ e.preventDefault(); setupClose(); } return; }
   if(e.target.closest&&e.target.closest('[role=tablist]')&&/^(Arrow|Home$|End$)/.test(k)) return;
   if((k==='Enter'||k===' ')&&e.target.matches&&e.target.matches('button:focus-visible,a:focus-visible,summary:focus-visible,[role=tab]:focus-visible')) return;
   if(mod&&k.toLowerCase()==='s'){ e.preventDefault(); saveH(); return; }
@@ -1920,7 +1972,8 @@ addEventListener('keydown',e=>{
     case 'End': e.preventDefault(); moveCursor(nb-1); break;
     case 'PageUp': e.preventDefault(); moveCursor(S.cursor-12); break;
     case 'PageDown': e.preventDefault(); moveCursor(S.cursor+12); break;
-    case 'Tab': e.preventDefault(); toggleRaw(); break;
+    case 'Tab': if(e.target!==document.body&&e.target!==document.documentElement) break;   // a focused control: TAB moves the focus (keyboard access, no trap)
+      e.preventDefault(); toggleRaw(); break;
     case 'Delete': e.preventDefault(); deleteBlock(); break;
     case '+': case '=': act('ovru'); break;
     case '-': case '_': act('ovrd'); break;
@@ -1929,7 +1982,8 @@ addEventListener('keydown',e=>{
       if(/^[1-4]$/.test(k)) setMode(['edit','test','single','full'][+k-1]);
       else if(/^[5-9]$/.test(k)) setSpeed([1,4,16,64,0][+k-5]);
       else if(/^F[1-4]$/.test(k)){ e.preventDefault(); setMode(['edit','test','single','full'][+k[1]-1]); }
-      else if(K==='t') act('tt'); else if(K==='f') toggleFocus();
+      else if(K==='t') act('tt'); else if(K==='f') toggleFocus(); else if(k===',') openSettings();
+      else if(K==='n'&&!S.lesson){ e.preventDefault(); openNew(); }
       else if(S.mode==='edit'&&K==='y') act('cycldef'); else if(S.mode==='edit'&&K==='w') act('w:TOOLCALL');
       else if(S.mode==='edit'&&K==='a') act('apprdep'); else if(S.mode==='edit'&&K==='q') act('w:Q');
       else if(K==='s') stepBlock(); else if(K==='r') reset();
@@ -1959,7 +2013,6 @@ function paneNow(){ return document.querySelector('.main').dataset.pane||'gfx'; 
 var PANES=['pgm','gfx','side'], paneScroll={};
 function paneTabs(){ return [...$('mtabs').querySelectorAll('[role=tab]')]; }
 function showPane(p,how){ how=how||{}; if(!isPhone()||!PANES.includes(p)) return;
-  if(p==='side'&&S.focusView) p='gfx';
   const was=paneNow(); if(was!==p) paneScroll[was]=scrollY;
   mainEl.dataset.pane=p;
   paneTabs().forEach(b=>{ const on=b.dataset.pane===p; b.setAttribute('aria-selected',on); b.tabIndex=on?0:-1; });
@@ -1968,12 +2021,12 @@ function showPane(p,how){ how=how||{}; if(!isPhone()||!PANES.includes(p)) return
   requestAnimationFrame(resize); }
 $('mtabs').addEventListener('click',e=>{ const b=e.target.closest('[role=tab]'); if(b) showPane(b.dataset.pane); });
 /* Program → Graphics → Status: the neighbour in a direction, or null at the ends */
-function paneStep(d){ const vis=PANES.filter(p=>!(p==='side'&&S.focusView)); const i=vis.indexOf(paneNow())+d; return vis[i]||null; }
+function paneStep(d){ const i=PANES.indexOf(paneNow())+d; return PANES[i]||null; }
 
 /* tab lists (workspaces, status, help, DEV): arrow keys / Home / End move and select (WAI-ARIA tabs, automatic activation) */
 document.addEventListener('keydown',e=>{ const list=e.target.closest&&e.target.closest('[role=tablist]'); if(!list||e.altKey||e.ctrlKey||e.metaKey) return;
   const tabs=[...list.querySelectorAll('[role=tab]')].filter(t=>t.offsetParent!==null), i=tabs.indexOf(e.target); if(i<0) return;
-  const j={ArrowRight:i+1,ArrowLeft:i-1,Home:0,End:tabs.length-1}[e.key]; if(j==null) return;
+  const j=(list.getAttribute('aria-orientation')==='vertical'?{ArrowDown:i+1,ArrowUp:i-1,Home:0,End:tabs.length-1}:{ArrowRight:i+1,ArrowLeft:i-1,Home:0,End:tabs.length-1})[e.key]; if(j==null) return;
   e.preventDefault(); e.stopPropagation(); const t=tabs[(j+tabs.length)%tabs.length]; t.focus(); t.click(); });
 /* roving tabindex: only the selected tab is in the Tab order */
 function rove(list){ const tabs=[...list.querySelectorAll('[role=tab]')]; if(!tabs.some(t=>t.getAttribute('aria-selected')==='true')) return;
@@ -1990,8 +2043,9 @@ function checksBadge(nErr,nCrash,nWarn){
   const he=$('hdr-err'); he.className='hdr-m hdr-err'+(bad?' bad':nWarn?' warn':'');
   $('hdr-err-t').textContent=n?(bad?'⚠ '+bad:'! '+nWarn):'✓'; he.setAttribute('aria-label',tt('panel.checks')+': '+txt);
   const bd=$('mt-badge'); bd.hidden=!n; bd.className='tbadge'+(bad?'':' warn'); bd.textContent=n?String(n):''; bd.setAttribute('aria-label',txt);
+  const sc=$('sb-chk'); sc.className='sb-chk '+(bad?'bad':nWarn?'warn':'ok'); sc.textContent=tt('panel.checks')+': '+txt;
   const key=nErr+'/'+nCrash+'/'+nWarn; if(lastChecks!==null&&key!==lastChecks) announce(tt('panel.checks')+': '+txt); lastChecks=key; }
-$('hdr-err').onclick=()=>{ if(isPhone()) showPane('side'); setSideTab('diag'); const el=$('elist'); if(el) el.scrollIntoView({block:'nearest'}); };
+$('hdr-err').onclick=()=>$('sb-chk').click();
 
 /* polite announcements: state changes and check counts only — never coordinates, frames or scrubbing */
 function announce(msg){ const el=$('sr-live'); if(!el||!msg) return; clearTimeout(announce._t);
@@ -2010,11 +2064,11 @@ $('sk-next').onclick=()=>{ const rows=Math.ceil(sks.children.length/8); skPage=(
 /* the drawer (phones): a modal dialog — focus inside, the rest inert, Esc / scrim / swipe right close it */
 var hmore=$('hmore'), scrim=$('scrim');
 function drawerOpen(){ return $('hmore').classList.contains('open'); }
-function openDrawer(){ if(!isPhone()||drawerOpen()) return; closeMenu();
+function openDrawer(){ if(!isPhone()||drawerOpen()) return;
   hmore.setAttribute('role','dialog'); hmore.setAttribute('aria-modal','true'); hmore.classList.add('open'); scrim.hidden=false;
   $('b-menu').setAttribute('aria-expanded','true'); drawerInert(true); $('hmore-x').focus(); }
 function closeDrawer(quiet){ if(!drawerOpen()) return; const hmore=$('hmore'), scrim=$('scrim'); hmore.classList.remove('open'); scrim.hidden=true; drawerInert(false);
-  $('b-menu').setAttribute('aria-expanded','false'); closeMenu(); if(!quiet) $('b-menu').focus(); }
+  $('b-menu').setAttribute('aria-expanded','false'); if(!quiet) $('b-menu').focus(); }
 function drawerInert(on){ [document.querySelector('.main'),$('mtabs'),$('dock'),...[...document.querySelector('.bar').children].filter(c=>c!==hmore)].forEach(el=>{ if(el) el.inert=on; }); }
 $('b-menu').onclick=openDrawer; $('hmore-x').onclick=()=>closeDrawer(); scrim.onclick=()=>closeDrawer();
 hmore.addEventListener('keydown',e=>{ if(!drawerOpen()) return;
@@ -2023,7 +2077,7 @@ hmore.addEventListener('keydown',e=>{ if(!drawerOpen()) return;
   if(e.shiftKey&&document.activeElement===f[0]){ e.preventDefault(); f[f.length-1].focus(); }
   else if(!e.shiftKey&&document.activeElement===f[f.length-1]){ e.preventDefault(); f[0].focus(); } });
 /* drawer buttons that open a dialog or start something close the drawer first (menus stay on top of it) */
-['b-dev','b-help','b-prof','b-focus'].forEach(id=>{ const b=$(id); if(b) b.addEventListener('click',()=>closeDrawer(true),true); });
+['b-new','b-help','b-prof','b-gear','b-exit'].forEach(id=>{ const b=$(id); if(b) b.addEventListener('click',()=>closeDrawer(true),true); });
 
 /* swipes: left / right on a workspace switches workspace; right on the drawer closes it.
  * Passive listeners only (vertical scroll and pinch zoom are never blocked). Ignored when the touch
@@ -2031,7 +2085,7 @@ hmore.addEventListener('keydown',e=>{ if(!drawerOpen()) return;
  * when two fingers are down, while zoomed in, or when text is selected. A swipe only ever navigates. */
 function swipeable(el,root){
   for(let n=el;n&&n!==root;n=n.parentElement){
-    if(n.matches('canvas,input,textarea,select,[contenteditable],.sks,.skpager,.dlg,.tp,.ghost')) return false;
+    if(n.matches('canvas,input,textarea,select,[contenteditable],.sks,.skpager,.dlg,.dlgprev,.tp,.ghost')) return false;
     if(n.scrollWidth>n.clientWidth+2){ const ox=getComputedStyle(n).overflowX; if(ox==='auto'||ox==='scroll') return false; } }
   return true; }
 function onSwipe(root,fn){ let s0=null;
@@ -2050,19 +2104,23 @@ onSwipe(hmore,d=>{ if(d<0) closeDrawer(); });
 /* layout follows the breakpoint: dock in or out, ARIA roles on the workspaces, canvas size */
 const pgmCol=document.querySelector('.col-pgm'), dlgEl=document.querySelector('.col-pgm .dlg');
 function layout(){ const phone=isPhone(), dock=$('dock'), act=document.activeElement;
-  const parts=[dlgEl,$('skpath'),sks,$('skpager')];
+  const parts=[dlgEl,$('dlg-prev'),$('skpath'),sks,$('skpager')];
   if(phone&&parts[0].parentElement!==dock) parts.forEach(n=>dock.appendChild(n));
   if(!phone&&parts[0].parentElement===dock) parts.forEach(n=>pgmCol.appendChild(n));
+  const gear=$('b-gear'), gh=phone?$('gear-row'):$('sbar');                 // the settings gear: bottom bar, or the bottom of the drawer on phones
+  if(gear.parentElement!==gh) gh.insertBefore(gear,gh.firstChild);
+  const pm=$('b-mgt'), ph=phone?document.querySelector('.col-pgm .ch'):document.querySelector('.bar');   // program access: in the top bar, or in the Program workspace on phones
+  if(pm.parentElement!==ph){ ph.insertBefore(pm,phone?$('b-tools'):$('hdr-stat')); pm.className=phone?'chb':'hbtn'; }
   if(act&&act!==document.activeElement&&act.isConnected) try{ act.focus({preventScroll:true}); }catch(e){}
   PANES.forEach(p=>{ const sec=$('ws-'+p); if(phone){ sec.setAttribute('role','tabpanel'); sec.setAttribute('aria-labelledby','mt-'+p); sec.removeAttribute('aria-label'); }
-    else { sec.removeAttribute('role'); sec.removeAttribute('aria-labelledby'); sec.setAttribute('aria-label',{pgm:'Program',gfx:'Test graphics',side:'Status'}[p]); } });
+    else { sec.removeAttribute('role'); sec.removeAttribute('aria-labelledby'); sec.setAttribute('aria-label',T({pgm:'panel.program',gfx:'panel.testgfx',side:'btn.insp'}[p])); } });
   if(phone){ hmore.removeAttribute('aria-labelledby'); hmore.setAttribute('aria-labelledby','hmore-t'); showPane(paneNow()); }
   else { closeDrawer(true); hmore.removeAttribute('role'); hmore.removeAttribute('aria-modal'); hmore.removeAttribute('aria-labelledby'); }
   pageSK(); measure(); requestAnimationFrame(resize); }
 /* CSS sizes: dock height, tab-bar height, and how much of the screen the software keyboard covers */
 function measure(){ const r=document.documentElement.style, d=$('dock'), tb=$('mtabs');
   r.setProperty('--dock-h',(isPhone()?d.offsetHeight:0)+'px'); r.setProperty('--tabs-h',(isPhone()?tb.offsetHeight:0)+'px');
-  r.setProperty('--bar-h',(isPhone()?document.querySelector('.bar').offsetHeight:0)+'px');
+  r.setProperty('--bar-h2',(isPhone()?document.querySelector('.bar').offsetHeight:0)+'px');
   const vv=window.visualViewport; if(vv){ r.setProperty('--vvh',vv.height+'px'); r.setProperty('--vvt',vv.offsetTop+'px');
     r.setProperty('--kb',Math.max(0,Math.round(innerHeight-vv.height-vv.offsetTop))+'px'); } }
 new ResizeObserver(measure).observe($('dock'));
@@ -2073,9 +2131,168 @@ document.addEventListener('focusin',e=>{ if(!isPhone()) return; const t=e.target
   if(t.closest('.modal,.dock')) setTimeout(()=>{ measure(); if(t.closest('.modal')) t.scrollIntoView({block:'nearest'}); },300); });
 layout();
 
-/* ================= boot screen ================= */
-function dismissBoot(){ $('boot').hidden=true; sess.set(BOOT_SS,'1'); if(PROF&&!PROF.name) openProfile(); }
-$('boot').addEventListener('click',dismissBoot);
+/* ================= tooltips: on hover, on keyboard focus and on a tap (data-tip; the shortcut comes from data-key) ================= */
+const tipEl=$('tip'); let tipT=0, tipFor=null;
+function tipHide(){ clearTimeout(tipT); tipFor=null; if(tipEl) tipEl.hidden=true; }
+function tipShow(el){ const t=el.getAttribute('data-tip'); if(!t||!el.isConnected) return; tipFor=el;
+  const k=SET&&!SET.get('tips')?'':el.getAttribute('data-key');
+  tipEl.innerHTML=esc(t)+(k?`<kbd>${esc(k)}</kbd>`:''); tipEl.hidden=false;
+  const r=el.getBoundingClientRect(), w=tipEl.offsetWidth, h=tipEl.offsetHeight; let y=r.bottom+6; if(y+h>innerHeight-6) y=r.top-h-6;
+  tipEl.style.left=clamp(r.left+r.width/2-w/2,6,Math.max(6,innerWidth-w-6))+'px'; tipEl.style.top=Math.max(6,y)+'px'; }
+document.addEventListener('pointerover',e=>{ if(e.pointerType==='touch') return; const el=e.target.closest&&e.target.closest('[data-tip]'); if(el===tipFor) return;
+  tipHide(); if(el) tipT=setTimeout(()=>tipShow(el),350); });
+document.addEventListener('focusin',e=>{ const el=e.target.closest&&e.target.closest('[data-tip]'); if(el&&el.matches(':focus-visible')) tipShow(el); });
+document.addEventListener('focusout',tipHide);
+document.addEventListener('pointerdown',e=>{ const el=e.pointerType==='touch'&&e.target.closest&&e.target.closest('[data-tip]'); tipHide();
+  if(el){ tipShow(el); tipT=setTimeout(tipHide,1600); } },true);
+addEventListener('keydown',e=>{ if(e.key==='Escape') tipHide(); },true);
+addEventListener('scroll',tipHide,true);
+document.querySelectorAll('[data-key]').forEach(el=>{ const k=el.getAttribute('data-key'); if(k&&k.length<8) el.setAttribute('aria-keyshortcuts',k.replace(/^CTRL /,'Control+').replace(/^SPACE$/,'Space').replace(/^ESC$/,'Escape')); });
+
+/* ================= settings (settings.js): applied here; the panel behind the gear =================
+   Presentation only: language, controller skin, environment, graphics quality, motion, sound, hints. Nothing here reaches the interpreter. */
+function envColors(){ const cs=getComputedStyle(document.documentElement), c=k=>{ const col=new THREE.Color(); try{ col.setStyle(cs.getPropertyValue(k).trim()||'#000'); }catch{} return col; };
+  return {bg:c('--scene-bg'),grid:c('--scene-grid'),grid2:c('--scene-grid-2'),tint:c('--scene-tint'),ink:c('--gc-ink')}; }
+function envApply(){ const h=document.documentElement; h.setAttribute('data-env',SET?SET.get('env'):'cold-steel');
+  const ec=envColors(); scene.background=ec.bg.clone();
+  hemiL.color.copy(ec.ink).lerp(ec.tint,.3); hemiL.groundColor.copy(ec.bg); fillL.color.copy(ec.ink).lerp(ec.tint,.55);
+  if(gGrid&&gGrid.parent&&ST){ const par=gGrid.parent; par.remove(gGrid); gGrid.geometry.dispose(); gGrid.material.dispose(); gGrid=makeGrid(); par.add(gGrid); }
+  emit('env',{name:h.getAttribute('data-env'),colors:ec}); }
+function makeGrid(){ const st=ST, ec=envColors(), g=new THREE.GridHelper(Math.max(st.x1-st.x0,st.y1-st.y0)*2,20,ec.grid,ec.grid2);
+  g.rotation.x=Math.PI/2; g.position.set((st.x0+st.x1)/2,(st.y0+st.y1)/2,st.z0-0.3); return g; }
+function qualityApply(){ const q=SET?SET.get('quality'):'high', dpr=window.devicePixelRatio||1;
+  renderer.setPixelRatio(q==='low'?1:Math.min(dpr,q==='medium'?1.5:2));
+  if(window.TNC_LOOK) try{ TNC_LOOK.set({fxaa:q!=='low'}); }catch{}
+  document.documentElement.setAttribute('data-quality',q); resize(); }
+function motionApply(){ if(SET) REDUCED=SET.reducedMotion(); document.documentElement.setAttribute('data-motion',REDUCED?'reduced':'full'); if(REDUCED) S.shake=0; }
+try{ matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',motionApply); }catch{}
+function skinApply(){ document.documentElement.setAttribute('data-skin',SET?SET.skinFor(S.machine):(S.machine==='430'?'430':'426')); requestAnimationFrame(resize); }
+function tipsApply(){ document.documentElement.setAttribute('data-tips',SET&&!SET.get('tips')?'off':'on'); }
+function settingsApply(){ motionApply(); tipsApply(); envApply(); qualityApply(); skinApply(); }
+/* what the web app is told (bridge tnc:settings) and may set (tnc:present): the effective values */
+function presentNow(){ return {lang:LANG(), skin:SET?SET.skinFor(S.machine):'426', env:SET?SET.get('env'):'cold-steel', quality:SET?SET.get('quality'):'high',
+  motion:REDUCED?'reduced':'full', sound:!!S.sound}; }
+UIAPI.settings=presentNow;
+UIAPI.present=o=>SET?SET.set(o,{silent:true}):[];
+if(SET) SET.on((keys,o)=>{
+  if(keys.includes('lang')){ if(window.TNC_I18N) TNC_I18N.set(SET.get('lang')); langSync(); }
+  else if(keys.includes('decimal')){ if(S.res) renderList(); if(S.wiz){ const d=wizStep().dflt; dlgIn.placeholder=d!=null&&d!==''?shown(String(d)):''; wizPreview(); } }
+  if(keys.includes('env')) envApply();
+  if(keys.includes('quality')) qualityApply();
+  if(keys.includes('motion')) motionApply();
+  if(keys.includes('skin')) skinApply();
+  if(keys.includes('sound')){ S.sound=!!SET.get('sound'); writePrefs(); }
+  if(keys.includes('tips')) tipsApply();
+  if(openModalEl===$('m-set')) renderSettings();
+  if(!$('setup').hidden) setupRender();
+  if(keys.some(k=>k!=='setup'&&k!=='tips')) emit('settings',presentNow(),o||{});
+});
+/* everything written by script follows a language change */
+function langSync(){
+  document.documentElement.lang=(LOCALES[LANG()]||{html:LANG()}).html; renderSK(); if(S.res){ renderList(); renderChecks(); renderKV(); renderCompare(); } viewLabel();
+  const st=TR(setState.last||''); $('run-state').textContent=st; $('sb-state').textContent=st; $('hdr-stat').dataset.t=''; hdrStat();
+  $('tp-state').textContent=T('tp.'+S.mode); $('sb-hint').textContent=T('sb.hint'); lockText(); profChip(); renderUserPrograms(); if(S.sideTab==='ref') renderRef();
+  $('b-view').firstElementChild.textContent=T(S.flowView?'btn.listing':'btn.flow');
+  if(S.lesson){ $('coach-k').textContent=T(S.lesson.kind==='learn'?'coach.learn':'coach.break'); $('coach-next').textContent=T(S.lesson.i===S.lesson.steps.length-1?'coach.finish':'coach.next'); }
+  else $('coach-next').textContent=T('coach.next');
+  if(!S.wiz&&!S.editing) dlgHint.textContent=T('dlg.hint'); if(S.wiz) wizPreview();
+  if(openModalEl===$('m-help')) renderHelp(); if(openModalEl===$('m-new')) aiMode(S.aiMode||'new'); if(openModalEl===$('m-prof')) renderProfile();
+  document.querySelectorAll('[data-label]').forEach(b=>{ b.textContent=X(b.dataset.label); });           // plugin controls (viz.js)
+  document.querySelectorAll('[data-aria]').forEach(b=>{ b.setAttribute('aria-label',X(b.dataset.aria)); });   // (materials.js)
+  renderProjects(); if(S.tt) renderTT();
+  layout();
+}
+function lockText(){ const el=$('sb-lock'); if(el) el.textContent=S.lock?T('lock.title')+' · '+(S.lock.reason||T('lock.default')):''; }
+/* the tool table handed in from outside (bridge tnc:tools:set): checked, then stored like the operator's own TOOL.T */
+function setTools(list){
+  if(!Array.isArray(list)||list.length>999) return false;
+  const out=[]; for(const t of list){ if(!t||typeof t!=='object') return false; const n=+t.t, l=+t.l, r=+t.r;
+    if(!Number.isInteger(n)||n<0||n>32767||!Number.isFinite(l)||!Number.isFinite(r)||r<0) return false;
+    out.push({t:n,name:String(t.name==null?'TOOL_'+n:t.name).slice(0,32),l,r}); }
+  S.tools[S.machine]=out; curToolT=null; compile(); persist(); if(S.tt) renderTT(); return true;
+}
+
+let setTab='general';
+function openSettings(tab){ if(tab) setTab=tab; openModal('m-set'); renderSettings(); }
+$('b-gear').onclick=()=>openSettings();
+$('set-tabs').addEventListener('click',e=>{ const b=e.target.closest('[data-tab]'); if(b){ setTab=b.dataset.tab; renderSettings(); } });
+const segHTML=(key,opts,cur,label)=>`<div class="seg" role="radiogroup" aria-label="${esc(label)}" data-set="${key}">`+
+  opts.map(([v,l])=>`<button type="button" role="radio" aria-checked="${String(v)===String(cur)}" data-v="${esc(v)}">${esc(l)}</button>`).join('')+'</div>';
+const swatchHTML=(key,opts,cur,label,cols)=>`<div class="swatch" role="radiogroup" aria-label="${esc(label)}" data-set="${key}" style="grid-template-columns:repeat(${cols},minmax(0,1fr))">`+
+  opts.map(([v,l,pv])=>`<button type="button" role="radio" aria-checked="${String(v)===String(cur)}" data-v="${esc(v)}"><span class="pv ${pv}" aria-hidden="true"><i></i><u></u></span><span class="nm">${esc(l)}</span></button>`).join('')+'</div>';
+const srow=(l,d,c,col)=>`<div class="srow${col?' col':''}"><span class="sl">${esc(l)}</span><span class="sd">${esc(d)}</span><div class="sc">${c}</div></div>`;
+const sbtn=(id,l)=>`<button class="cbtn" type="button" id="${id}">${esc(T(l))}</button>`;
+const LANGS=Object.keys(LOCALES).map(k=>[k,LOCALES[k].name]);
+function diagText(){ const gl=renderer.getContext(), st=S.res&&S.res.stats||{}, t=PSTORE.lastSaved;
+  return ['edition    '+((SET&&SET.edition)||'core'), 'embedded   '+((window.TNC_BRIDGE||{}).embedded?'yes':'no')+' · server '+(window.TNC_BACKEND?'yes':'no'),
+    'engine     tnc-core WebAssembly · '+(window.TNC_ENGINE&&TNC_ENGINE.ready()?'loaded':'not loaded'),
+    'three.js   r'+THREE.REVISION+' · WebGL2 '+(typeof WebGL2RenderingContext!=='undefined'&&gl instanceof WebGL2RenderingContext?'yes':'no')+' · pixel ratio '+renderer.getPixelRatio(),
+    'viewport   '+innerWidth+' x '+innerHeight+' · reduced motion '+(REDUCED?'yes':'no'),
+    'machine    '+M().label+' · '+S.pgm+' · '+(S.res?S.res.blocks.length:0)+' blocks · '+S.segs.length+' moves · '+(S.res&&S.res.errors?S.res.errors.length:0)+' errors',
+    'run        '+(setState.last||'')+' · t '+S.t.toFixed(1)+' / '+S.total.toFixed(1)+' s · feed path '+(+st.pathFeed||0).toFixed(0)+' mm',
+    'settings   '+JSON.stringify(SET?SET.all():{}), 'profile    '+(t?'autosaved '+t.toLocaleTimeString():'not saved yet')].join('\n'); }
+function renderSettings(){
+  [...$('set-tabs').children].forEach(b=>{ b.setAttribute('aria-selected',b.dataset.tab===setTab); });
+  const b=$('set-body'), g=k=>SET?SET.get(k):null; let h='';
+  if(setTab==='general') h=srow(T('set.lang'),T('set.lang.d'),segHTML('lang',LANGS,g('lang'),T('set.lang')))+
+    srow(T('set.decimal'),T('set.decimal.d'),segHTML('decimal',[['auto',T('dec.auto')],['comma',T('dec.comma')],['point',T('dec.point')]],g('decimal'),T('set.decimal')))+
+    srow(T('set.motion'),T('set.motion.d'),segHTML('motion',[['auto',T('motion.auto')],['full',T('motion.full')],['reduced',T('motion.reduced')]],g('motion'),T('set.motion')))+
+    srow(T('set.sound'),T('set.sound.d'),segHTML('sound',[[true,T('opt.on')],[false,T('opt.off')]],g('sound'),T('set.sound')))+
+    srow(T('set.tips'),T('set.tips.d'),segHTML('tips',[[true,T('opt.on')],[false,T('opt.off')]],g('tips'),T('set.tips')))+
+    srow(T('set.profile'),T('set.profile.d'),sbtn('set-prof','set.open'));
+  else if(setTab==='look') h=srow(T('set.skin'),T('set.skin.d'),swatchHTML('skin',[['auto',T('skin.auto'),S.machine==='430'?'s430':'s426'],['426',T('skin.426'),'s426'],['430',T('skin.430'),'s430']],g('skin'),T('set.skin'),3),true)+
+    srow(T('set.env'),T('set.env.d'),swatchHTML('env',[['cold-steel',T('env.cold-steel'),'ecs'],['workshop-night',T('env.workshop-night'),'ewn']],g('env'),T('set.env'),2),true)+
+    srow(T('set.quality'),T('set.quality.d'),segHTML('quality',[['low',T('q.low')],['medium',T('q.medium')],['high',T('q.high')]],g('quality'),T('set.quality')));
+  else if(setTab==='help') h=srow(T('set.helpopen'),T('set.helpopen.d'),sbtn('set-help','set.open'))+srow(T('set.keys'),T('set.keys.d'),sbtn('set-keys','set.show'))+
+    srow(T('set.replay'),T('set.replay.d'),sbtn('set-setup','set.show'))+srow(T('set.reset'),T('set.reset.d'),sbtn('set-reset','set.reset.go'));
+  else if(setTab==='adv') h=srow(T('set.dev'),T('set.dev.d'),sbtn('set-dev','set.open'))+
+    `<div class="sech">${esc(T('set.diag'))}</div><pre class="diag" id="set-diag" tabindex="0">${esc(diagText())}</pre>${sbtn('set-copy','set.copy')}`;
+  else h=`<div class="prose"><h4>TNC 426 / 430 Simulator</h4><p class="mono">NC SW 280 476-17 (SIM)</p>
+    <p><a id="about-gh" href="https://github.com/gigacook" target="_blank" rel="noopener noreferrer">${esc(T('about.gh'))}</a></p>
+    <p id="about-notice">${esc(T('about.notice'))}</p><p>${esc(T('about.edu'))}</p><p>${esc(T('about.lic'))}</p></div>`;
+  b.innerHTML=h; b.setAttribute('aria-labelledby','set-t-'+setTab); b.removeAttribute('aria-label');
+  const on=(id,fn)=>{ const el=$(id); if(el) el.onclick=fn; };
+  on('set-prof',openProfile); on('set-help',()=>openHelp('learn')); on('set-keys',()=>openHelp('keys')); on('set-dev',openDev);
+  on('set-setup',()=>{ closeModal(true); setupOpen(0); });
+  on('set-reset',()=>{ local.del(LESSON_LS); if(SET) SET.set('setup',0); say(T('set.reset.done')); });
+  on('set-copy',()=>{ const t=diagText(); (navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(t):Promise.reject()).then(()=>say(T('set.copied')),()=>{ const r=document.createRange(); r.selectNodeContents($('set-diag')); const s=getSelection(); s.removeAllRanges(); s.addRange(r); }); });
+}
+/* a choice in a radio group of the settings panel or the setup card: set it, then put the focus back on the chosen option */
+function setPick(root,e){ const b=e.target.closest('[data-v]'), g=b&&b.closest('[data-set]'); if(!g||!SET) return false;
+  const key=g.dataset.set, raw=b.dataset.v, v=raw==='true'?true:raw==='false'?false:raw; SET.set(key,v);   // the listener above redraws the panel
+  const again=root.querySelector(`[data-set="${key}"] [data-v="${raw}"]`); if(again) again.focus(); return true; }
+$('set-body').addEventListener('click',e=>{ setPick($('set-body'),e); });
+/* radio groups: arrow keys move and choose (WAI-ARIA radio group) */
+document.addEventListener('keydown',e=>{ const g=e.target.closest&&e.target.closest('[role=radiogroup]'); if(!g||e.altKey||e.ctrlKey||e.metaKey) return;
+  const d={ArrowRight:1,ArrowDown:1,ArrowLeft:-1,ArrowUp:-1}[e.key]; if(!d) return; const rs=[...g.querySelectorAll('[role=radio]')], i=rs.indexOf(e.target); if(i<0) return;
+  e.preventDefault(); e.stopPropagation(); rs[(i+d+rs.length)%rs.length].click(); },true);
+
+/* ================= first-run setup: language → controller → motion and graphics → a first program =================
+   A compact card over the open workspace, never a wall: Skip or ESC closes it for good, Help brings it back. No key, no account. */
+const SETUP={i:0,pick:null,ret:null};
+function setupList(){ const sc=SHOWCASE.list.filter(it=>it.machines.includes(S.machine)&&pg()[it.name]!=null).map(it=>it.name);
+  return (sc.length?sc:mgtNames()).slice(0,4); }
+function setupOpen(i,first){ if(openModalEl) closeModal(true); SETUP.i=i||0; SETUP.pick=null; SETUP.ret=first?null:document.activeElement;
+  $('setup').hidden=false; setupRender(); if(first) announce(T('setup.aria')+' · ESC = '+T('setup.skip')); else $('setup-next').focus(); }
+function setupRender(){ const i=SETUP.i; $('setup-t').textContent=T('setup.t.'+(i+1)); $('setup-n').textContent=(i+1)+' / 4';
+  let h=`<p>${esc(T('setup.p.'+(i+1)))}</p>`;
+  if(i===0) h+=segHTML('lang',LANGS,SET.get('lang'),T('set.lang'));
+  else if(i===1) h+=`<div class="seg" role="radiogroup" aria-label="${esc(T('aria.machine'))}" data-mach="1">`+Object.values(MACHINES).map(m=>`<button type="button" role="radio" aria-checked="${m.id===S.machine}" data-v="${esc(m.id)}">${esc(m.label)}</button>`).join('')+'</div>';
+  else if(i===2) h+=segHTML('motion',[['full',T('motion.full')],['reduced',T('motion.reduced')]],REDUCED?'reduced':'full',T('set.motion'))+
+    segHTML('quality',[['low',T('q.low')],['medium',T('q.medium')],['high',T('q.high')]],SET.get('quality'),T('set.quality'));
+  else { const L=setupList(); if(!L.includes(SETUP.pick)) SETUP.pick=L.includes(S.pgm)?S.pgm:L[0];
+    h+=`<div class="olist" role="group" aria-label="${esc(T('setup.t.4'))}">`+L.map(n=>`<button type="button" data-pgm="${esc(n)}" aria-pressed="${n===SETUP.pick}">${esc(n)}</button>`).join('')+'</div>'; }
+  $('setup-bd').innerHTML=h; $('setup-back').disabled=i===0; $('setup-next').textContent=T(i===3?'setup.start':'coach.next'); }
+$('setup-bd').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; const bd=$('setup-bd');
+  if(b.dataset.pgm){ SETUP.pick=b.dataset.pgm; setupRender(); const a=bd.querySelector(`[data-pgm="${b.dataset.pgm}"]`); if(a) a.focus(); return; }
+  if(b.closest('[data-mach]')){ const v=b.dataset.v; setMachine(v); setupRender(); const a=bd.querySelector(`[data-mach] [data-v="${v}"]`); if(a) a.focus(); return; }
+  const g=b.closest('[data-set]'); if(!g) return; const key=g.dataset.set, raw=b.dataset.v; SET.set(key,raw); setupRender();
+  const a=bd.querySelector(`[data-set="${key}"] [data-v="${raw}"]`); if(a) a.focus(); });
+$('setup-skip').onclick=()=>setupClose();
+$('setup-back').onclick=()=>{ SETUP.i=Math.max(0,SETUP.i-1); setupRender(); };
+$('setup-next').onclick=()=>{ if(SETUP.i<3){ SETUP.i++; setupRender(); return; }
+  const n=SETUP.pick; setupClose(); if(n&&pg()[n]!=null){ openPgm(n); showPane('gfx'); } };
+function setupClose(){ $('setup').hidden=true; if(SET) SET.set('setup',1); const r=SETUP.ret; SETUP.ret=null; restoreFocus(r); }
 
 /* ================= render loop ================= */
 function resize(){
@@ -2103,14 +2320,15 @@ function tick(now){
     if(FXO){ let dir={x:0,y:0}; if(s){ const dx=s.b.x-s.a.x, dy=s.b.y-s.a.y, l=Math.hypot(dx,dy); if(l>1e-6) dir={x:dx/l,y:dy/l}; }
       try{ FXO.update(dt,{running:S.running,cutting,pos:p?toWorld(p):{x:0,y:0,z:0},dir,toolR:s?s.toolR:3,spindle:s?s.spindle:0,
         coolant:!!(s&&s.coolant),speed:S.speed||64,stockTop:ST.z1}); }catch(e){} }
+    S.cutting=cutting; camFollow();
     if(BUS.tick) emit('tick',dt,{running:S.running,cutting,pos:p?toWorld(p):null,seg:s}); }
   traceTick(dt);
   if(now-kvT>250){ kvT=now; renderKV();
     const b=S.res.blocks[S.cursor];
-    $('ovl-l').innerHTML=`PGM <b style="color:var(--cyan)">${esc(S.pgm)}</b><br>BLOCK <b>${b&&b.n!=null?b.n:'--'}</b> / ${(S.res.blocks.filter(x=>x.n!=null).pop()||{n:0}).n}<br>`+
+    $('ovl-l').innerHTML=`PGM <b>${esc(S.pgm)}</b><br>BLOCK <b>${b&&b.n!=null?b.n:'--'}</b> / ${(S.res.blocks.filter(x=>x.n!=null).pop()||{n:0}).n}<br>`+
       `BLANK <b>${fmt(ST.x1-ST.x0)}×${fmt(ST.y1-ST.y0)}×${fmt(ST.z1-ST.z0)}</b> mm`;
     hdrStat();
-    $('ovl-r').innerHTML=`${S.view} · ${S.speed?S.speed+'×':'MAX'}<br>${fmtT(S.t)} / ${fmtT(S.total)}<br>OVR <b style="color:var(--amber)">${S.ovr}%</b>`;
+    $('ovl-r').innerHTML=`${S.view} · ${S.speed?S.speed+'×':'MAX'}<br>${fmtT(S.t)} / ${fmtT(S.total)}<br>OVR <b>${S.ovr}%</b>`;
     if(!ovlPainted){ ovlPainted=true; if(viewFitted) fitCamera(); } }   // the first fit ran before the overlays had text
   controls.update();
   if(CO) try{ CO.update(); }catch(e){}
@@ -2130,18 +2348,20 @@ if(!PROF){ PROF=PSTORE.legacy()||PSTORE.blank(''); fresh=true; }
 loadStore();
 if(fresh) persist();
 raw.value=S.text;
-document.querySelector('.ttl').textContent=M().label;
-if($('mach-sel')) $('mach-sel').value=S.machine;
 [...$('spd').children].forEach(b=>b.dataset.on=(+b.dataset.s===S.speed)?'1':'0');
 [...document.querySelectorAll('.mode')].forEach(b=>b.setAttribute('aria-pressed',b.dataset.m===S.mode));
-document.body.classList.toggle('focus',S.focusView); if($('b-focus')) $('b-focus').setAttribute('aria-pressed',S.focusView);
-if(window.TNC_I18N) try{ TNC_I18N.set(TNC_I18N.lang||'en'); }catch(e){}
-compile(); renderSK(); renderProjects(); syncToggles(); keyPill(); resize(); profChip(); setSideTab(S.sideTab); renderUserPrograms();
+inspSync();
+if(window.TNC_I18N) try{ TNC_I18N.set(TNC_I18N.lang||'sv'); }catch{}
+settingsApply();
+compile(); machSync(); setMode(S.mode); renderProjects(); syncToggles(); keyPill(); resize(); profChip(); setSideTab(S.sideTab); renderUserPrograms(); langSync();
 if(S.flowView&&window.TNC_FLOW){ S.flowView=false; toggleFlow(); }
 const flash=sess.get('tnc.flash'); if(flash){ sess.del('tnc.flash'); setTimeout(()=>say(flash),400); }
-const embedded=!!(window.TNC_BRIDGE&&TNC_BRIDGE.embedded);      // inside the web app: no splash, no name prompt
-if(!embedded&&!sess.get(BOOT_SS)) $('boot').hidden=false;
-else if(!embedded&&!PROF.name) openProfile();
+if(sess.get('tnc.askname')){ sess.del('tnc.askname'); if(!PROF.name) openProfile(); }
+/* first visit: the optional setup card over the open workspace. Not inside the plain web-app embed, and not in Play
+   (its shell teaches the first steps); the Business edition shows it embedded too. */
+const BR=window.TNC_BRIDGE||{}, edition=(SET&&SET.edition)||'core';
+if(SET&&!SET.get('setup')&&edition!=='play'&&(!BR.embedded||edition==='business')) setupOpen(0,true);
+$('b-exit').hidden=!(edition==='play'&&BR.embedded); $('b-exit').onclick=()=>{ if(BR.exit) BR.exit(); };
 requestAnimationFrame(tick);
 emit('ready');
 })();

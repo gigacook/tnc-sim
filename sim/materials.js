@@ -90,15 +90,16 @@ var TNC_MATERIALS = (function () {
         ui.say('MATERIAL: ' + p.label.toUpperCase());
       };
 
-      /* ---- small picker, next to the existing sound toggle ---- */
+      /* ---- small picker in the Effects and view menu (the shell's #fx-slot marks the place) ---- */
+      var host;
       try {
-        var host = document.getElementById('b-sound');
+        host = document.getElementById('fx-slot');
         if (host && host.parentNode && !document.getElementById('mat-sel')) {
           var sel = document.createElement('select');
           sel.id = 'mat-sel';
           sel.className = 'tb fx';
-          sel.title = 'Stock material';
-          sel.setAttribute('aria-label', 'Stock material');
+          sel.dataset.aria = 'Stock material';   // ui.js keeps the name in the interface language
+          sel.setAttribute('aria-label', window.TNC_I18N ? TNC_I18N.x('Stock material') : 'Stock material');
           sel.style.cssText = 'font:inherit;letter-spacing:.06em;padding:0 8px;min-width:0;appearance:auto;-webkit-appearance:menu;cursor:pointer;';
           PRESETS.forEach(function (p) {
             var o = document.createElement('option');

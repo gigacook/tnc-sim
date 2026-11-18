@@ -121,9 +121,9 @@ var TNC_VIZ = (function () {
 
     /* toggles in the Effects & view menu */
     function btn(id, label, key) {
-      var anchor = document.getElementById('b-sound'); if (!anchor) return;
-      var b = document.createElement('button'); b.className = 'tb fx'; b.id = id; b.textContent = label; b.dataset.on = opts[key] ? '1' : '0';
-      b.onclick = function () { opts[key] = !opts[key]; b.dataset.on = opts[key] ? '1' : '0'; if (key === 'pick' && !opts.pick) clearPick(); save(); if (ui.say) ui.say(label.toUpperCase() + (opts[key] ? ' ON' : ' OFF')); };
+      var anchor = document.getElementById('fx-slot'); if (!anchor) return;   // the shell's place for plugin controls
+      var b = document.createElement('button'); b.className = 'tb fx'; b.id = id; b.type = 'button'; b.dataset.label = label; b.textContent = window.TNC_I18N ? TNC_I18N.x(label) : label; b.dataset.on = opts[key] ? '1' : '0'; b.setAttribute('aria-pressed', String(!!opts[key]));
+      b.onclick = function () { opts[key] = !opts[key]; b.dataset.on = opts[key] ? '1' : '0'; b.setAttribute('aria-pressed', String(!!opts[key])); if (key === 'pick' && !opts.pick) clearPick(); save(); if (ui.say) ui.say(label.toUpperCase() + (opts[key] ? ' ON' : ' OFF')); };
       anchor.parentNode.insertBefore(b, anchor.nextSibling);
     }
     function save() { try { localStorage.setItem('tnc.viz', JSON.stringify(opts)); } catch (e) {} }

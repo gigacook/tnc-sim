@@ -1,5 +1,14 @@
 TNC 426 / 430 SIMULATOR - DEVELOPER FEATURE LOG
-Updated 2026-10-17
+Updated 2026-11-18
+
+2026-11-18: workspace redesign (branch feat/dual-frontend). Machine view first,
+the inspector (right pane) closed by default, one New dialog (Manual / AI), one
+Help and lessons drawer, one Settings panel behind a bottom gear (DEV moved to
+Settings > Advanced), two controller skins and two environments, Swedish first,
+a first-run setup card instead of the boot splash. Polar blocks open again in
+their dialog (LP PR+57 PA+157,5 R0 F MAX on the Swedish screen). Bridge
+contract v2 for the web app around the page. No engine change: parity record
+untouched. Details under WORKSPACE, POLAR BLOCKS and BRIDGE below.
 
 2026-10-17: SL cycles 14, 20-25 (contour pockets with islands, pilot drilling,
 rough-out, floor/side finishing, contour train) in the Rust engine.
@@ -103,13 +112,14 @@ the existing r128-style colour look.
 
 PROFILES AND PROGRAM I/O (profile.js, ui.js):
   - One personal profile per browser (IndexedDB via idb-keyval), autosave,
-    name prompt on first visit, wipe/reset.
+    wipe/reset. The Profile control in the bar opens it and asks for the
+    name; nothing asks for it on the first visit.
   - Export/import profile as .zip with a Merge/Replace choice on import.
     Per-machine tool table, import/export as TOOL.T.
   - Load .H/.I (UTF-8 or Windows-1252), .zip of programs, drag-and-drop.
     Save as .H with Ctrl+S in numbered TNC listing format (CRLF).
   - PGM MGT program manager, block editor, undo/redo (Ctrl+Z /
-    Ctrl+Shift+Z), boot splash, mobile layout.
+    Ctrl+Shift+Z), mobile layout.
   - window.TNC_UI plugin bus (scene/tool/tick/crash/resize, ui.render) that
     fx.js, look.js and materials.js attach to.
 
@@ -145,14 +155,110 @@ PROGRAMMING DIALOGS AND UI (dialogs.js, viz.js, i18n.js, ui.js):
         APPR PLT / PLN have no manual example (they follow from p. 134 only;
         PLCT, PCT and DEP PLCT are the manual's block forms).
   - Tool list opens in the machine view (key T). Keys: 1-4 operating mode,
-    5-9 speed, F focus view (hides the right pane).
+    5-9 speed, F opens / closes the inspector (the right pane), N the New
+    dialog, H help, comma the settings.
   - Right pane tabs: Diagnostics, Reference (keys, cycles, tools, machine,
     manual sections), and the operator's own programs (created, edited,
     version; projects collapsed).
   - Position (DRO) is an overlay on the 3D view, not a separate panel.
   - Axis vectors from the program zero to the tool, and click-to-pick with
     coordinates (viz.js).
-  - Interface language: English or Swedish, set from the profile dialog.
+  - Interface language: Swedish (default), English or Serbian in Latin
+    script ("Srpski", html lang sr-Latn), set in Settings or the first-run
+    setup. CNC words (TOOL CALL, CYCL DEF ...) and program text are never
+    translated. Shell labels, toasts, the shortcut list, the profile dialog
+    and the tool table follow the language; tests/i18n.js fails when a text
+    of one language is missing in another. Still English only: the lesson
+    and manual texts (lessons.js has no translation), the AI panel's inner
+    texts, the questions of the programming dialogs (the control's own
+    wording) and the developer log.
+  - Decimal character on the screen: its own setting, as MP 7280 on the
+    control (comma, point, or follow the language: comma in Swedish and
+    Serbian, point in English). Input takes both; stored text keeps the
+    point.
+
+POLAR BLOCKS (dialogs.js, ui.js; tests/polar.js, browser suite "polar"):
+  - L then P gives the polar dialog LP (PR, PA, radius compensation, feed,
+    M), labelled "Polära koordinater" / "Polar coordinates". A preview line
+    shows the block as far as it is answered.
+  - Numbers in a dialog take a decimal comma or a decimal point. The comma
+    becomes a point in one place (TNC_DIALOGS.answer); program text and
+    comments are never rewritten. A text answer (Q formula) keeps commas.
+  - Stored text is the engine's own spelling: LP PR+57 PA+157.5 R0 FMAX.
+    The screen form (TNC_DIALOGS.show) writes F MAX / F AUTO, and a decimal
+    comma when the decimal-character setting says so (default in Swedish
+    and Serbian): LP PR+57 PA+157,5 R0 F MAX. BLK FORM 0.1,
+    CYCL DEF 7.1, TCH PROBE 0.0, FN n: keep their point. The engine reads
+    FMAX and F MAX, comma and point alike (checked in tests/polar.js).
+    Placeholder: "F MAX" on the screen follows the manual's listings
+    (e.g. 7 LP PR+60 PA+180 R0 F MAX, p. 155); not confirmed from a screen.
+  - E on a polar block (LP, CP, CTP) opens it in its dialog with the present
+    values as defaults (ENT keeps, NO ENT clears); storing replaces the
+    block. TEXT (F2) switches to the block line. Every other block opens on
+    the block line as before; DIALOG (F2) there opens L, CC, C, CR, CT, RND,
+    CHF in their dialogs. A block the dialog cannot hold stays text.
+  - Fixed in passing: a typed "DR-" was read as DR+; "1,2,3" as a number;
+    M "3, 8" was refused.
+  - Fixture: pole CC X+0 Y+0, LP PR+57 PA+157.5 ends at X-52.661133
+    Y+21.812956 on both machine profiles.
+
+WORKSPACE (sim-shell.html, ui.js, settings.js, i18n.js):
+  - Top bar: modes 1-4, Run / Pause / Stop (NC START, NC STOP = feed hold,
+    RESET), New program, 426 | 430 switch, Inspector, Help, Profile.
+    Program access (Programs, Tools, Save .H) stays in the program header.
+  - Inspector = the right pane (Diagnostics, Reference, Programs). Closed by
+    default; the Inspector control, its own close button and F toggle it; it
+    keeps its tab and page while closed; the choice is stored per edition
+    (localStorage tnc.edition.<edition>.v1, with the selected machine).
+    Phones: it is the Status workspace.
+  - New program: one dialog, tabs Manual and AI. AI holds "New program" and
+    "Change current" and the existing generation flow. The three-card popup
+    and the + New / Lessons / AI header menus are gone.
+  - Help and lessons: one drawer (Lessons, Crash it, Manual, Shortcuts, AI
+    setup). Finished lessons are remembered (tnc.lessons.v1) and marked.
+  - Settings (bottom gear; in the drawer on phones): General (language,
+    decimal character, motion, sound, shortcut hints, profile), Appearance (controller skin,
+    environment, graphics quality), Help (help, shortcuts, introduction,
+    reset), Advanced (developer log = the former DEV: features and version
+    history, diagnostics), About
+    ("gigacook on GitHub", the non-affiliation notice). Stored in
+    localStorage tnc.settings.v1; the older tnc.lang key and the sound
+    switch of the tnc426_prefs cookie are read once and left in place.
+  - Controller skins (layout, not only colour): 426 Classic = program left,
+    thick bezel, dialog line under the screen, eight square light keys;
+    430 Steel = 3-D view left, thin steel frame, dialog line above a white
+    screen, flat keys in two groups of four. "Follow machine" is the
+    default. Own designs, no proprietary artwork.
+  - Environments: Cold Steel, Workshop Night (3-D background, grid, light
+    tint and the frame around it). Skin and environment are independent and
+    never reach the interpreter.
+  - Program screen: light, dark monospaced text, one soft highlight.
+    Colours are the gigacook unified tokens, embedded in sim-shell.html.
+  - First-run setup card (language, controller, motion and graphics, a first
+    program from the showcase set); Skip or ESC; replay from Help. No key.
+  - Showcase programs: build.py embeds examples/showcase (manifest + .H) as
+    built-in programs when the folder exists.
+  - Motion: follows prefers-reduced-motion, or Full / Reduced in Settings.
+  - Effects and view menu: flow view, chips, coolant, smoke, labels, vice,
+    and the controls two plugins add there: stock material (materials.js),
+    click to pick and axis vectors (viz.js).
+  - Tooltips (data-tip) on hover, keyboard focus and tap, with the shortcut.
+    Status is never colour alone (symbols on alarms, checks, rows, toggles).
+  - TAB opens the raw editor only while no control has the focus; from a
+    focused control it moves the focus (was a keyboard trap).
+
+BRIDGE v2 (bridge.js; contract in docs/BUILD_STATE.md; tests/bridge.js):
+  - Active in a same-origin iframe with or without a server; the server part
+    (AI through the server) still needs window.TNC_BACKEND.
+  - ?edition=business|play (anything else = core) on <html data-edition>.
+  - app -> sim: tnc:open, tnc:get (v1), tnc:hello, tnc:present, tnc:machine,
+    tnc:exec, tnc:camera, tnc:lock, tnc:tools:get, tnc:tools:set,
+    tnc:inspect (opens the inspector on compare / diag / ref / progs).
+    sim -> app: tnc:ready, tnc:program, tnc:changed, tnc:selected (v1),
+    tnc:state (10 a second at most, at once on a transition), tnc:tools,
+    tnc:exit, tnc:settings.
+  - Origin, source window and payload shape are checked; anything else is
+    dropped. tnc:lock refuses NC start with the reason on screen.
 
 AI PROGRAM GENERATION (ai.js):
   - OpenRouter only, BYOK - never Anthropic direct (checked: no Anthropic
@@ -214,9 +320,10 @@ PHONES AND TABLETS (<= 900 px, sim-shell.html + ui.js):
   - Soft keys + the block line (PRG EDIT) in a dock at the bottom of every
     workspace, 8 keys at a time with a row switch (the control's own
     soft-key row paging). The dock rides above the software keyboard.
-  - Header: modes, program + run state, check count (opens the checks).
-    DEV, + New, Lessons, AI, Help, Focus, Profile in a MENU drawer (modal:
-    focus inside, page inert, Esc / scrim / swipe right close it).
+  - Header: program + run state, check count (opens the checks), Run /
+    Pause / Stop, modes. New program, the 426 | 430 switch, Help, Profile
+    and the settings gear in a MENU drawer (modal: focus inside, page inert,
+    Esc / scrim / swipe right close it).
   - Dialogs: full-height sheets following the visual viewport; the AI and
     new-program actions stay on screen. Inputs 16 px (no iOS zoom; pinch
     zoom stays on), 44 px touch targets, safe areas, long blocks wrap.
@@ -249,7 +356,7 @@ BUILD:
   - build.py is fully data-driven: LIBS (JSZip, idb-keyval), MODULES
     (sim/*.js files, ui.js last), TEXTS (this file, docs/HISTORY.txt,
     docs/RELEASES.txt/ROADMAP.txt when they exist -> window.TNC_* globals
-    for this DEV modal). A new module is one line.
+    for the developer log in Settings > Advanced). A new module is one line.
 
 IN PROGRESS - NOT YET DONE
 ==============================================================================
@@ -265,8 +372,6 @@ IN PROGRESS - NOT YET DONE
   - M128/M114 not implemented (the operator uses cycle 19 instead).
   - probeSpec/probeList (dialogs.js) exist but are not wired to a soft key
     or a flow.js node yet.
-  - RELEASES.txt does not exist yet, so the DEV modal's third tab (which
-    build.py already wires up) is empty.
   - The AI's planned part spec is measured against but not drawn in 3-D.
   - Live visual translation: cursor-on-a-block driving the flow view with
     an animated tool trace. Both halves exist (traceFor/traceTick in

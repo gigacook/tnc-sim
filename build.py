@@ -8,6 +8,8 @@
                             cargo and `rustup target add wasm32-unknown-unknown`). Without it the committed module is used.
 
 A new module is one line in MODULES. Missing optional files are skipped, never fatal.
+The showcase programs (examples/showcase/manifest.json + its .H files) are embedded as window.TNC_SHOWCASE when the
+folder is there; without it the build is the same page without them.
 """
 import pathlib, urllib.request, json, re, sys
 d = pathlib.Path(__file__).parent
@@ -53,6 +55,7 @@ ENGINE_MODULES = [
     ('engine.js',    'TNC engine: interpreter, checks, material model (Rust, server/crates/tnc-core, as WebAssembly)'),
 ]
 MODULES = [
+    ('settings.js',  'Presentation settings (tnc.settings.v1) and the edition flag'),
     ('machines.js',  'Machine parameters (shared with the server engine)'),
     ('programs.js',  'Programs on the control'),
     ('lessons.js',   'Lessons, BREAK IT, manual'),
@@ -65,7 +68,7 @@ MODULES = [
     ('profile.js',   'User profile storage'),
     ('part.js',      'Part spec: target geometry, lettering, measured comparison (AI loop)'),
     ('ai.js',        'AI program generation (OpenRouter)'),
-    ('bridge.js',    'Bridge to the TNC server and web app (inactive without a server)'),
+    ('bridge.js',    'Bridge to the TNC server (when there is one) and to the web app around the page (same-origin iframe)'),
     ('viz.js',       'View aids: axis vectors, click to pick'),
     ('dialogs.js',   'Programming dialogs: path functions, CYCL DEF, TOOL CALL'),
     ('i18n.js',      'i18n: language strings (en/sv)'),
@@ -74,8 +77,7 @@ MODULES = [
 ]
 
 # text files exposed as window globals for the DEV modal
-TEXTS = [('docs/FEATURES.txt', 'TNC_DEVLOG'), ('docs/HISTORY.txt', 'TNC_HISTORY'),
-         ('docs/RELEASES.txt', 'TNC_RELEASES'), ('docs/ROADMAP.txt', 'TNC_ROADMAP')]
+TEXTS = [('docs/FEATURES.txt', 'TNC_DEVLOG'), ('docs/HISTORY.txt', 'TNC_HISTORY')]
 
 def lib(name, url):
     f = cache / name
@@ -108,6 +110,26 @@ for name, var in TEXTS:
     f = d / name
     if f.exists():
         scripts += tag('text: ' + name, f'window.{var} = {json.dumps(f.read_text(encoding="utf-8"))};')
+def showcase():
+    """examples/showcase -> {manifest: [...], sources: {FILE.H: text}} or None. Never fatal: a missing or broken folder is skipped."""
+    sc = d / 'examples' / 'showcase'
+    try:
+        man = json.loads((sc / 'manifest.json').read_text(encoding='utf-8'))
+        entries = man.get('programs', []) if isinstance(man, dict) else man
+        keep, sources = [], {}
+        for e in entries:
+            f = sc / str(e.get('file', ''))
+            if not (e.get('file') and f.is_file()):
+                continue
+            sources[e['file']] = f.read_text(encoding='utf-8')
+            keep.append({k: e[k] for k in ('id', 'file', 'title', 'description', 'machines') if k in e})
+        return {'manifest': keep, 'sources': sources} if sources else None
+    except Exception:
+        return None
+
+sc = showcase()
+if sc:
+    scripts += tag('showcase programs (examples/showcase)', 'window.TNC_SHOWCASE = ' + json.dumps(sc, sort_keys=True) + ';')
 included = []
 if '--wasm' in sys.argv or not WASM.exists(): build_wasm()
 import gzip, base64
@@ -146,7 +168,7 @@ scripts += tag('start: instantiate the engine, then run the modules above in ord
 
 def page(extra=''):
     return f"""<!DOCTYPE html>
-<html lang="en">
+<html lang="sv">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -165,7 +187,7 @@ if key and key in doc:
     sys.exit('build: the OpenRouter key leaked into the public build — aborting')
 (d / 'index.html').write_text(doc, encoding='utf-8', newline='\n')
 (d / 'docs' / 'index.html').write_text(doc, encoding='utf-8', newline='\n')  # GitHub Pages serves main -> /docs
-print(f'built index.html  {len(doc):,} bytes  modules: {" ".join(included)}')
+print(f'built index.html  {len(doc):,} bytes  modules: {" ".join(included)}' + (f'  showcase: {len(sc["sources"])} programs' if sc else ''))
 
 if key:
     local = page(tag('local-only key from .env — never commit this file',

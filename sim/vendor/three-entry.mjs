@@ -9,10 +9,9 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
-import { CopyShader } from 'three/examples/jsm/shaders/CopyShader.js';
 import * as QUARKS from 'three.quarks';
 
-const THREE = Object.assign({}, T, { OrbitControls, RoomEnvironment, EffectComposer, RenderPass, ShaderPass, OutputPass, FXAAShader, CopyShader });
+const THREE = Object.assign({}, T, { OrbitControls, RoomEnvironment, EffectComposer, RenderPass, ShaderPass, OutputPass, FXAAShader });
 /* r128 behaviour for colours: hex and vertex colours are used as given, not converted from sRGB.
    Keeps the existing look; modules may opt in to colour management later. */
 THREE.ColorManagement.enabled = false;

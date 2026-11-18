@@ -8,7 +8,10 @@
  * ARIA state, roving tabindex); swipes (navigate, but never from the 3-D view or on a vertical drag); state kept
  * across workspaces (block cursor, WebGL canvas); soft-key paging; run controls; editing a block from the dock;
  * dialogs (focus trap, Esc, focus return); global shortcuts vs. typing and keyboard-focused buttons; Swedish;
- * AI generation against a MOCKED OpenRouter (never a real key); axe-core scans; and — when the Rust server is
+ * AI generation against a MOCKED OpenRouter (never a real key); axe-core scans; the workspace (default layout without the
+ * inspector and without a DEV control, the settings behind the gear and that they persist, both languages, both controller
+ * skins, both environments, reduced motion, the one New dialog, the first-run setup, the help drawer, tooltips, and the
+ * polar block LP through the real dialog: create, save, reload, reopen, run); and — when the Rust server is
  * built — the simulator and web app served with the desktop shell's CSP. Ported from the old untracked .tools/qa/qa.mjs:
  * profile name in IndexedDB, undo / redo and I / E edit keys, Ctrl+S listing, project and profile zips, uploads
  * (Windows-1252, CRLF, lower case, drag-drop, zip, _2 rename, TOOL.T), the tool table, single block in execution order,
@@ -60,17 +63,18 @@ async function launch(type) {
   return null;
 }
 
-/* ---------- a fresh simulator page: boot screen and name prompt out of the way, fonts offline ---------- */
-async function simPage(browser, { width, height, mobile = width <= 900, lang = 'en', url = SIM_URL, storage = {} } = {}) {
+/* ---------- a simulator page as an operator who has been here before: the first-run setup done (setup: false = a first visit),
+   the language chosen, fonts offline. insp (wide screens): the inspector opened with its own control, as the checks of the
+   right pane need it; insp: false leaves the default layout. Settings are seeded once, so a reload keeps what a check set. ---------- */
+async function simPage(browser, { width, height, mobile = width <= 900, lang = 'en', url = SIM_URL, storage = {}, setup = true, insp = true, motion = 'reduce' } = {}) {
   const ctx = await browser.newContext({ viewport: { width, height }, isMobile: mobile && browser.browserType() === chromium ? true : undefined,
-    hasTouch: mobile, deviceScaleFactor: 1, reducedMotion: 'reduce' });
-  await ctx.addInitScript(([lang, storage]) => {
+    hasTouch: mobile, deviceScaleFactor: 1, reducedMotion: motion });
+  await ctx.addInitScript(([lang, storage, setup]) => {
     try {
-      sessionStorage.setItem('tnc426.boot', '1');
-      localStorage.setItem('tnc.lang', lang);
-      for (const [k, v] of Object.entries(storage)) localStorage.setItem(k, v);
-    } catch (e) {}
-  }, [lang, storage]);
+      if (setup && localStorage.getItem('tnc.settings.v1') == null) localStorage.setItem('tnc.settings.v1', JSON.stringify({ v: 1, lang, setup: 1 }));
+      for (const [k, v] of Object.entries(storage)) if (localStorage.getItem(k) == null) localStorage.setItem(k, v);
+    } catch {}
+  }, [lang, storage, setup]);
   const page = await ctx.newPage();
   page.on('filechooser', () => {});   // keeps file-chooser interception on from the start: the first Ctrl+O must not race it
   const errors = [];
@@ -80,10 +84,13 @@ async function simPage(browser, { width, height, mobile = width <= 900, lang = '
   await page.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
   await page.goto(url);
   await page.waitForFunction(() => document.querySelectorAll('#plist .blk').length > 5, null, { timeout: 30000 });
-  // the first visit asks for a name: close it like an operator would
-  if (await page.locator('#m-prof:not([hidden])').count()) await page.keyboard.press('Escape');
+  if (insp) await openInspector(page);
   await page.waitForTimeout(150);
   return { ctx, page, errors };
+}
+/* the right pane is closed by default: open it with the Inspector control (wide screens; phones have the Status workspace) */
+async function openInspector(page) {
+  if (await page.evaluate(() => innerWidth > 900 && document.getElementById('b-insp').getAttribute('aria-pressed') === 'false')) { await page.click('#b-insp'); await page.waitForTimeout(120); }
 }
 
 const overflow = (page) => page.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth }));
@@ -138,8 +145,8 @@ const VIEWPORTS = [
 
 async function layoutChecks(browser, tag) {
   for (const vp of VIEWPORTS) {
-    for (const lang of ['en', 'sv']) {
-      if (lang === 'sv' && ![320, 390, 1440].includes(vp.width)) continue;
+    for (const lang of ['en', 'sv', 'sr']) {
+      if (lang !== 'en' && ![320, 390, 1440].includes(vp.width)) continue;
       const { ctx, page, errors } = await simPage(browser, { ...vp, lang });
       const label = `[${tag}] ${vp.name} ${lang}`;
       const o = await overflow(page);
@@ -158,32 +165,34 @@ async function layoutChecks(browser, tag) {
         await page.click('#mt-gfx');
         // primary touch targets
         const small = await page.evaluate(() => {
-          const sel = '.mode, .mtabs [role=tab], #b-menu, #hdr-err, .dock .sk:not([hidden]), .skpager:not([hidden]) button';
+          const sel = '.mode, .mtabs [role=tab], #b-menu, #hdr-err, #b-start, #b-stop, #b-reset, .dock .sk:not([hidden]), .skpager:not([hidden]) button';
           return [...document.querySelectorAll(sel)].filter((e) => e.offsetParent !== null)
             .map((e) => { const r = e.getBoundingClientRect(); return { id: e.id || e.textContent.trim().slice(0, 14), w: Math.round(r.width), h: Math.round(r.height) }; })
             .filter((r) => r.w < 44 || r.h < 40);
         });
         ok(small.length === 0, `${label}: primary touch targets ≥ 44 px wide / ≥ 40 px tall`, JSON.stringify(small.slice(0, 4)));
         // essential controls on screen without scrolling: modes, tabs, START, menu, checks
-        const vis = await page.evaluate(() => ['#modes', '#mtabs', '#b-menu', '#hdr-err', '.dock .sk.go'].map((s) => {
+        const vis = await page.evaluate(() => ['#modes', '#mtabs', '#b-menu', '#hdr-err', '#b-start', '#b-stop', '#b-reset', '.dock .sk.go'].map((s) => {
           const e = document.querySelector(s); if (!e) return s + ' missing'; const r = e.getBoundingClientRect();
           return r.width > 0 && r.top >= 0 && r.bottom <= innerHeight + 1 ? null : s + ' off screen'; }).filter(Boolean));
-        ok(vis.length === 0, `${label}: modes, workspace tabs, MENU, checks and NC START visible`, vis.join(', '));
+        ok(vis.length === 0, `${label}: modes, workspace tabs, MENU, checks, run / pause / stop and NC START visible`, vis.join(', '));
         const canvas = await box(page, '#gl');
         ok(canvas && canvas.height >= 150 && canvas.width >= vp.width - 20, `${label}: graphics canvas has a usable size`, JSON.stringify(canvas));
       } else {
         await page.screenshot({ path: join(SHOTS, `${tag}-${vp.width}x${vp.height}-${lang}.png`) });
         seen.push(['desktop', await text()]);
-        const inl = await page.evaluate(() => ['b-dev', 'b-new', 'b-lessons', 'b-ai', 'b-help', 'b-focus', 'b-prof'].filter((id) => { const e = document.getElementById(id); return !e || e.offsetParent === null; }));
-        ok(inl.length === 0, `${label}: header buttons stay inline on wide screens`, inl.join(','));
+        const inl = await page.evaluate(() => ['modes', 'b-start', 'b-stop', 'b-reset', 'b-mgt', 'b-new', 'mach-seg', 'b-insp', 'b-help', 'b-prof', 'b-gear'].filter((id) => { const e = document.getElementById(id); return !e || e.offsetParent === null; }));
+        ok(inl.length === 0, `${label}: modes, run / pause / stop, New, machine, inspector, help, profile stay inline on wide screens; the gear sits at the bottom`, inl.join(','));
+        const gearLow = await page.evaluate(() => { const g = document.getElementById('b-gear').getBoundingClientRect(), m = document.querySelector('.main').getBoundingClientRect(); return g.top >= m.bottom - 1 && g.bottom <= innerHeight + 1; });
+        ok(gearLow, `${label}: the settings gear is below the workspace, on screen`);
         ok(await page.evaluate(() => !document.getElementById('hmore').hasAttribute('role')), `${label}: no drawer dialog role on wide screens`);
         ok(await page.evaluate(() => document.getElementById('sks').closest('.col-pgm') !== null), `${label}: soft keys under the program column`);
       }
       const undef = seen.filter(([, t]) => /\bundefined\b/.test(t)).map(([p, t]) => p + ': …' + t.slice(Math.max(0, t.search(/\bundefined\b/) - 30), t.search(/\bundefined\b/) + 9).replace(/\s+/g, ' '));
       ok(undef.length === 0, `${label}: no visible "undefined" on any screen`, undef.join(' | '));
-      if (lang === 'sv') {
+      if (lang !== 'en') {
         const en = ['Elapsed / total', 'MY PROGRAMS', 'START SINGLE', 'all clear'].filter((w) => seen.some(([, t]) => t.includes(w)));
-        ok(en.length === 0, `${label}: no English left in Swedish (Elapsed / total, MY PROGRAMS, START SINGLE, all clear)`, en.join(', '));
+        ok(en.length === 0, `${label}: no English left in ${lang} (Elapsed / total, MY PROGRAMS, START SINGLE, all clear)`, en.join(', '));
       }
       ok(errors.length === 0, `${label}: no page errors, console errors or failed requests`, errors.slice(0, 3).join(' | '));
       await ctx.close();
@@ -200,8 +209,9 @@ async function phoneFlows(browser, tag) {
   ok((await active(page)) === 'hmore-x', `${L}: focus moves into the drawer`, await active(page));
   ok(await page.evaluate(() => document.querySelector('.main').inert && document.getElementById('dock').inert), `${L}: workspace and dock are inert behind the drawer`);
   ok(await page.getAttribute('#b-menu', 'aria-expanded') === 'true', `${L}: MENU aria-expanded=true`);
-  const inDrawer = await page.evaluate(() => ['b-dev', 'b-new', 'b-lessons', 'b-ai', 'b-help', 'b-focus', 'b-prof'].filter((id) => { const e = document.getElementById(id); const r = e.getBoundingClientRect(); return !(e.closest('#hmore') && r.width > 0 && r.right <= innerWidth + 1); }));
-  ok(inDrawer.length === 0, `${L}: profile, AI, help, lessons, DEV, new, focus are in the drawer`, inDrawer.join(','));
+  const inDrawer = await page.evaluate(() => ['b-new', 'mach-seg', 'b-help', 'b-prof', 'b-gear'].filter((id) => { const e = document.getElementById(id); const r = e.getBoundingClientRect(); return !(e.closest('#hmore') && r.width > 0 && r.right <= innerWidth + 1); }));
+  ok(inDrawer.length === 0, `${L}: new program (manual and AI), machine, help and lessons, profile and the settings gear are in the drawer`, inDrawer.join(','));
+  ok(await page.evaluate(() => !document.getElementById('b-dev') && !/\bDEV\b/.test(document.getElementById('hmore').innerText)), `${L}: no DEV entry in the drawer`);
   for (let i = 0; i < 12; i++) await page.keyboard.press('Tab');
   ok(await page.evaluate(() => document.getElementById('hmore').contains(document.activeElement)), `${L}: Tab stays inside the drawer`, await active(page));
   await page.keyboard.press('Escape');
@@ -356,6 +366,10 @@ async function desktopFlows(browser, tag) {
   // typing does not trigger shortcuts
   // TAB opens the raw editor and focuses it. A second browser TAB lands on a different control per engine; on Windows
   // WebKit that is a button, where Backspace goes back in history and the page is gone (#24)
+  // TAB is the raw-editor key only while no control has the focus; from a focused control it moves the focus (no keyboard trap)
+  await page.keyboard.press('Tab');
+  ok(await page.evaluate(() => document.getElementById('raw').hidden && document.activeElement.id !== 'b-help' && document.activeElement !== document.body), `${L}: TAB from a focused button moves the focus, it does not open the raw editor`, await active(page));
+  await page.evaluate(() => document.activeElement.blur());
   await page.keyboard.press('Tab');
   const rawOpen = await page.evaluate(() => !document.getElementById('raw').hidden && document.activeElement.id === 'raw');
   if (rawOpen) {
@@ -393,8 +407,8 @@ async function aiMocked(browser, tag) {
     }
     return route.fulfill({ status: 404, body: '{}' });
   });
-  await page.click('#b-menu'); await page.click('#b-ai');
-  await page.click('.hmenu button:has-text("New program from a description")');
+  await page.click('#b-menu'); await page.click('#b-new');
+  await page.click('#new-t-ai');
   ok(await page.evaluate(() => !document.getElementById('m-new').hidden && !document.getElementById('new-ai').hidden), `${L}: AI dialog opens from the drawer`);
   await page.fill('#ai-prompt', 'A 100 x 80 plate, one facing pass 1 mm deep.');
   const pb = await box(page, '#ai-go');
@@ -431,8 +445,8 @@ async function aiRepairMocked(browser, tag) {
     }
     return route.fulfill({ status: 404, body: '{}' });
   });
-  await page.click('#b-menu'); await page.click('#b-ai');
-  await page.click('.hmenu button:has-text("New program from a description")');
+  await page.click('#b-menu'); await page.click('#b-new');
+  await page.click('#new-t-ai');
   await page.fill('#ai-maxtok', '500000'); await page.dispatchEvent('#ai-maxtok', 'change');
   ok(await page.evaluate(() => localStorage.getItem('tnc426.aimaxtok') === '500000' && document.getElementById('ai-maxtok').value === '500000'),
     `${L}: max tokens keeps 500000`, await page.evaluate(() => localStorage.getItem('tnc426.aimaxtok')));
@@ -462,6 +476,13 @@ async function axeScan(browser, tag) {
     { name: 'phone drawer', vp: { width: 390, height: 844 }, run: async (p) => p.click('#b-menu') },
     { name: 'phone help dialog', vp: { width: 390, height: 844 }, run: async (p) => { await p.click('#b-menu'); await p.click('#b-help'); } },
     { name: 'desktop', vp: { width: 1440, height: 900, mobile: false }, run: async () => {} },
+    { name: 'desktop default layout (Swedish)', vp: { width: 1920, height: 1080, mobile: false, insp: false, lang: 'sv' }, run: async () => {} },
+    { name: 'desktop first run', vp: { width: 1440, height: 900, mobile: false, insp: false, setup: false }, run: async () => {} },
+    { name: 'desktop settings', vp: { width: 1440, height: 900, mobile: false }, run: async (p) => { await p.click('#b-gear'); await p.click('#set-t-look'); } },
+    { name: 'desktop new dialog', vp: { width: 1440, height: 900, mobile: false }, run: async (p) => p.click('#b-new') },
+    { name: 'desktop help drawer', vp: { width: 1440, height: 900, mobile: false }, run: async (p) => p.click('#b-help') },
+    { name: 'desktop 430 Steel, PRG EDIT', vp: { width: 1440, height: 900, mobile: false }, run: async (p) => { await p.click('#mach-seg [data-m="430"]'); await p.keyboard.press('1'); } },
+    { name: 'phone settings', vp: { width: 390, height: 844 }, run: async (p) => { await p.click('#b-menu'); await p.click('#b-gear'); } },
   ];
   for (const s of states) {
     const { ctx, page } = await simPage(browser, s.vp);
@@ -469,7 +490,7 @@ async function axeScan(browser, tag) {
     await page.waitForTimeout(250);
     const r = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
     const bad = r.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
-    const mine = bad.filter((v) => v.nodes.some((n) => n.target.join(' ').match(/#(b-menu|hmore|hmore-x|mtabs|mt-|hdr-|dock|sk-|skpager|sr-live|scrim|ws-)/)));
+    const mine = bad.filter((v) => v.nodes.some((n) => n.target.join(' ').match(/#(b-menu|hmore|hmore-x|mtabs|mt-|hdr-|dock|sk-|skpager|sr-live|scrim|ws-|b-gear|sbar|sb-|m-set|set-|setup|mach-seg|b-insp|insp-x|runbox|b-start|b-stop|b-reset|b-new|m-new|new-|m-help|help-|dlg-prev)/)));
     console.log(`  axe   [${tag}] ${s.name}: ${r.violations.length} violation types (${bad.length} serious/critical): ` +
       r.violations.map((v) => `${v.id}×${v.nodes.length}`).join(', '));
     ok(mine.length === 0, `[${tag}] axe ${s.name}: no serious/critical violation in the new shell controls`, mine.map((v) => v.id + ' ' + v.nodes[0].target).join('; '));
@@ -574,7 +595,8 @@ async function upload(p, files) {
 /* wait until the page state matches (slow CI boxes load files later than a fixed sleep), then let the check report */
 const until = (p, fn, arg) => p.waitForFunction(fn, arg, { timeout: 10000 }).catch(() => {});
 const hasPgms = (p, names) => until(p, (n) => { const s = TNC_UI.state; return n.every((x) => x in s.pgms[s.machine]); }, names);
-async function menu(p, btn, label) { await p.click(btn); await p.locator('.hmenu button', { hasText: label }).first().click(); }
+/* the one New dialog: which = 'scratch' (Manual) | 'ai' (new program) | 'modify' (AI: change the program on screen) */
+async function newDialog(p, which) { await p.click('#b-new'); await p.click(which === 'scratch' ? '#new-t-scratch' : '#new-t-ai'); if (which !== 'scratch') await p.click(which === 'modify' ? '#ai-m-mod' : '#ai-m-new'); }
 /* zip entry names, read with the page's own JSZip (inlined by build.py): no unzip binary, no extra package */
 const zipNames = (p, file) => p.evaluate(async (b64) => Object.keys((await JSZip.loadAsync(b64, { base64: true })).files), readFileSync(file).toString('base64'));
 const fileName = (f) => f.split(/[\\/]/).pop();
@@ -587,7 +609,7 @@ async function ioFlows(browser, tag) {
   const L = `[${tag}] io`;
   const out = mkdtempSync(join(tmpdir(), 'tnc-ui-dl-'));
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, acceptDownloads: true, deviceScaleFactor: 1, reducedMotion: 'reduce' });
-  await ctx.addInitScript(() => { try { localStorage.setItem('tnc.lang', 'en'); } catch (e) {} });
+  await ctx.addInitScript(() => { try { localStorage.setItem('tnc.lang', 'en'); } catch {} });   // the older language key: migrated on the first visit
   const p = await ctx.newPage();
   p.on('filechooser', () => {});      // interception on before the first Ctrl+O
   const errs = [], external = [], dialogs = [];
@@ -601,20 +623,26 @@ async function ioFlows(browser, tag) {
     await p.goto(SIM_URL); await ready(p); await p.waitForTimeout(800);
     const prof = () => p.locator('#m-prof');
 
-    /* 1 profile: first visit asks for a name; it is stored in IndexedDB and survives a reload */
+    /* 1 profile: the first visit opens the workspace with the optional setup card (no splash, no forced name prompt);
+       the Profile control asks for the name; it is stored in IndexedDB and survives a reload */
     await step(p, `${L} 1 profile`, async () => {
-      ok(await p.locator('#boot').isVisible(), `${L} 1: boot splash on the first visit`);
-      await p.keyboard.press('x'); await p.waitForTimeout(300);
-      ok(await prof().isVisible() && (await prof().textContent()).includes("What's your name"), `${L} 1: profile dialog asks for a name after the splash`);
+      ok(await p.locator('#setup').isVisible() && !(await prof().isVisible()), `${L} 1: first visit shows the setup card over the open workspace, no name prompt`);
+      ok(await p.evaluate(() => TNC_I18N.lang === 'en' && localStorage.getItem('tnc.lang') === 'en' && JSON.parse(localStorage.getItem('tnc.settings.v1')).lang === 'en'), `${L} 1: the older language key is migrated and kept`);
+      await p.keyboard.press('Escape'); await p.waitForTimeout(300);
+      ok(!(await p.locator('#setup').isVisible()), `${L} 1: Esc skips the setup`);
+      await p.click('#b-prof'); await p.waitForTimeout(300);
+      ok(await prof().isVisible() && (await prof().textContent()).includes("What's your name"), `${L} 1: the Profile control opens the profile dialog, which asks for a name`);
+      await p.focus('#prof-name');
       ok(await p.evaluate(() => document.activeElement && document.activeElement.id) === 'prof-name', `${L} 1: name field focused`);
       await p.keyboard.type(NAME); await p.keyboard.press('Enter');
       ok((await p.textContent('#b-prof')) === NAME, `${L} 1: header button shows the name`, await p.textContent('#b-prof'));
       await p.keyboard.press('Escape'); await p.waitForTimeout(500);
       ok(!(await prof().isVisible()), `${L} 1: Esc closes the profile dialog`);
-      ok(/autosaved/.test(await p.getAttribute('#b-prof', 'title') || ''), `${L} 1: header chip says autosaved`, await p.getAttribute('#b-prof', 'title'));
+      ok(/autosaved/.test(await p.getAttribute('#b-prof', 'data-tip') || ''), `${L} 1: header chip says autosaved (its tooltip)`, await p.getAttribute('#b-prof', 'data-tip'));
       await reload(p);
       ok((await p.textContent('#b-prof')) === NAME, `${L} 1: name persists after reload`);
-      ok(!(await prof().isVisible()) && !(await p.locator('#boot').isVisible()), `${L} 1: no splash or name prompt after reload`);
+      ok(!(await prof().isVisible()) && !(await p.locator('#setup').isVisible()), `${L} 1: no setup card or name prompt after reload`);
+      await openInspector(p);
       ok(await p.evaluate((n) => new Promise((r) => { const q = indexedDB.open('keyval-store'); q.onsuccess = () => { const t = q.result.transaction('keyval').objectStore('keyval').get('tnc.profile.v2');
         t.onsuccess = () => r(!!(t.result && t.result.name === n)); t.onerror = () => r(false); }; q.onerror = () => r(false); }), NAME), `${L} 1: profile stored in IndexedDB (keyval-store / tnc.profile.v2)`);
       const modes = await p.$$eval('#modes .mode', (bs) => bs.map((b) => b.querySelector('b').textContent + ' ' + b.querySelector('.lg').textContent));
@@ -628,10 +656,10 @@ async function ioFlows(browser, tag) {
 
     /* 2 create + edit: undo / redo, I inserts, E edits, autosave */
     await step(p, `${L} 2 edit`, async () => {
-      await menu(p, '#b-new', 'NEW PRG — MANUAL');
+      await newDialog(p, 'scratch');
       await p.fill('#ns-name', 'qa part'); await p.click('#ns-go'); await p.waitForTimeout(300);
       let s = await S(p);
-      ok(s.pgm === 'QA_PART.H' && s.editing && s.mode === 'edit', `${L} 2: NEW PRG — MANUAL creates QA_PART.H in PRG EDIT with the block line open`, JSON.stringify({ pgm: s.pgm, ed: s.editing, mode: s.mode }));
+      ok(s.pgm === 'QA_PART.H' && s.editing && s.mode === 'edit', `${L} 2: New program › Manual creates QA_PART.H in PRG EDIT with the block line open`, JSON.stringify({ pgm: s.pgm, ed: s.editing, mode: s.mode }));
       ok(s.text.split('\n').filter((l) => l.trim()).join('|') === 'BEGIN PGM QA_PART MM|END PGM QA_PART MM', `${L} 2: new program = BEGIN / END only`, JSON.stringify(s.text));
       const before = s.text;
       await p.fill('#dlg-in', 'L X+10 Y+20 R0 FMAX'); await p.keyboard.press('Enter'); await p.waitForTimeout(200);
@@ -852,7 +880,7 @@ async function aiFlow(browser, tag) {
     other.push(u); return route.fulfill({ status: 404, body: '{}' });
   });
   try {
-    await menu(p, '#b-ai', 'New program from a description');
+    await newDialog(p, 'ai');
     ok(await p.isVisible('#m-new') && await p.isVisible('#ai-mp'), `${L}: AI dialog with the model picker`);
     /* model picker */
     await p.waitForSelector('#ai-mp .mp-chip', { timeout: 5000 }).catch(() => {});
@@ -900,7 +928,7 @@ async function aiFlow(browser, tag) {
 
     /* modify: current program + wish go out, the change lands, Ctrl+Z undoes it */
     const before = (await S(p)).text;
-    await menu(p, '#b-ai', 'Change this program');
+    await newDialog(p, 'modify');
     await p.fill('#ai-prompt', 'Make the slot end at X+80.');
     await p.click('#ai-go');
     await p.waitForFunction(() => TNC_UI.state.aiLive && TNC_UI.state.aiLive.done, null, { timeout: 15000 }).catch(() => {});
@@ -942,7 +970,7 @@ async function regressionChecks(browser, tag) {
   for (const vp of vps) {
     const { ctx, page, errors } = await simPage(browser, vp);
     await page.addInitScript(PROBE); await page.reload(); await ready(page);
-    if (await page.locator('#m-prof:not([hidden])').count()) await page.keyboard.press('Escape');
+    await openInspector(page);
     const label = `[${tag}] ${vp.name}`, phone = vp.width <= 900;
     if (phone) await page.click('#mt-gfx');
     await page.waitForTimeout(400);
@@ -1016,6 +1044,507 @@ async function regressionChecks(browser, tag) {
 }
 
 /* ---------- run ---------- */
+/* ---------- the workspace: default layout, settings, languages, skins, environments, motion, New, help, setup ---------- */
+const SETTINGS = (p) => p.evaluate(() => JSON.parse(localStorage.getItem('tnc.settings.v1') || 'null'));
+const HTML = (p) => p.evaluate(() => { const h = document.documentElement; return { lang: h.lang, skin: h.dataset.skin, env: h.dataset.env, motion: h.dataset.motion, quality: h.dataset.quality, edition: h.dataset.edition, tips: h.dataset.tips }; });
+/* what the engine made of the program on screen: must not move when only the presentation changes */
+const ENGINE = (p) => p.evaluate(() => { const s = TNC_UI.state; return JSON.stringify([s.machine, s.pgm, s.text.length, s.res.blocks.length, s.res.moves.length, s.res.errors.length, s.segs.length, +s.total.toFixed(6)]); });
+const shown = (p, sel) => p.evaluate((q) => { const e = document.querySelector(q); if (!e || getComputedStyle(e).visibility === 'hidden') return false; const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; }, sel);   // fixed boxes have no offsetParent
+const pick = async (p, key, v) => { await p.click(`#set-body [data-set="${key}"] [data-v="${v}"]`); await p.waitForTimeout(120); };
+
+async function businessChecks(browser, tag) {
+  const L = `[${tag}] workspace`;
+  /* ---- 1. a first visit, nothing stored: Swedish, machine view, no right pane, no developer control, the setup card ---- */
+  {
+    const { ctx, page, errors } = await simPage(browser, { width: 1920, height: 1080, mobile: false, setup: false, insp: false });
+    await page.screenshot({ path: join(SHOTS, `${tag}-business-first-visit-1920.png`) });
+    const h = await HTML(page);
+    ok(h.lang === 'sv' && (await page.textContent('#b-new')).trim() === 'Nytt program', `${L}: Swedish is the default language`, JSON.stringify(h) + ' ' + await page.textContent('#b-new'));
+    ok(await shown(page, '#gl') && await shown(page, '#plist') && await page.evaluate(() => !document.querySelector('.modal:not([hidden])')), `${L}: opens in the machine view (program and 3-D view, no dialog)`);
+    ok(await page.evaluate(() => document.body.classList.contains('focus') && getComputedStyle(document.getElementById('ws-side')).display === 'none'), `${L}: the right pane is closed by default (Focus layout)`);
+    ok(await page.getAttribute('#b-insp', 'aria-pressed') === 'false', `${L}: the Inspector control says closed`);
+    const dev = await page.evaluate(() => ({ btn: !!document.getElementById('b-dev'), bar: /\bDEV\b|\bUTV\b/.test(document.querySelector('.bar').innerText), log: !document.getElementById('m-dev').hidden,
+      any: [...document.querySelectorAll('.app button')].filter((b) => b.offsetParent !== null && /^(DEV|UTV)$/i.test(b.textContent.trim())).length }));
+    ok(!dev.btn && !dev.bar && !dev.log && dev.any === 0, `${L}: no DEV control on screen by default`, JSON.stringify(dev));
+    const bar = await page.evaluate(() => { const b = document.querySelector('.bar').getBoundingClientRect();
+      return ['modes', 'b-start', 'b-stop', 'b-reset', 'b-mgt', 'b-new', 'mach-seg', 'b-insp', 'b-help'].filter((id) => { const r = document.getElementById(id).getBoundingClientRect(); return !(r.width > 0 && r.top >= b.top && r.bottom <= b.bottom + 1); }); });
+    ok(bar.length === 0, `${L}: run / pause / stop, the modes, program access, New and the 426 / 430 switch are in the top bar`, bar.join(','));
+    ok(await shown(page, '#b-tools') && await shown(page, '#b-save'), `${L}: tool table and Save .H are on screen`);
+    await page.click('#b-mgt'); await page.waitForTimeout(150);
+    ok(await page.evaluate(() => TNC_UI.state.mgt === true && !document.getElementById('mgt').hidden), `${L}: the Program control of the bar opens the programs on the control`);
+    await page.click('#b-mgt');
+    ok(await page.evaluate(() => [...document.querySelectorAll('#mach-seg button')].map((b) => b.textContent + ':' + b.getAttribute('aria-pressed')).join(' ')) === '426:true 430:false', `${L}: compact 426 / 430 switch, 426 selected`);
+    ok(await page.evaluate(() => { const g = document.getElementById('b-gear').getBoundingClientRect(); return g.width > 0 && g.top > innerHeight - 60; }), `${L}: one gear at the bottom`);
+    // the setup card: over the workspace, skippable, no key asked
+    ok(await shown(page, '#setup') && await page.evaluate(() => !document.querySelector('.app').inert), `${L}: the first-run setup is a card over the usable workspace`);
+    const steps = [];
+    for (let i = 0; i < 4; i++) { steps.push(await page.evaluate(() => ({ t: document.getElementById('setup-t').textContent, n: document.getElementById('setup-n').textContent,
+      inputs: document.querySelectorAll('#setup input, #setup textarea').length, key: /openrouter|api.?(key|nyckel)|lösenord|password/i.test(document.getElementById('setup').innerText) })));
+      if (i < 3) await page.click('#setup-next'); }
+    ok(steps.map((x) => x.t).join('|') === 'Språk|Styrsystem|Rörelse och grafik|Första programmet', `${L}: setup = language → controller → motion and graphics → a first program`, steps.map((x) => x.t).join('|'));
+    ok(steps.every((x) => x.inputs === 0 && !x.key), `${L}: the setup never asks for a key`, JSON.stringify(steps));
+    const offered = await page.$$eval('#setup-bd [data-pgm]', (bs) => bs.map((b) => b.dataset.pgm));
+    ok(offered.length >= 1 && offered.length <= 4, `${L}: the last step offers programs to open`, offered.join(','));
+    await page.click(`#setup-bd [data-pgm="${offered[offered.length - 1]}"]`); await page.click('#setup-next'); await page.waitForTimeout(400);
+    ok(!(await shown(page, '#setup')) && await page.evaluate((n) => TNC_UI.state.pgm === n, offered[offered.length - 1]), `${L}: Start opens the chosen program and closes the setup`, await page.evaluate(() => TNC_UI.state.pgm));
+    ok((await SETTINGS(page)).setup === 1, `${L}: the setup is remembered as done`);
+    await page.reload(); await ready(page); await page.waitForTimeout(300);
+    ok(!(await shown(page, '#setup')), `${L}: no setup card on the next visit`);
+    ok(await page.evaluate(() => document.body.classList.contains('focus')), `${L}: still the default layout after a reload`);
+    // replay from Help
+    await page.click('#b-help'); await page.click('#help-setup'); await page.waitForTimeout(200);
+    ok(await shown(page, '#setup') && await page.evaluate(() => document.getElementById('m-help').hidden), `${L}: Help replays the setup`);
+    await page.click('#setup-skip');
+    ok(!(await shown(page, '#setup')), `${L}: Skip closes the setup`);
+    ok(errors.length === 0, `${L}: no page errors (first visit)`, errors.slice(0, 3).join(' | '));
+    await ctx.close();
+  }
+
+  /* ---- 2. inspector, DEV behind the gear, settings and their persistence, languages, skins, environments ---- */
+  {
+    const { ctx, page, errors } = await simPage(browser, { width: 1440, height: 900, mobile: false, lang: 'sv', insp: false });
+    // inspector: explicit control, closing keeps its state, F toggles, the choice survives a reload
+    await page.click('#b-insp');
+    ok(await shown(page, '#ws-side') && await page.getAttribute('#b-insp', 'aria-pressed') === 'true', `${L}: the Inspector control opens the right pane`);
+    await page.click('#st-ref'); await page.selectOption('#ref-sel', 'cycles'); await page.waitForTimeout(100);
+    await page.click('#insp-x');
+    ok(!(await shown(page, '#ws-side')), `${L}: the inspector's own close button closes it`);
+    await page.locator('body').click({ position: { x: 900, y: 450 } }).catch(() => {});
+    await page.keyboard.press('f'); await page.waitForTimeout(150);
+    ok(await shown(page, '#ws-side') && await page.evaluate(() => document.querySelector('#stabs [aria-selected="true"]').dataset.tab === 'ref' && document.getElementById('ref-sel').value === 'cycles'),
+      `${L}: F opens it again with the same tab and page (state kept while closed)`);
+    await page.reload(); await ready(page); await page.waitForTimeout(300);
+    ok(await shown(page, '#ws-side'), `${L}: an opened inspector stays open after a reload`);
+    await page.keyboard.press('f'); await page.waitForTimeout(150);
+    // DEV: only gear → Settings → Advanced
+    await page.click('#b-gear');
+    ok(await shown(page, '#m-set') && (await page.textContent('#m-set-t')) === 'Inställningar', `${L}: the gear opens Settings`);
+    const tabs = await page.$$eval('#set-tabs [role=tab]', (b) => b.map((x) => x.textContent));
+    ok(tabs.join('|') === 'Allmänt|Utseende|Hjälp|Avancerat|Om', `${L}: Settings sections`, tabs.join('|'));
+    await page.click('#set-t-adv');
+    ok(await shown(page, '#set-dev') && /edition\s+core/.test(await page.textContent('#set-diag')) && /engine\s+tnc-core WebAssembly · loaded/.test(await page.textContent('#set-diag')), `${L}: Advanced holds the developer log and the diagnostics`, await page.textContent('#set-diag'));
+    await page.click('#set-dev'); await page.waitForTimeout(150);
+    ok(await shown(page, '#m-dev') && (await page.textContent('#dev-pre')).length > 200, `${L}: Settings › Advanced opens the developer log (the DEV content)`);
+    await page.keyboard.press('Escape');
+    // About
+    await page.click('#b-gear'); await page.click('#set-t-about');
+    const about = await page.evaluate(() => { const a = document.getElementById('about-gh'); return { text: a.textContent, href: a.getAttribute('href'), rel: a.rel, notice: document.getElementById('about-notice').textContent }; });
+    ok(about.text === 'gigacook on GitHub' && about.href === 'https://github.com/gigacook' && /noopener/.test(about.rel), `${L}: About links "gigacook on GitHub"`, JSON.stringify(about));
+    ok(/HEIDENHAIN/.test(about.notice) && /Inte knuten/.test(about.notice), `${L}: About carries the non-affiliation notice`, about.notice);
+    // help section: in-app help, shortcuts
+    await page.click('#set-t-help'); await page.click('#set-keys'); await page.waitForTimeout(150);
+    ok(await shown(page, '#m-help') && await page.evaluate(() => document.querySelector('#help-tabs [aria-selected="true"]').dataset.tab === 'keys' && document.querySelectorAll('#help-body .klist div').length > 15), `${L}: Settings › Help shows the shortcut list`);
+    await page.keyboard.press('Escape');
+
+    // ---- languages
+    const svText = await page.evaluate(() => document.body.innerText);
+    const svKeys = await page.$$eval('#sks .sk', (b) => b.map((x) => x.textContent));
+    ok(/Nytt program/.test(svText) && /Testgrafik/.test(svText) && !/New program|Test graphics|Inspector/.test(svText), `${L}: Swedish screen has no English labels beside the Swedish ones`);
+    const before = await ENGINE(page);
+    await page.click('#b-gear'); await page.click('#set-t-general'); await pick(page, 'lang', 'en');
+    ok((await page.textContent('#m-set-t')) === 'Settings' && await page.evaluate(() => document.activeElement && document.activeElement.dataset.v === 'en'), `${L}: the language switch redraws Settings in English and keeps the focus on the choice`, await page.textContent('#m-set-t'));
+    await page.keyboard.press('Escape');
+    const enText = await page.evaluate(() => document.body.innerText);
+    ok(/New program/.test(enText) && /Test graphics/.test(enText) && !/Nytt program|Testgrafik|Inställningar|Inspektör/.test(enText), `${L}: English screen has no Swedish labels left`);
+    ok((await HTML(page)).lang === 'en' && (await SETTINGS(page)).lang === 'en', `${L}: language stored in tnc.settings.v1 and on <html lang>`);
+    await page.keyboard.press('1'); await page.waitForTimeout(100);
+    const cnc = async () => (await page.$$eval('#sks .sk', (b) => b.map((x) => x.childNodes[0].textContent + (x.innerHTML.includes('<br>') ? ' ' + x.innerText.split('\n')[1] : '')))).join('|');
+    const enCnc = await cnc();
+    await page.evaluate(() => TNC_SETTINGS.set('lang', 'sv')); await page.waitForTimeout(150);
+    const svCnc = await cnc();
+    ok(['TOOL', 'CYCL', 'LBL', 'APPR', 'RND', 'CHF'].every((w) => enCnc.includes(w) && svCnc.includes(w)), `${L}: CNC words on the soft keys are the same in both languages`, svCnc);
+    ok(await page.evaluate(() => [...document.querySelectorAll('#plist .bt')].some((e) => /^TOOL CALL \d/.test(e.textContent)) && document.querySelector('#plist .bt').textContent.startsWith('BEGIN PGM')), `${L}: program text is not translated`);
+    await page.evaluate(() => TNC_SETTINGS.set('lang', 'en')); await page.keyboard.press('2'); await page.waitForTimeout(150);
+    ok(svKeys.length > 0, `${L}: soft keys drawn`);
+
+    // ---- skins: layout, not only colour; engine untouched
+    const geo = () => page.evaluate(() => { const r = (q) => document.querySelector(q).getBoundingClientRect(), k = getComputedStyle(document.querySelector('#sks .sk'));
+      return { skin: document.documentElement.dataset.skin, pgmX: Math.round(r('.col-pgm').left), gfxX: Math.round(r('.col-gfx').left), dlgAbove: r('.col-pgm .dlg').top < r('#crt').top,
+        keyFont: k.fontFamily.split(',')[0], keyRadius: k.borderTopLeftRadius, keyBg: k.backgroundColor, bezel: Math.round(r('#crt').left - r('.col-pgm').left), gap5: Math.round(parseFloat(getComputedStyle(document.querySelectorAll('#sks .sk')[4]).marginLeft)) }; });
+    await page.click('#b-gear'); await page.click('#set-t-look');
+    const names = await page.$$eval('#set-body [data-set="skin"] .nm', (n) => n.map((x) => x.textContent));
+    ok(names.includes('426 Classic') && names.includes('430 Steel'), `${L}: two controller skins, 426 Classic and 430 Steel`, names.join('|'));
+    await pick(page, 'skin', '426'); await page.keyboard.press('Escape'); await page.waitForTimeout(250);
+    const g426 = await geo(); await page.screenshot({ path: join(SHOTS, `${tag}-business-skin-426.png`) });
+    await page.click('#b-gear'); await pick(page, 'skin', '430'); await page.keyboard.press('Escape'); await page.waitForTimeout(250);
+    const g430 = await geo(); await page.screenshot({ path: join(SHOTS, `${tag}-business-skin-430.png`) });
+    ok(g426.skin === '426' && g430.skin === '430', `${L}: the skin is on <html data-skin>`, g426.skin + ' ' + g430.skin);
+    ok(g426.pgmX < g426.gfxX && g430.gfxX < g430.pgmX, `${L}: skins differ in layout: 426 has the program left, 430 the 3-D view left`, JSON.stringify([g426, g430]));
+    ok(!g426.dlgAbove && g430.dlgAbove, `${L}: skins differ in layout: the dialog line is under the screen (426) / above it (430)`);
+    ok(g426.keyFont !== g430.keyFont && g426.keyBg !== g430.keyBg && g426.bezel !== g430.bezel && g426.gap5 !== g430.gap5, `${L}: skins differ in key typography, key face, bezel and key grouping`, JSON.stringify([g426, g430]));
+    ok(await ENGINE(page) === before.replace(/"edit"|"test"/, (m) => m), `${L}: language and skin never change the engine result`, before + ' / ' + await ENGINE(page));
+    ok((await SETTINGS(page)).skin === '430' && await page.evaluate(() => TNC_UI.state.machine) === '426', `${L}: skin 430 with machine 426: the skin is independent of the machine`);
+    // skin 'auto' follows the machine
+    await page.evaluate(() => TNC_SETTINGS.set('skin', 'auto')); await page.click('#mach-seg [data-m="430"]'); await page.waitForTimeout(300);
+    ok((await HTML(page)).skin === '430' && await page.evaluate(() => TNC_UI.state.machine) === '430' && (await page.textContent('.ttl')) === 'TNC 430', `${L}: "follow machine": selecting 430 shows the 430 skin`);
+    await page.click('#mach-seg [data-m="426"]'); await page.waitForTimeout(300);
+    ok((await HTML(page)).skin === '426', `${L}: …and 426 shows the 426 skin`);
+
+    // ---- environments: scene and frame, independent of the skin
+    const scene = () => page.evaluate(() => ({ env: document.documentElement.dataset.env, bg: TNC_UI.scene.background.getHexString(), frame: getComputedStyle(document.querySelector('.bar')).backgroundColor, skin: document.documentElement.dataset.skin }));
+    await page.click('#b-gear'); await page.click('#set-t-look');
+    const envs = await page.$$eval('#set-body [data-set="env"] .nm', (n) => n.map((x) => x.textContent));
+    ok(envs.join('|') === 'Cold Steel|Workshop Night', `${L}: two environments, Cold Steel and Workshop Night`, envs.join('|'));
+    await pick(page, 'env', 'cold-steel'); const cold = await scene();
+    await pick(page, 'env', 'workshop-night'); const night = await scene();
+    await page.keyboard.press('Escape'); await page.waitForTimeout(300); await page.screenshot({ path: join(SHOTS, `${tag}-business-env-night.png`) });
+    ok(cold.env === 'cold-steel' && night.env === 'workshop-night' && cold.bg !== night.bg && cold.frame !== night.frame, `${L}: the environment changes the 3-D scene and the frame`, JSON.stringify([cold, night]));
+    ok(cold.skin === night.skin && await ENGINE(page) === before, `${L}: the environment changes neither the skin nor the engine result`, JSON.stringify([cold.skin, night.skin]));
+
+    // ---- quality, motion, sound; everything persists
+    await page.click('#b-gear'); await page.click('#set-t-look'); await pick(page, 'quality', 'low'); await pick(page, 'skin', '430');
+    await page.click('#set-t-general'); await pick(page, 'motion', 'full'); await pick(page, 'sound', 'false'); await pick(page, 'tips', 'false');
+    await page.keyboard.press('Escape');
+    const want = { v: 1, lang: 'en', skin: '430', env: 'workshop-night', quality: 'low', motion: 'full', sound: false, setup: 1, tips: false };
+    const got = await SETTINGS(page);
+    ok(Object.keys(want).every((k) => got[k] === want[k]), `${L}: every setting is stored in localStorage tnc.settings.v1`, JSON.stringify(got));
+    ok(await page.evaluate(() => TNC_UI.state.sound === false && TNC_UI.renderer.getPixelRatio() === 1), `${L}: sound off and low graphics are applied`);
+    await page.reload(); await ready(page); await page.waitForTimeout(400);
+    const h2 = await HTML(page), s2 = await SETTINGS(page);
+    ok(h2.lang === 'en' && h2.skin === '430' && h2.env === 'workshop-night' && h2.quality === 'low' && h2.motion === 'full' && h2.tips === 'off' && Object.keys(want).every((k) => s2[k] === want[k]),
+      `${L}: language, skin, environment, quality, motion, sound and hints survive a reload`, JSON.stringify(h2));
+    ok((await page.textContent('#b-new')).trim() === 'New program' && (await scene()).bg === night.bg && await page.evaluate(() => TNC_UI.state.sound === false), `${L}: …and are applied again (English, night scene, sound off)`);
+    // malformed stored settings fall back to the defaults instead of breaking the page
+    await page.evaluate(() => localStorage.setItem('tnc.settings.v1', '{"lang":"xx","skin":7,"env":"<script>","quality":null,"sound":"yes","setup":1}'));
+    await page.reload(); await ready(page); await page.waitForTimeout(300);
+    const h3 = await HTML(page);
+    ok(h3.lang === 'sv' && h3.skin === '426' && h3.env === 'cold-steel' && h3.quality === 'high', `${L}: malformed stored settings fall back to the defaults`, JSON.stringify(h3));
+    // help reset
+    await page.evaluate(() => localStorage.setItem('tnc.lessons.v1', '{"learn:0":1}'));
+    await page.click('#b-gear'); await page.click('#set-t-help'); await page.click('#set-reset'); await page.waitForTimeout(150);
+    ok((await SETTINGS(page)).setup === 0 && await page.evaluate(() => localStorage.getItem('tnc.lessons.v1')) === null, `${L}: help reset brings the introduction back and clears finished lessons`);
+    await page.keyboard.press('Escape');
+    ok(errors.length === 0, `${L}: no page errors (settings)`, errors.slice(0, 3).join(' | '));
+    await ctx.close();
+  }
+
+  /* ---- 3. reduced motion: the system setting is honoured, and the setting overrides it both ways ---- */
+  {
+    const dur = (p) => p.evaluate(() => getComputedStyle(document.getElementById('toast')).transitionDuration);
+    const a = await simPage(browser, { width: 1440, height: 900, mobile: false, motion: 'reduce' });
+    ok((await HTML(a.page)).motion === 'reduced' && await dur(a.page) === '0s', `${L}: prefers-reduced-motion is honoured (no transitions)`, await dur(a.page));
+    await a.page.keyboard.press('2'); await a.page.evaluate(() => { TNC_UI.state.shake = 0; });
+    ok(await a.page.evaluate(() => TNC_UI.state.fx === false), `${L}: reduced motion starts with the chip effects off`);
+    await a.page.evaluate(() => TNC_SETTINGS.set('motion', 'full'));
+    ok((await HTML(a.page)).motion === 'full' && await dur(a.page) !== '0s', `${L}: Motion = Full overrides the system setting`, await dur(a.page));
+    await a.ctx.close();
+    const b = await simPage(browser, { width: 1440, height: 900, mobile: false, motion: 'no-preference' });
+    ok((await HTML(b.page)).motion === 'full' && await dur(b.page) !== '0s', `${L}: without the system setting motion is full`, await dur(b.page));
+    await b.page.click('#b-gear'); await pick(b.page, 'motion', 'reduced'); await b.page.keyboard.press('Escape');
+    ok((await HTML(b.page)).motion === 'reduced' && await dur(b.page) === '0s' && await b.page.evaluate(() => getComputedStyle(document.querySelector('.rb')).animationName === 'none'), `${L}: Motion = Reduced stops transitions and animations`);
+    // a crash does not shake the camera in reduced motion
+    await b.page.evaluate(() => TNC_UI.open('CRASHQA', 'BEGIN PGM CRASHQA MM\nBLK FORM 0.1 Z X+0 Y+0 Z-20\nBLK FORM 0.2 X+100 Y+100 Z+0\nTOOL CALL 4 Z S2000\nL X+50 Y+50 Z-5 R0 FMAX M3\nEND PGM CRASHQA MM', {}));
+    await b.page.locator('#gl').click({ position: { x: 200, y: 200 } }); await b.page.keyboard.press('9'); await b.page.keyboard.press(' '); await b.page.waitForTimeout(500);
+    ok(await b.page.evaluate(() => !document.getElementById('alarm').hidden && TNC_UI.state.shake === 0), `${L}: a crash shows its alarm without camera shake in reduced motion`, await b.page.evaluate(() => document.getElementById('alarm').textContent + ' shake=' + TNC_UI.state.shake));
+    ok(await b.page.evaluate(() => { const t = document.querySelector('#alarm b'); return !!t && getComputedStyle(t, '::before').content !== 'none'; }), `${L}: the alarm has a symbol, not only a colour`);
+    await b.ctx.close();
+  }
+
+  /* ---- 4. the one New dialog, the help and lessons drawer, tooltips ---- */
+  {
+    const { ctx, page, errors } = await simPage(browser, { width: 1440, height: 900, mobile: false });
+    ok(await page.evaluate(() => !document.getElementById('b-ai') && !document.getElementById('b-lessons') && !document.getElementById('new-opts') && !document.querySelector('.opt')), `${L}: the AI and Lessons menus and the three-card popup are gone`);
+    await page.click('#b-new'); await page.waitForTimeout(150);
+    ok(await shown(page, '#m-new') && await page.evaluate(() => !document.querySelector('.hmenu')), `${L}: New opens one dialog, not a menu`);
+    const nt = await page.$$eval('#new-tabs [role=tab]', (b) => b.map((x) => x.textContent + ':' + x.getAttribute('aria-selected')));
+    ok(nt.join('|') === 'Manual:true|AI:false', `${L}: the dialog offers Manual and AI`, nt.join('|'));
+    ok(await shown(page, '#ns-name') && !(await shown(page, '#ai-prompt')), `${L}: Manual shows the name field`);
+    await page.focus('#new-t-scratch'); await page.keyboard.press('ArrowRight'); await page.waitForTimeout(200);
+    ok(await shown(page, '#ai-prompt') && await shown(page, '#ai-go') && await shown(page, '#ai-mp') && !(await shown(page, '#ns-name')), `${L}: → on the tabs shows the AI view (prompt, Generate, model picker) in the same dialog`);
+    ok(await page.evaluate(() => [...document.querySelectorAll('#ai-mode button')].map((b) => b.textContent + ':' + b.getAttribute('aria-pressed')).join('|')) === 'New program:true|Change current:false', `${L}: AI: new program or change the current one`);
+    await page.click('#ai-m-mod');
+    ok(/Say what to change in /.test(await page.textContent('#ai-title')) && (await page.textContent('#ai-go')) === 'Change the program', `${L}: "Change current" keeps the modify flow reachable`, await page.textContent('#ai-title'));
+    await page.click('#ai-setup'); await page.waitForTimeout(150);
+    ok(await shown(page, '#m-help') && await page.evaluate(() => document.querySelector('#help-tabs [aria-selected="true"]').dataset.tab === 'ai'), `${L}: AI setup is reachable from the AI view`);
+    await page.keyboard.press('Escape');
+    await page.locator('body').click({ position: { x: 900, y: 450 } }).catch(() => {});
+    await page.keyboard.press('n'); await page.waitForTimeout(150);
+    ok(await shown(page, '#m-new') && await shown(page, '#ns-name'), `${L}: N opens the New dialog on Manual`);
+    await page.fill('#ns-name', 'one dlg'); await page.click('#ns-go'); await page.waitForTimeout(300);
+    ok(await page.evaluate(() => TNC_UI.state.pgm === 'ONE_DLG.H' && TNC_UI.state.mode === 'edit' && TNC_UI.state.editing), `${L}: Manual › Create makes the program and opens the block line`);
+    await page.keyboard.press('Escape');
+    // help and lessons: one drawer
+    await page.locator('body').click({ position: { x: 900, y: 450 } }).catch(() => {});
+    await page.keyboard.press('h'); await page.waitForTimeout(150); await page.click('#help-tabs [data-tab="learn"]');
+    const ht = await page.$$eval('#help-tabs [role=tab]', (b) => b.map((x) => x.textContent));
+    ok(ht.join('|') === 'Lessons|Crash it|Manual|Shortcuts|AI setup', `${L}: Help and lessons are one drawer`, ht.join('|'));
+    const hb = await box(page, '#m-help .mcard');
+    ok(hb && hb.x + hb.width >= 1438 && hb.height >= 890 && hb.width <= 560, `${L}: the drawer sits at the right edge, full height`, JSON.stringify(hb));
+    const nLearn = await page.locator('#help-body .lcard').count();
+    await page.click('#help-tabs [data-tab="break"]'); const nBreak = await page.locator('#help-body .lcard').count();
+    await page.click('#help-tabs [data-tab="manual"]'); const nMan = await page.locator('#help-body details').count();
+    const have = await page.evaluate(() => ({ learn: TNC_LESSONS.learn.length, br: TNC_LESSONS.breakit.length, man: TNC_LESSONS.manual.length }));
+    ok(nLearn === have.learn && nBreak === have.br && nMan === have.man && nLearn > 0 && nBreak > 0 && nMan > 0, `${L}: every lesson, crash exercise and manual section is listed`, JSON.stringify({ nLearn, nBreak, nMan, have }));
+    await page.click('#help-tabs [data-tab="learn"]'); await page.click('#help-body .lcard[data-i="0"]'); await page.waitForTimeout(400);
+    ok(await shown(page, '#coach') && await page.evaluate(() => document.getElementById('m-help').hidden && TNC_UI.state.pgm === 'LESSON.H'), `${L}: a lesson starts from the drawer`);
+    // run it to the end: finished lessons are remembered
+    const stepsN = await page.evaluate(() => TNC_UI.state.lesson.steps.length);
+    for (let i = 0; i < stepsN; i++) { await page.click('#coach-next'); await page.waitForTimeout(60); }
+    ok(!(await shown(page, '#coach')) && await page.evaluate(() => Object.keys(JSON.parse(localStorage.getItem('tnc.lessons.v1') || '{}')).length === 1), `${L}: finishing a lesson is remembered`);
+    await page.click('#b-help');
+    ok(await page.evaluate(() => /Done/.test(document.querySelector('#help-body .lcard[data-i="0"]').textContent) && !/Done/.test(document.querySelector('#help-body .lcard[data-i="1"]').textContent)), `${L}: the finished lesson is marked in words`);
+    await page.keyboard.press('Escape');
+    // tooltips: keyboard focus
+    await page.focus('#b-new'); await page.keyboard.press('Tab'); await page.keyboard.press('Shift+Tab'); await page.waitForTimeout(100);
+    ok(await page.evaluate(() => document.activeElement.id === 'b-new' && !document.getElementById('tip').hidden && /New program/.test(document.getElementById('tip').textContent) && /N/.test(document.getElementById('tip').textContent)), `${L}: a tooltip shows on keyboard focus, with the shortcut`, await page.textContent('#tip'));
+    await page.keyboard.press('Escape');
+    ok(await page.evaluate(() => document.getElementById('tip').hidden), `${L}: Esc hides the tooltip`);
+    const noName = await page.evaluate(() => [...document.querySelectorAll('.bar button, .sbar button, .col .ch button, .insp-hd button')].filter((b) => b.offsetParent !== null && !(b.getAttribute('aria-label') || b.textContent.trim())).map((b) => b.id || b.className));
+    ok(noName.length === 0, `${L}: every control of the bars has an accessible name`, noName.join(','));
+    ok(errors.length === 0, `${L}: no page errors (dialogs)`, errors.slice(0, 3).join(' | '));
+    await ctx.close();
+  }
+
+  /* ---- 5. 390 x 844: reflow, the gear in the drawer, tooltips on a tap, touch targets of the new controls ---- */
+  {
+    const { ctx, page, errors } = await simPage(browser, { width: 390, height: 844, lang: 'sv' });
+    await page.screenshot({ path: join(SHOTS, `${tag}-business-phone-390.png`) });
+    const o = await overflow(page);
+    ok(o.sw <= o.cw, `${L}: 390 × 844: no sideways scroll`, `${o.sw} > ${o.cw}`);
+    ok(await shown(page, '#b-start') && await shown(page, '#b-stop') && await shown(page, '#b-reset') && await shown(page, '#modes'), `${L}: 390 × 844: run / pause / stop and the modes stay in the header`);
+    if (browser.browserType() === chromium) {
+      await page.tap('#b-stop'); await page.waitForTimeout(100);
+      ok(await page.evaluate(() => !document.getElementById('tip').hidden && document.getElementById('tip').textContent.length > 2), `${L}: a tap shows the tooltip of an icon button`, await page.textContent('#tip'));
+    } else skipped(`${L}: tooltip on a tap`, 'page.tap needs the touch pipeline (Chromium)');
+    await page.click('#b-menu'); await page.waitForTimeout(250);
+    const small = await page.evaluate(() => [...document.querySelectorAll('#hmore button')].filter((e) => e.offsetParent !== null).map((e) => { const r = e.getBoundingClientRect(); return { id: e.id || e.textContent.trim(), w: Math.round(r.width), h: Math.round(r.height) }; }).filter((r) => r.w < 44 || r.h < 44));
+    ok(small.length === 0, `${L}: every control in the drawer is at least 44 × 44 px`, JSON.stringify(small));
+    await page.click('#b-gear'); await page.waitForTimeout(250);
+    ok(await shown(page, '#m-set') && await page.evaluate(() => !document.getElementById('hmore').classList.contains('open')), `${L}: the gear in the drawer opens Settings`);
+    const o2 = await overflow(page);
+    const small2 = await page.evaluate(() => [...document.querySelectorAll('#m-set button')].filter((e) => e.offsetParent !== null).map((e) => { const r = e.getBoundingClientRect(); return { id: e.id || e.textContent.trim(), w: Math.round(r.width), h: Math.round(r.height) }; }).filter((r) => r.w < 44 || r.h < 44));
+    ok(o2.sw <= o2.cw && small2.length === 0, `${L}: Settings reflows at 390 px with 44 px targets`, JSON.stringify(small2));
+    await page.screenshot({ path: join(SHOTS, `${tag}-business-phone-settings.png`) });
+    await page.keyboard.press('Escape');
+    ok(errors.length === 0, `${L}: no page errors (phone)`, errors.slice(0, 3).join(' | '));
+    await ctx.close();
+  }
+}
+
+/* ---------- controls that plugins add to the Effects and view menu: stock material, click to pick, axis vectors ---------- */
+async function reachChecks(browser, tag) {
+  const L = `[${tag}] reach`;
+  const { ctx, page, errors } = await simPage(browser, { width: 1440, height: 900, mobile: false });
+  const open = () => page.evaluate(() => { document.getElementById('fxmenu').open = true; });
+  await open();
+  const there = await page.evaluate(() => ['mat-sel', 'b-pick', 'b-vec'].filter((id) => { const e = document.getElementById(id); return !(e && e.closest('#fxmenu') && e.getBoundingClientRect().width > 0); }));
+  ok(there.length === 0, `${L}: the material picker and the pick / axis-vector toggles are in the Effects and view menu`, there.join(','));
+  // material: changes the stock's material and is kept
+  const mat = () => page.evaluate(() => { const s = TNC_UI.scene; let m = null; s.traverse((o) => { if (!m && o.isMesh && o.material && o.material.vertexColors && o.geometry.index) m = o.material; });
+    return { id: TNC_MATERIALS.current.id, sel: document.getElementById('mat-sel').value, color: m ? m.color.getHexString() : null, metal: m ? m.metalness : null, rough: m ? m.roughness : null, n: document.getElementById('mat-sel').options.length }; });
+  const m0 = await mat();
+  await page.selectOption('#mat-sel', 'brass'); await page.waitForTimeout(200);
+  const m1 = await mat();
+  ok(m0.n === 10 && m1.id === 'brass' && m1.sel === 'brass' && m1.color === 'cfa257' && m1.color !== m0.color && m1.metal === 0.85 && m1.rough === 0.3, `${L}: choosing Brass changes the stock material (colour, metalness, roughness)`, JSON.stringify([m0, m1]));
+  // toggles: state changes, is stored, and does what it says
+  const viz = () => page.evaluate(() => ({ pick: document.getElementById('b-pick').dataset.on, vec: document.getElementById('b-vec').dataset.on, ap: document.getElementById('b-pick').getAttribute('aria-pressed'), av: document.getElementById('b-vec').getAttribute('aria-pressed'),
+    ls: JSON.parse(localStorage.getItem('tnc.viz') || 'null'), labels: [...document.querySelectorAll('#gfx .vlab')].filter((e) => !e.hidden && !e.classList.contains('pick')).length }));
+  await page.keyboard.press('2'); await page.evaluate(() => { document.getElementById('scrub').value = 300; document.getElementById('scrub').dispatchEvent(new Event('input')); }); await page.waitForTimeout(400);
+  const v0 = await viz();
+  ok(v0.pick === '1' && v0.vec === '1' && v0.ap === 'true' && v0.av === 'true' && v0.labels > 0, `${L}: both toggles start on; the axis vectors are drawn`, JSON.stringify(v0));
+  await page.click('#b-vec'); await page.waitForTimeout(300);
+  const v1 = await viz();
+  ok(v1.vec === '0' && v1.av === 'false' && v1.ls && v1.ls.vectors === false && v1.ls.pick === true && v1.labels === 0, `${L}: Axis vectors off: state, stored key tnc.viz and the vectors themselves`, JSON.stringify(v1));
+  const g = await box(page, '#gl');
+  await page.mouse.click(g.x + g.width * 0.55, g.y + g.height * 0.6); await page.waitForTimeout(250);
+  ok(await page.evaluate(() => [...document.querySelectorAll('#gfx .vlab.pick')].some((e) => !e.hidden && /X .*Y .*Z /.test(e.textContent))), `${L}: with Click to pick on, a click in the 3-D view shows the point's coordinates`);
+  await page.click('#b-pick'); await page.waitForTimeout(200);
+  const v2 = await viz();
+  ok(v2.pick === '0' && v2.ap === 'false' && v2.ls.pick === false && await page.evaluate(() => [...document.querySelectorAll('#gfx .vlab.pick')].every((e) => e.hidden)), `${L}: Click to pick off: state, stored key, and the marker is gone`, JSON.stringify(v2));
+  await page.mouse.click(g.x + g.width * 0.5, g.y + g.height * 0.55); await page.waitForTimeout(200);
+  ok(await page.evaluate(() => [...document.querySelectorAll('#gfx .vlab.pick')].every((e) => e.hidden)), `${L}: with it off a click picks nothing`);
+  await page.reload(); await ready(page); await page.waitForTimeout(400); await open();
+  const v3 = await viz(), m3 = await mat();
+  ok(v3.pick === '0' && v3.vec === '0' && v3.ap === 'false' && v3.av === 'false', `${L}: both toggles keep their state after a reload`, JSON.stringify(v3));
+  ok(m3.id === 'brass' && m3.sel === 'brass' && m3.color === 'cfa257', `${L}: the material is kept after a reload`, JSON.stringify(m3));
+  await page.click('#b-vec'); await page.click('#b-pick'); await page.selectOption('#mat-sel', 'aluminium');
+  // every element a script looks up by id exists (no control anchored on a missing element)
+  const orphans = await page.evaluate(() => { const src = [...document.querySelectorAll('script')].map((s) => s.textContent).filter((t) => /TNC_UI_PLUGINS|TNC_UI\b/.test(t) && t.length < 400000).join('\n');
+    const ids = new Set([...src.matchAll(/getElementById\('([\w-]+)'\)/g)].map((m) => m[1]));
+    const made = /^(mat-sel|b-pick|b-vec|ailive|ai-|mp-|prof-|imp-|set-|about-|tt-ht|dlg-sys|dlg-blk|tnc-|gc-)/;
+    return [...ids].filter((id) => !document.getElementById(id) && !made.test(id)); });
+  ok(orphans.length === 0, `${L}: no script looks up an element id the page does not have`, orphans.join(','));
+  // the decimal character (MP 7280): its own setting, persists, changes the listing
+  const row = () => page.evaluate(() => { const e = [...document.querySelectorAll('#plist .bt')].find((x) => /^L X\+84/.test(x.textContent)); return e ? e.textContent : null; });
+  ok(await row() === 'L X+84.5 Y+91.5 R0 F MAX', `${L}: English follows with a decimal point`, await row());
+  await page.click('#b-gear'); await page.click('#set-t-general');
+  ok((await page.textContent('#set-body')).includes('Decimal character (MP 7280)'), `${L}: Settings has "Decimal character (MP 7280)"`);
+  await pick(page, 'decimal', 'comma'); await page.keyboard.press('Escape');
+  ok(await row() === 'L X+84,5 Y+91,5 R0 F MAX' && (await SETTINGS(page)).decimal === 'comma' && await page.evaluate(() => /\nL X\+84\.5 Y\+91\.5 R0 FMAX\n/.test(TNC_UI.state.text)), `${L}: Comma changes the listing, not the stored program`, await row());
+  await page.reload(); await ready(page); await page.waitForTimeout(300);
+  ok(await row() === 'L X+84,5 Y+91,5 R0 F MAX' && await page.evaluate(() => TNC_I18N.lang === 'en'), `${L}: the decimal character survives a reload, the language is still English`, await row());
+  await page.evaluate(() => TNC_SETTINGS.set({ lang: 'sv', decimal: 'point' })); await page.waitForTimeout(200);
+  ok(await row() === 'L X+84.5 Y+91.5 R0 F MAX', `${L}: Swedish with Point shows a point`, await row());
+  await page.evaluate(() => TNC_SETTINGS.set('decimal', 'auto')); await page.waitForTimeout(200);
+  ok(await row() === 'L X+84,5 Y+91,5 R0 F MAX', `${L}: "follow language" in Swedish shows a comma`, await row());
+  ok(errors.length === 0, `${L}: no page errors`, errors.slice(0, 3).join(' | '));
+  await ctx.close();
+}
+
+/* ---------- Serbian (Latin): the third language ---------- */
+async function serbianChecks(browser, tag) {
+  const L = `[${tag}] srpski`;
+  {
+    const { ctx, page, errors } = await simPage(browser, { width: 1920, height: 1080, mobile: false, lang: 'sv', insp: false });
+    await page.click('#b-gear'); await page.click('#set-t-general');
+    const langs = await page.$$eval('#set-body [data-set="lang"] [role=radio]', (b) => b.map((x) => x.textContent + ':' + x.getAttribute('aria-checked')));
+    ok(langs.join('|') === 'Svenska:true|English:false|Srpski:false', `${L}: the switch offers Svenska / English / Srpski, Swedish chosen`, langs.join('|'));
+    const sv = await page.evaluate(() => ['b-new', 'b-help', 'b-tools', 'b-save'].map((id) => document.getElementById(id).textContent.trim()).concat(document.querySelector('.rb.go .lb').textContent));
+    await pick(page, 'lang', 'sr');
+    ok((await page.textContent('#m-set-t')) === 'Podešavanja' && await page.evaluate(() => document.activeElement.dataset.v === 'sr'), `${L}: choosing Srpski redraws Settings ("Podešavanja") with the focus kept`, await page.textContent('#m-set-t'));
+    await page.keyboard.press('Escape'); await page.waitForTimeout(200);
+    const sr = await page.evaluate(() => ['b-new', 'b-help', 'b-tools', 'b-save'].map((id) => document.getElementById(id).textContent.trim()).concat(document.querySelector('.rb.go .lb').textContent));
+    ok(sr.join('|') === 'Novi program|Pomoć|Alat|Sačuvaj .H|Pokreni' && sr.every((t, i) => t !== sv[i]), `${L}: the visible labels change (Novi program, Pomoć, Alat, Sačuvaj .H, Pokreni)`, sr.join('|'));
+    const h = await HTML(page);
+    ok(h.lang === 'sr-Latn' && (await SETTINGS(page)).lang === 'sr', `${L}: <html lang="sr-Latn">, stored as "sr" in tnc.settings.v1`, JSON.stringify(h));
+    const text = await page.evaluate(() => document.body.innerText);
+    ok(!/Nytt program|Inställningar|Verktyg|New program|Settings|Inspector/.test(text) && !/[Ѐ-ӿ]/.test(text), `${L}: no Swedish or English labels left, Latin script only`);
+    ok(await page.evaluate(() => [...document.querySelectorAll('#plist .bt')].some((e) => /^L X\+84,5 Y\+91,5 R0 F MAX$/.test(e.textContent)) && document.querySelector('#plist .bt').textContent.startsWith('BEGIN PGM')), `${L}: program text is untouched; Serbian follows with a decimal comma`);
+    await page.keyboard.press('1'); await page.waitForTimeout(100);
+    const keys = (await page.$$eval('#sks .sk', (b) => b.map((x) => x.innerText.replace(/\s+/g, ' ')))).join('|');
+    ok(['TOOL CALL', 'CYCL DEF', 'LBL SET', 'APPR DEP'].every((w) => keys.includes(w)) && /IZMENI/.test(keys) && /OBRIŠI/.test(keys), `${L}: soft keys: CNC words as they are, editing keys in Serbian`, keys);
+    await page.keyboard.press('ArrowDown'); await page.keyboard.press('d'); await page.waitForTimeout(150);
+    ok(/BLOK .* OBRISAN/.test(await page.textContent('#toast')), `${L}: toasts are in Serbian`, await page.textContent('#toast'));
+    await page.keyboard.press('Control+z'); await page.keyboard.press('2');
+    await page.locator('#gl').click({ position: { x: 300, y: 300 } }); await page.keyboard.press('h'); await page.waitForTimeout(150); await page.click('#help-tabs [data-tab="keys"]');
+    ok(/Kursor bloka/.test(await page.textContent('#help-body')) && /Prečice/.test(await page.textContent('#help-tabs')), `${L}: the shortcut list is in Serbian`);
+    await page.keyboard.press('Escape');
+    await page.click('#b-prof'); await page.waitForTimeout(200);
+    ok(/Kako se zovete/.test(await page.textContent('#prof-body')) && /Izvezi profil/.test(await page.textContent('#prof-body')), `${L}: the profile dialog is in Serbian`);
+    await page.keyboard.press('Escape');
+    await page.screenshot({ path: join(SHOTS, `${tag}-business-sr-1920.png`) });
+    const o = await overflow(page);
+    ok(o.sw <= o.cw && await page.evaluate(() => { const b = document.querySelector('.bar').getBoundingClientRect(); return b.height < 60 && [...document.querySelectorAll('.bar button')].filter((e) => e.offsetParent).every((e) => e.scrollWidth <= e.clientWidth + 1); }), `${L}: the bar stays one row at 1920, no clipped label`);
+    await page.reload(); await ready(page); await page.waitForTimeout(300);
+    ok((await HTML(page)).lang === 'sr-Latn' && (await page.textContent('#b-new')).trim() === 'Novi program' && await page.evaluate(() => TNC_I18N.lang === 'sr'), `${L}: Serbian survives a reload`);
+    ok(errors.length === 0, `${L}: no page errors`, errors.slice(0, 3).join(' | '));
+    await ctx.close();
+  }
+  {
+    const { ctx, page, errors } = await simPage(browser, { width: 390, height: 844, lang: 'sr' });
+    const clipped = () => page.evaluate(() => [...document.querySelectorAll('.bar button, .mtabs button, .dock .sk, .hmore button, .col .ch button, .stabs button, #m-set button, .mode')].filter((e) => e.offsetParent !== null && !e.hidden && getComputedStyle(e).visibility !== 'hidden')   // not the closed drawer's controls
+      .filter((e) => { const r = e.getBoundingClientRect(); return e.scrollWidth > e.clientWidth + 2 || r.right > innerWidth + 1 || r.left < -1; }).map((e) => (e.id || e.textContent.trim().slice(0, 16))));
+    for (const p of ['pgm', 'gfx', 'side']) { await page.click(`#mt-${p}`); const o = await overflow(page), c = await clipped();
+      ok(o.sw <= o.cw && c.length === 0, `${L}: 390 × 844 workspace ${p}: no sideways scroll, no clipped or cut-off control`, `${o.sw}/${o.cw} ${c.join(',')}`); }
+    await page.click('#mt-gfx'); await page.screenshot({ path: join(SHOTS, `${tag}-business-sr-390.png`) });
+    for (const m of ['edit', 'single', 'full']) { await page.click(`.mode[data-m="${m}"]`); await page.waitForTimeout(80); const c = await clipped(); ok(c.length === 0, `${L}: 390 × 844 soft keys in mode ${m} fit their keys`, c.join(',')); }
+    await page.click('.mode[data-m="test"]');
+    await page.click('#b-menu'); await page.waitForTimeout(250);
+    let c = await clipped(); ok(c.length === 0 && (await overflow(page)).sw <= 390, `${L}: 390 × 844 the drawer fits`, c.join(','));
+    await page.click('#b-gear'); await page.waitForTimeout(250);
+    for (const t of ['general', 'look', 'help', 'adv', 'about']) { await page.click('#set-t-' + t); await page.waitForTimeout(80); c = await clipped(); const o = await overflow(page);
+      const wide = await page.evaluate(() => { const b = document.getElementById('set-body'); return b.scrollWidth > b.clientWidth + 1; });
+      ok(c.length === 0 && o.sw <= o.cw && !wide, `${L}: 390 × 844 Settings › ${t} fits`, `${c.join(',')} wide=${wide}`); }
+    await page.keyboard.press('Escape');
+    ok(errors.length === 0, `${L}: no page errors (phone)`, errors.slice(0, 3).join(' | '));
+    await ctx.close();
+  }
+}
+
+/* ---------- the polar block through the real dialog: create, save, reload, reopen, run (Swedish screen) ----------
+   Fixture: LP, PR 57, PA 157.5, R0, F MAX -> screen "LP PR+57 PA+157,5 R0 F MAX"; with the pole at X+0 Y+0 it ends at X-52.661133 Y+21.812956. */
+async function polarFlow(browser, tag) {
+  const L = `[${tag}] polar`;
+  const out = mkdtempSync(join(tmpdir(), 'tnc-ui-polar-'));
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, acceptDownloads: true, deviceScaleFactor: 1, reducedMotion: 'reduce' });
+  await ctx.addInitScript(() => { try { if (localStorage.getItem('tnc.settings.v1') == null) localStorage.setItem('tnc.settings.v1', JSON.stringify({ v: 1, lang: 'sv', setup: 1 })); } catch {} });
+  const p = await ctx.newPage();
+  const errs = [];
+  p.on('pageerror', (e) => errs.push('pageerror: ' + e.message));
+  p.on('console', (m) => { if (m.type() === 'error' && !/ERR_FAILED|net::/.test(m.text())) errs.push('console: ' + m.text()); });
+  const line = (i) => p.evaluate((i) => TNC_UI.state.text.split('\n')[i], i);
+  const row = (re) => p.evaluate((src) => { const r = new RegExp(src); const e = [...document.querySelectorAll('#plist .bt')].find((x) => r.test(x.textContent)); return e ? e.textContent : null; }, re.source);
+  const wiz = () => p.evaluate(() => ({ ask: document.getElementById('dlg-pr').textContent, ph: document.getElementById('dlg-in').placeholder, on: !!TNC_UI.state.wiz, at: TNC_UI.state.wiz ? TNC_UI.state.wiz.at : null,
+    sys: (document.getElementById('dlg-sys') || {}).textContent || '', prev: (document.getElementById('dlg-blk') || {}).textContent || '', path: document.getElementById('skpath').innerText }));
+  const endPoint = () => p.evaluate(() => { const s = TNC_UI.state, bi = s.res.blocks.findIndex((b) => b.kind === 'LP'), mv = s.res.moves.filter((m) => m.block === bi).pop();
+    return { errors: s.res.errors.map((e) => e.msg), x: mv && mv.to.x, y: mv && mv.to.y, kind: mv && mv.kind, raw: s.res.blocks[bi] && s.res.blocks[bi].raw }; });
+  const atFixture = (e) => !!e && !e.errors.length && Math.abs(e.x + 52.661133) <= 1e-6 && Math.abs(e.y - 21.812956) <= 1e-6;
+  try {
+    await p.goto(SIM_URL); await ready(p); await p.waitForTimeout(600);
+    for (const machine of ['426', '430']) {
+      const M = `${L} ${machine}`, name = 'POLAR' + machine;
+      await p.click(`#mach-seg [data-m="${machine}"]`); await p.waitForTimeout(300);
+      /* create: New › Manual, then block by block */
+      await newDialog(p, 'scratch'); await p.fill('#ns-name', name); await p.click('#ns-go'); await p.waitForTimeout(300);
+      const typed = ['BLK FORM 0.1 Z X-100 Y-100 Z-20', 'BLK FORM 0.2 X+100 Y+100 Z+0', 'TOOL CALL 4 Z S2000', 'L Z+50 R0 FMAX M3', 'CC X+0 Y+0'];
+      for (let i = 0; i < typed.length; i++) { if (i) await p.keyboard.press('i'); await p.fill('#dlg-in', typed[i]); await p.keyboard.press('Enter'); await p.waitForTimeout(120); }
+      ok(await line(5) === 'CC X+0 Y+0', `${M}: program typed up to the pole CC X+0 Y+0`, await line(5));
+      /* guided input: L, then P = the polar form */
+      await p.click('#sks .sk[data-a="w:L"]'); await p.waitForTimeout(100);
+      let w = await wiz();
+      ok(w.on && /COORDINATES/.test(w.ask) && w.sys === '', `${M}: L asks for (Cartesian) coordinates, not labelled polar`, JSON.stringify(w));
+      await p.keyboard.type('P'); await p.waitForTimeout(100);
+      w = await wiz();
+      ok(/POLAR COORDINATES RADIUS PR/.test(w.ask) && w.sys === 'Polära koordinater' && /POLAR LINE LP/.test(w.path), `${M}: P turns it into the polar dialog, labelled "Polära koordinater"`, JSON.stringify(w));
+      await p.keyboard.type('57'); await p.keyboard.press('Enter');
+      w = await wiz(); ok(/ANGLE PA/.test(w.ask) && w.prev === 'LP PR+57', `${M}: preview after PR: "LP PR+57"`, JSON.stringify(w));
+      await p.keyboard.type('1,2,3'); await p.keyboard.press('Enter'); await p.waitForTimeout(80);
+      w = await wiz(); ok(/ANGLE PA/.test(w.ask) && w.prev === 'LP PR+57', `${M}: a malformed angle (1,2,3) is refused, the question stays`, JSON.stringify(w));
+      await p.fill('#dlg-in', ''); await p.keyboard.type('157,5'); await p.keyboard.press('Enter');
+      w = await wiz(); ok(/RADIUS COMP/.test(w.ask) && w.prev === 'LP PR+57 PA+157,5', `${M}: decimal comma accepted; preview "LP PR+57 PA+157,5"`, JSON.stringify(w));
+      await p.click('#sks .sk[data-a="wv:R0"]');
+      w = await wiz(); ok(/FEED RATE/.test(w.ask) && w.prev === 'LP PR+57 PA+157,5 R0', `${M}: R0 from its soft key`, JSON.stringify(w));
+      await p.keyboard.type('MAX'); await p.keyboard.press('Enter');
+      w = await wiz(); ok(/MISCELLANEOUS/.test(w.ask) && w.prev === 'LP PR+57 PA+157,5 R0 F MAX', `${M}: feed MAX; preview "LP PR+57 PA+157,5 R0 F MAX"`, JSON.stringify(w));
+      await p.keyboard.press('Enter'); await p.waitForTimeout(250);
+      /* serialization and screen */
+      ok(await line(6) === 'LP PR+57 PA+157.5 R0 FMAX', `${M}: stored as the engine's own text "LP PR+57 PA+157.5 R0 FMAX"`, await line(6));
+      ok(await row(/^LP /) === 'LP PR+57 PA+157,5 R0 F MAX', `${M}: displayed block "LP PR+57 PA+157,5 R0 F MAX"`, await row(/^LP /));
+      ok(await row(/^BLK FORM 0\.1/) === 'BLK FORM 0.1 Z X-100 Y-100 Z-20' && await row(/^L Z/) === 'L Z+50 R0 F MAX M3', `${M}: other blocks keep their text (BLK FORM 0.1 is not 0,1)`, await row(/^BLK FORM 0/));
+      ok(!(await wiz()).on && await p.evaluate(() => document.getElementById('dlg-prev').hidden), `${M}: the dialog is closed after the last question`);
+      /* execution */
+      let e = await endPoint();
+      ok(atFixture(e) && e.kind === 'rapid', `${M}: the block runs to X-52.661133 Y+21.812956 in rapid (real engine)`, JSON.stringify(e));
+      /* save = export */
+      const f = await dl(p, out, () => p.keyboard.press('Control+s'));
+      const saved = readFileSync(f, 'latin1');
+      ok(/\r\n6 LP PR\+57 PA\+157\.5 R0 FMAX\r\n/.test(saved), `${M}: the saved .H holds "6 LP PR+57 PA+157.5 R0 FMAX"`, JSON.stringify(saved.slice(-80)));
+      /* reload: autosaved */
+      await reload(p);
+      ok(await p.evaluate((n) => TNC_UI.state.machine === n.m && TNC_UI.state.pgm === n.p, { m: machine, p: name + '.H' }) && await line(6) === 'LP PR+57 PA+157.5 R0 FMAX', `${M}: after a reload the program and the block are back`, await line(6));
+      ok(await row(/^LP /) === 'LP PR+57 PA+157,5 R0 F MAX' && atFixture(await endPoint()), `${M}: …shown and run the same`, await row(/^LP /));
+      /* reopen: the block back in its dialog with the same values */
+      await p.keyboard.press('1'); await p.click('#plist .blk[data-i="6"]'); await p.keyboard.press('e'); await p.waitForTimeout(150);
+      const seen = [];
+      for (let i = 0; i < 5; i++) { w = await wiz(); seen.push(w.ph); if (i === 0) ok(w.on && w.at === 6 && w.sys === 'Polära koordinater' && w.prev === 'LP PR+57 PA+157,5 R0 F MAX', `${M}: E reopens the block in the polar dialog`, JSON.stringify(w));
+        await p.keyboard.press('Enter'); await p.waitForTimeout(60); }
+      ok(seen.join('|') === '57|157,5|R0|F MAX|', `${M}: reopened values: PR 57, PA 157,5, R0, F MAX, no M`, seen.join('|'));
+      ok(await line(6) === 'LP PR+57 PA+157.5 R0 FMAX' && (await p.evaluate(() => TNC_UI.state.text.split('\n').length)) === 8, `${M}: ENT on every question keeps the block (replaced in place, none added)`, await line(6));
+      /* edit: change the angle, then put it back through the text line (comma typed as text is stored as typed) */
+      await p.click('#plist .blk[data-i="6"]'); await p.keyboard.press('e'); await p.keyboard.press('Enter'); await p.keyboard.type('22.5'); await p.keyboard.press('Enter');
+      await p.keyboard.press('End'); await p.waitForTimeout(200);
+      ok(await line(6) === 'LP PR+57 PA+22.5 R0 FMAX' && await row(/^LP /) === 'LP PR+57 PA+22,5 R0 F MAX', `${M}: editing PA in the dialog rewrites the block`, await line(6));
+      e = await endPoint();
+      ok(e && !e.errors.length && Math.abs(e.x - 57 * Math.cos(22.5 * Math.PI / 180)) < 1e-6 && Math.abs(e.y - 57 * Math.sin(22.5 * Math.PI / 180)) < 1e-6, `${M}: the edited block runs to PR 57, PA 22.5`, JSON.stringify(e));
+      await p.keyboard.press('Control+z'); await p.waitForTimeout(150);
+      ok(await line(6) === 'LP PR+57 PA+157.5 R0 FMAX', `${M}: Ctrl+Z brings the block back`, await line(6));
+      // the text line still works for a polar block (TEXT soft key), and what is typed there is not rewritten
+      await p.click('#plist .blk[data-i="6"]'); await p.keyboard.press('e'); await p.keyboard.press('Enter'); await p.keyboard.press('Enter'); await p.waitForTimeout(80);
+      await p.click('#sks .sk[data-a="wtext"]'); await p.waitForTimeout(120);
+      ok(await p.evaluate(() => TNC_UI.state.editing && !TNC_UI.state.wiz && document.getElementById('dlg-in').value === 'LP PR+57 PA+157.5 R0 FMAX'), `${M}: TEXT leaves the dialog for the block line with the stored text`);
+      await p.fill('#dlg-in', 'LP PR+57 PA+157,5 R0 F MAX ; KOMMA, 1.5'); await p.keyboard.press('Enter'); await p.waitForTimeout(200);
+      ok(await line(6) === 'LP PR+57 PA+157,5 R0 F MAX ; KOMMA, 1.5', `${M}: text typed with a comma and "F MAX" is stored exactly as typed, comment included`, await line(6));
+      ok(atFixture(await endPoint()) && await row(/^LP /) === 'LP PR+57 PA+157,5 R0 F MAX ; KOMMA, 1.5', `${M}: …and runs to the same end point`, await row(/^LP /));
+      // a Cartesian block still opens as text; DIALOG turns it into its questions
+      await p.click('#plist .blk[data-i="4"]'); await p.keyboard.press('e'); await p.waitForTimeout(120);
+      ok(await p.evaluate(() => TNC_UI.state.editing && !TNC_UI.state.wiz && document.getElementById('dlg-in').value === 'L Z+50 R0 FMAX M3'), `${M}: a Cartesian L block opens on the text line as before`);
+      await p.click('#sks .sk[data-a="redlg"]'); await p.waitForTimeout(120);
+      w = await wiz(); ok(w.on && w.at === 4 && /COORDINATES/.test(w.ask) && w.ph === 'Z+50' && w.sys === '', `${M}: DIALOG reopens it in the Cartesian dialog (no polar label)`, JSON.stringify(w));
+      await p.keyboard.press('Escape'); await p.keyboard.press('2');
+    }
+    /* English screen: decimal point, F MAX */
+    await p.evaluate(() => TNC_SETTINGS.set('lang', 'en')); await p.waitForTimeout(200);
+    ok(await row(/^LP /) === 'LP PR+57 PA+157,5 R0 F MAX ; KOMMA, 1.5', `${L}: a block typed with a comma is shown as typed in English too`, await row(/^LP /));
+    await p.evaluate(() => TNC_UI.open('POLAREN', 'BEGIN PGM POLAREN MM\nCC X+0 Y+0\nLP PR+57 PA+157.5 R0 FMAX\nEND PGM POLAREN MM', {})); await p.waitForTimeout(200);
+    ok(await row(/^LP /) === 'LP PR+57 PA+157.5 R0 F MAX', `${L}: English screen: "LP PR+57 PA+157.5 R0 F MAX"`, await row(/^LP /));
+    await p.keyboard.press('1'); await p.click('#plist .blk[data-i="2"]'); await p.keyboard.press('e'); await p.waitForTimeout(120);
+    const en = await wiz(); ok(en.sys === 'Polar coordinates' && en.ph === '57', `${L}: English label "Polar coordinates"`, JSON.stringify(en));
+    await p.keyboard.press('Escape');
+    ok(errs.length === 0, `${L}: no page errors`, errs.slice(0, 3).join(' | '));
+  } catch (e) { ok(false, `${L} crashed`, String(e.stack || e).split('\n').slice(0, 3).join(' | ')); }
+  finally { await ctx.close(); try { rmSync(out, { recursive: true, force: true }); } catch {} }
+}
+
 /* TNC_UI_ONLY=io,regress,… runs only those sections (development); unset = everything */
 const want = (n) => !process.env.TNC_UI_ONLY || process.env.TNC_UI_ONLY.split(',').includes(n);
 /* no browser is a failure, not "0 failed": TNC_UI_ALLOW_NO_BROWSER=1 turns a missing Chromium into a skip (WebKit is optional) */
@@ -1035,6 +1564,8 @@ for (const [type, tag] of [[chromium, 'chromium'], [webkit, 'webkit']]) {
     if (want('ai')) { await aiMocked(b, tag); await aiRepairMocked(b, tag); await aiFlow(b, tag); }
     if (want('io')) await ioFlows(b, tag);
     if (want('regress')) await regressionChecks(b, tag);
+    if (want('business')) { await businessChecks(b, tag); await reachChecks(b, tag); await serbianChecks(b, tag); }
+    if (want('polar')) await polarFlow(b, tag);
     if (want('axe')) await axeScan(b, tag);
     if (want('server')) await serverChecks(b, tag);
   } catch (e) { fail++; failures.push(`[${tag}] crashed: ${e.stack || e}`); console.log(e); }
