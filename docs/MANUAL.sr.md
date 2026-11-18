@@ -435,7 +435,7 @@ Uz opis idu vaša tabela alata i izabrana mašina. OpenRouter i onaj ko pokreće
 1. Pritisnite **GENERIŠI**. Dugme zamenjuje **Otkaži**.
 2. Pod **Tok** se faze pojavljuju redom kojim ih server izvodi: Generisanje, Provera, Merenje, Dorada i Završetak. Završena faza ima kvačicu, tekuća strelicu. Dorada prikazuje svoj krug, na primer `Dorada, krug 2 od 5`. Procenti se ne prikazuju.
 3. Tekst programa raste pod **Tekst programa** dok model piše.
-4. Kada je posao gotov, piše `Program je prošao proveru. Pritisnite Učitaj da ga otvorite.`, a zatim broj blokova, krug i broj zahteva. Dugme se sada zove **Učitaj**. Pored njega je **Generiši ponovo**.
+4. Kada je posao gotov, piše `Program je prošao proveru. Pritisnite Učitaj da ga otvorite.`, a zatim broj blokova, krug i broj zahteva. Dugme se sada zove **Učitaj**. Pored njega je **Generiši ponovo**. Ispod je tih red sa vremenom i cenom posla, na primer `Vreme 42 s · cena $0.012`; prikazuje se i posle neuspelog ili otkazanog posla, a cena se izostavlja kada je server ne pošalje.
 5. Pritisnite **Učitaj**. Red iznad dugmeta unapred kaže šta će se desiti, na primer `Učitavanje ga otvara kao novi program, SLOT.H. NAMEPLATE.H ostaje nepromenjen u listi programa.`
 
 ![Završen posao: faze, red sa rezultatom i dugme Ladda (švedski interfejs). Slika je snimljena sa lažnim provajderom iz testova, pa su imena modela izmišljena](shots/business-ai-done.png)

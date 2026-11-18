@@ -190,10 +190,12 @@ const DONE = { program: GOOD, round: 0, accepted: true, model: 'acme/fast-one-v2
     ok(steps.join(' > ') === 'Generation > Validation > Measurement > Refinement, round 1 of 5 > Validation > Measurement > Completion', 'stages and rounds are the server\'s events, in order', steps);
     ok(r.ctl.state.phase === 'running' && r.ctl.state.result === null && r.ctl.load() === null && r.env.loads.length === 0, 'not finished: nothing to load, Load does nothing');
     ok(r.programs['MINE.H'].includes('unsaved edit') && r.env.active === 'MINE.H', 'not finished: the active program is untouched');
-    r.st.send(frame('done', Object.assign({}, DONE, { round: 1 }))); r.st.close();
+    r.env.clock += 42000;
+    r.st.send(frame('done', Object.assign({}, DONE, { round: 1, usage: { requests: 2, cost_usd: 0.0123 } }))); r.st.close();
     ok((await p) === true && r.ctl.state.phase === 'done' && r.ctl.state.result.program === GOOD, 'done: the result is ready');
     ok(r.env.loads.length === 0 && r.env.active === 'MINE.H', 'done: still nothing loaded on its own');
-    ok(A.announcement('en', r.ctl.state) === A.STR.en.done, 'done: announced');
+    ok(A.announcement('en', r.ctl.state) === A.STR.en.done + ' Time 42 s · cost $0.012', 'done: announced, with the time and the cost of the job', A.announcement('en', r.ctl.state));
+    ok(r.ctl.state.meta.ms === 42005 && r.ctl.state.meta.cost === 0.0123 && A.metaText('sv', r.ctl.state.meta) === 'Tid 42 s · kostnad $0.012' && A.metaText('sr', r.ctl.state.meta) === 'Vreme 42 s · cena $0.012', 'done: one line with the elapsed time and the server\'s cost, in three languages', r.ctl.state.meta);
     const name = r.ctl.load();
     ok(name === 'SLOT.H' && r.env.loads.length === 1 && r.env.loads[0] === GOOD, 'Load: the explicit action opens the server\'s program as a new one', name);
     ok(r.programs['MINE.H'].includes('unsaved edit') && Object.keys(r.programs).length === 2, 'Load: the program that was active is still there, unchanged');
@@ -201,6 +203,23 @@ const DONE = { program: GOOD, round: 0, accepted: true, model: 'acme/fast-one-v2
     r.ctl.dispatch({ type: 'sse', event: { type: 'done', data: DONE } });
     ok(r.ctl.state.loaded.name === 'SLOT.H', 'events after the end change nothing');
     ok(A.freeName('SLOT', ['SLOT.H', 'SLOT_2.H']) === 'SLOT_3.H' && A.programBase('no header') === 'AI_PART', 'names: SLOT.H, SLOT_2.H, SLOT_3.H; AI_PART without a header');
+  }
+
+  /* ---- time and cost of a job ---- */
+  {
+    ok(A.durationText(42000) === '42 s' && A.durationText(400) === '0 s' && A.durationText(95000) === '1 min 35 s' && A.durationText(null) === null && A.durationText(-1) === null, 'time: seconds, minutes from 60 s on, nothing without a figure');
+    ok(A.costText(0.0123) === '$0.012' && A.costText(1.5) === '$1.500' && A.costText(0.0004) === '<$0.001' && A.costText(0) === '$0' && A.costText(undefined) === null && A.costText('0.01') === null, 'cost: US$ with three decimals; under a tenth of a cent said as such; not a number = none');
+    ok(A.metaText('en', { ms: 42000, cost: null }) === 'Time 42 s' && A.metaText('en', { ms: null, cost: 0.02 }) === 'cost $0.020' && A.metaText('en', null) === '', 'line: the cost is left out when the server sent none');
+    const run = (s, a) => A.reduce(s, a);
+    let s = run(A.initial(), { type: 'online' });
+    s = run(s, { type: 'job/start', at: 1000 });
+    const f = run(s, { type: 'sse', at: 8000, event: { type: 'error', data: { code: 'timeout', message: '', retryable: true, usage: { requests: 1, cost_usd: 0.002 } } } });
+    ok(f.phase === 'failed' && f.meta.ms === 7000 && f.meta.cost === 0.002 && A.announcement('sv', f) === A.STR.sv.err.timeout + ' Tid 7 s · kostnad $0.002', 'failed job: the cost of the `error` event is shown and announced too', A.announcement('sv', f));
+    const cut = run(s, { type: 'stream/end', at: 4000 });
+    ok(cut.meta.ms === 3000 && cut.meta.cost === null, 'a stream that just ends: time, no cost', cut.meta);
+    ok(run(f, { type: 'again' }).meta === null && run(f, { type: 'mode', mode: 'change' }).meta === null, 'the line goes when the view leaves the job');
+    const refused = run(s, { type: 'job/refused', code: 'busy', at: 1500 });
+    ok(refused.phase === 'idle' && refused.meta === null, 'a job the server refused never ran: no line');
   }
 
   /* ---- cancel ---- */
@@ -252,8 +271,10 @@ const DONE = { program: GOOD, round: 0, accepted: true, model: 'acme/fast-one-v2
     const shown = A.errorText('en', r.ctl.state.error.code), said = A.announcement('en', r.ctl.state);
     ok(/did not pass the check/.test(shown) && /Change the description or pick another model/.test(shown) && !/ready|passed the check/i.test(shown + said), 'validation failure: a short error that says what to do, never "ready"', shown);
     ok(r.ctl.state.result === null && r.ctl.load() === null && r.env.loads.length === 0, 'validation failure: nothing can be loaded');
+    ok(r.ctl.state.meta && r.ctl.state.meta.cost === null && A.metaText('en', r.ctl.state.meta) === 'Time 0 s' && said.endsWith(' Time 0 s'), 'failed job: the time is shown and announced; no cost from the server = no cost in the line', [r.ctl.state.meta, said]);
     const q = r.ctl.generate('a slot, again'); await settle();
     ok(r.of('startJob').length === 2 && r.ctl.state.phase === 'running' && r.ctl.state.draft === null && r.ctl.state.error === null, 'after a failure Generate starts a fresh job');
+    ok(r.ctl.state.meta === null, 'a fresh job: the line about the last job is gone');
     r.st.close(); await q;
   }
   {

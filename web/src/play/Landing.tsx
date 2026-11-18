@@ -64,7 +64,13 @@ export function Landing({ t, lang, setLang, reduced, onStart }: Props) {
           </g>
           <path className="lg-path" d="M60 640H380L460 560H700L760 620H1140" />
         </svg>
-        {poster && <img className="land-poster" src="/play/hero-poster.jpg" alt="" onError={() => setPoster(false)} />}
+        {poster && (
+          <picture>
+            {/* half the bytes of the jpg; a browser without WebP takes the img below */}
+            <source srcSet="/play/hero-poster.webp" type="image/webp" />
+            <img className="land-poster" src="/play/hero-poster.jpg" alt="" onError={() => setPoster(false)} />
+          </picture>
+        )}
         {!reduced && film !== 'none' && (
           <video
             ref={video}

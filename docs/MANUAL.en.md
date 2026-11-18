@@ -435,7 +435,7 @@ Your tool table and the selected machine go with the description. OpenRouter and
 1. Press **GENERATE**. The button is replaced by **Cancel**.
 2. Under **Progress** the stages appear in the order the server takes them: Generation, Validation, Measurement, Refinement and Completion. A finished stage has a tick, the current one an arrow. A refinement shows its round, for example `Refinement, round 2 of 5`. No percentages are shown.
 3. The program text grows under **Program text** while the model writes.
-4. When the job is done it says `The program passed the check. Press Load to open it.` followed by the number of blocks, the round and the number of requests. The button is now **Load**. Next to it is **Generate again**.
+4. When the job is done it says `The program passed the check. Press Load to open it.` followed by the number of blocks, the round and the number of requests. The button is now **Load**. Next to it is **Generate again**. A quiet line below gives the job's time and cost, for example `Time 42 s · cost $0.012`; it is also shown after a failed or cancelled job, and the cost is left out when the server sends none.
 5. Press **Load**. The line above the button says beforehand what will happen, for example `Load opens it as a new program, SLOT.H. NAMEPLATE.H stays unchanged in the program list.`
 
 ![A finished job: the stages, the result line and the Load button. The picture was taken against the tests' mock provider, so the model names are invented](shots/business-ai-done.png)

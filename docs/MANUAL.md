@@ -433,7 +433,7 @@ Med beskrivningen följer din verktygstabell och vilken maskin som är vald. Ope
 1. Tryck **GENERERA**. Knappen ersätts av **Avbryt**.
 2. Under **Förlopp** visas stegen i den ordning servern tar dem: Generering, Validering, Mätning, Förfining och Slutförande. Ett klart steg har en bock, det pågående en pil. En förfining visar sin omgång, till exempel `Förfining, omgång 2 av 5`. Det visas inga procenttal.
 3. Programtexten växer fram under **Programtext** medan modellen skriver.
-4. När jobbet är klart står det `Programmet klarade kontrollen. Tryck på Ladda för att öppna det.` följt av antal block, omgång och antal förfrågningar. Knappen heter nu **Ladda**. Bredvid finns **Generera igen**.
+4. När jobbet är klart står det `Programmet klarade kontrollen. Tryck på Ladda för att öppna det.` följt av antal block, omgång och antal förfrågningar. Knappen heter nu **Ladda**. Bredvid finns **Generera igen**. Under står en dämpad rad med jobbets tid och kostnad, till exempel `Tid 42 s · kostnad $0.012`; den visas också efter ett misslyckat eller avbrutet jobb, och kostnaden utelämnas när servern inte anger någon.
 5. Tryck **Ladda**. Raden ovanför knappen säger i förväg vad som händer, till exempel `Ladda öppnar det som ett nytt program, SLOT.H. NAMEPLATE.H ligger kvar oförändrat i programlistan.`
 
 ![Ett färdigt jobb: stegen, resultatraden och knappen Ladda. Bilden är tagen mot testernas låtsasleverantör, så modellnamnen är påhittade](shots/business-ai-done.png)

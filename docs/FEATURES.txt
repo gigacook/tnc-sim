@@ -292,6 +292,10 @@ the system prompt):
     raise the measured match by 1.0 point ends the refinement; the best
     program is delivered when it matches at least 85, with its match
     shown before Load.
+  - After a finished or failed job one quiet line gives the elapsed time
+    and the cost the server reported (usage.cost_usd), e.g.
+    "Time 42 s · cost $0.012"; no cost from the server = no cost shown.
+    The live region says it too.
   - Removed with the old popup: the browser-side loop with Continue /
     Stop, the live block-by-block build in 3-D, the request viewer, the
     model table with sort and free model id.

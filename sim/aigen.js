@@ -129,6 +129,8 @@ var TNC_AIGEN = (function () {
       draft: null,              // a program that did not pass: shown, never loaded
       error: null,              // {code, message, retryable}
       loaded: null,             // {name, previous} after the Load button
+      t0: null,                 // when the job was sent (the controller's clock)
+      meta: null,               // {ms, cost} of the job that ended: elapsed time, and the cost the server reported (null = none sent)
       say: null, sayN: 0        // the last thing worth announcing
     };
   }
@@ -165,7 +167,7 @@ var TNC_AIGEN = (function () {
     }
   }
 
-  function reduce(s, a) {
+  function step(s, a) {
     switch (a.type) {
       case 'offline': return set(s, { phase: 'offline' });
       case 'online': return s.phase === 'boot' || s.phase === 'offline' ? set(s, { phase: 'idle' }) : s;
@@ -208,6 +210,31 @@ var TNC_AIGEN = (function () {
     }
   }
 
+  /* the reducer, plus the one line about a job that ended: how long it took (the action's `at` against the start) and
+     what the server says it cost (`usage.cost_usd` of the `done` or `error` event). Gone again when the view leaves that job. */
+  function reduce(s, a) {
+    var n = step(s, a), live = s.phase === 'running' || s.phase === 'cancelling', over = n.phase === 'done' || n.phase === 'failed', u;
+    if (n === s) return s;
+    if (a.type === 'job/start') return set(n, { t0: typeof a.at === 'number' ? a.at : null, meta: null });
+    if (live && over) {
+      u = a.type === 'sse' && a.event && a.event.data ? a.event.data.usage : null;
+      return set(n, { meta: { ms: typeof a.at === 'number' && s.t0 != null ? Math.max(0, a.at - s.t0) : null,
+        cost: u && typeof u.cost_usd === 'number' && isFinite(u.cost_usd) && u.cost_usd >= 0 ? u.cost_usd : null } });
+    }
+    return n.meta && !over ? set(n, { meta: null }) : n;
+  }
+  /* 42000 -> "42 s", 95000 -> "1 min 35 s" */
+  function durationText(ms) {
+    if (typeof ms !== 'number' || !isFinite(ms) || ms < 0) return null;
+    var sec = Math.round(ms / 1000);
+    return sec < 60 ? sec + ' s' : Math.floor(sec / 60) + ' min ' + (sec % 60) + ' s';
+  }
+  /* US$ as the server reported it, three decimals: 0.0123 -> "$0.012"; an amount under a tenth of a cent is said as such */
+  function costText(c) {
+    if (typeof c !== 'number' || !isFinite(c) || c < 0) return null;
+    return c === 0 ? '$0' : c < 0.001 ? '<$0.001' : '$' + c.toFixed(3);
+  }
+
   /* ---------- 3. the controller ----------
      create({transport, host, timers, now}):
        transport  {keyState(), putKey(key), deleteKey(), models(), startJob(body, signal), cancel(id), measure(id, body)}
@@ -219,7 +246,7 @@ var TNC_AIGEN = (function () {
   function create(o) {
     var tr = o.transport || null, host = o.host || {}, timers = o.timers || { set: function (f, ms) { return setTimeout(f, ms); }, clear: function (i) { clearTimeout(i); } };
     var now = o.now || Date.now, s = initial(), subs = [], run = 0, abort = null, headerId = null;
-    function dispatch(a) { var n = reduce(s, a), i; if (n === s) return; s = n; for (i = 0; i < subs.length; i++) subs[i](s, a); }
+    function dispatch(a) { if (a.at == null) a = set(a, { at: now() }); var n = reduce(s, a), i; if (n === s) return; s = n; for (i = 0; i < subs.length; i++) subs[i](s, a); }
     function err(r) { return (r && r.error) || { code: 'network', message: '' }; }
 
     function refreshKey() {
@@ -439,6 +466,7 @@ var TNC_AIGEN = (function () {
       textLabel: 'Programtext', draftLabel: 'Utkast (inte laddat)',
       done: 'Programmet klarade kontrollen. Tryck på Ladda för att öppna det.',
       doneMeta: '{b} block · omgång {n} · {q} förfrågningar',
+      jobTime: 'Tid {t}', jobCost: 'kostnad {c}',
       loadNote: 'Ladda öppnar det som ett nytt program, {name}. {active} ligger kvar oförändrat i programlistan.',
       editNote: 'Ett block i {active} som inte är lagrat med ENT går förlorat.',
       loaded: '{name} är laddat. {active} ligger kvar oförändrat.',
@@ -518,6 +546,7 @@ var TNC_AIGEN = (function () {
       textLabel: 'Program text', draftLabel: 'Draft (not loaded)',
       done: 'The program passed the check. Press Load to open it.',
       doneMeta: '{b} blocks · round {n} · {q} requests',
+      jobTime: 'Time {t}', jobCost: 'cost {c}',
       loadNote: 'Load opens it as a new program, {name}. {active} stays unchanged in the program list.',
       editNote: 'A block in {active} that is not stored with ENT is dropped.',
       loaded: '{name} is loaded. {active} stays unchanged.',
@@ -597,6 +626,7 @@ var TNC_AIGEN = (function () {
       textLabel: 'Tekst programa', draftLabel: 'Nacrt (nije učitan)',
       done: 'Program je prošao proveru. Pritisnite Učitaj da ga otvorite.',
       doneMeta: '{b} blokova · krug {n} · {q} zahteva',
+      jobTime: 'Vreme {t}', jobCost: 'cena {c}',
       loadNote: 'Učitavanje ga otvara kao novi program, {name}. {active} ostaje nepromenjen u listi programa.',
       editNote: 'Blok u {active} koji nije sačuvan tasterom ENT se gubi.',
       loaded: '{name} je učitan. {active} ostaje nepromenjen.',
@@ -649,19 +679,26 @@ var TNC_AIGEN = (function () {
     var t = strings(lang).status[line.code];
     return t ? fill(t, { m: line.message }) : line.message;
   }
+  /* "Tid 42 s · kostnad $0.012": the cost part is left out when the server sent none */
+  function metaText(lang, meta) {
+    var L = strings(lang), t = meta ? durationText(meta.ms) : null, c = meta ? costText(meta.cost) : null, parts = [];
+    if (t) parts.push(fill(L.jobTime, { t: t }));
+    if (c) parts.push(fill(L.jobCost, { c: c }));
+    return parts.join(' · ');
+  }
   function announcement(lang, s) {
-    var L = strings(lang), a = s.say;
+    var L = strings(lang), a = s.say, m = s.meta && (s.phase === 'done' || s.phase === 'failed') ? metaText(lang, s.meta) : '';
     if (!a) return '';
     if (a.k === 'stage') return stepText(lang, { stage: a.stage, round: a.round, maxRounds: a.max });
-    if (a.k === 'error') return errorText(lang, a.code);
-    if (a.k === 'done') return L.done;
+    if (a.k === 'error') return errorText(lang, a.code) + (m ? ' ' + m : '');
+    if (a.k === 'done') return L.done + (m ? ' ' + m : '');
     if (a.k === 'loaded') return fill(s.loaded.changed ? L.loadedChange : L.loaded, { name: s.loaded.name, active: s.loaded.previous || '' });
     return L[a.k] || '';
   }
 
   var pure = { STAGES: STAGES, IDLE_MS: IDLE_MS, CANCEL_GRACE_MS: CANCEL_GRACE_MS, BROWSER_KEY_NAMES: BROWSER_KEY_NAMES, STR: STR, sseParser: sseParser, perMillion: perMillion, priceText: priceText, groupNum: groupNum,
     outputLimit: outputLimit, filterModels: filterModels, programBase: programBase, freeName: freeName, initial: initial, reduce: reduce, create: create,
-    httpTransport: httpTransport, errorText: errorText, stepText: stepText, statusText: statusText, announcement: announcement };
+    httpTransport: httpTransport, errorText: errorText, stepText: stepText, statusText: statusText, announcement: announcement, durationText: durationText, costText: costText, metaText: metaText };
   if (typeof window === 'undefined' || typeof document === 'undefined') return pure;
 
   /* ---------- 6. the view ---------- */
@@ -800,6 +837,7 @@ var TNC_AIGEN = (function () {
     N.status = el('p', { cls: 'ag-muted', id: 'aigen-status' });
     N.err = el('p', { cls: 'ag-err', id: 'aigen-error' });
     N.ok = el('p', { cls: 'ag-ok', id: 'aigen-ok' });
+    N.meta = el('p', { cls: 'ag-muted', id: 'aigen-meta' });
     N.textLabel = el('span', { cls: 'ag-muted', id: 'aigen-textl' });
     N.text = el('pre', { cls: 'ag-text', id: 'aigen-text', tabindex: '0', role: 'group', 'aria-labelledby': 'aigen-textl' });
     N.prog = el('div', { id: 'aigen-progress', role: 'group' }, [N.steps, N.status]);
@@ -813,7 +851,7 @@ var TNC_AIGEN = (function () {
     N.rm = el('button', { cls: 'ag-link', type: 'button', id: 'aigen-keyrm' });
     N.foot = el('div', { cls: 'ag-foot' }, [N.loadNote, N.disc, el('div', { cls: 'ag-act' }, [N.go, N.cancel, N.again, N.copy]), N.rm]);
     N.live = el('div', { cls: 'ag-live', id: 'aigen-live', role: 'status', 'aria-live': 'polite' });
-    N.main = el('div', { id: 'aigen-main' }, [N.mode, el('label', { cls: 'fld wide' }, [N.promptLabel, N.prompt]), el('div', {}, [N.exLabel, N.ex]), N.models, N.retry, N.prog, N.err, N.ok,
+    N.main = el('div', { id: 'aigen-main' }, [N.mode, el('label', { cls: 'fld wide' }, [N.promptLabel, N.prompt]), el('div', {}, [N.exLabel, N.ex]), N.models, N.retry, N.prog, N.err, N.ok, N.meta,
       el('div', { id: 'aigen-textbox' }, [N.textLabel, N.text]), N.foot]);
     N.main.style.cssText = 'display:flex;flex-direction:column;gap:.75rem';
     N.root = el('div', { cls: 'ag', id: 'aigen' }, [N.off, N.notice, N.keyForm, N.main, N.live]);
@@ -926,6 +964,8 @@ var TNC_AIGEN = (function () {
       text(N.ok, s.phase === 'done' ? '✓ ' + (s.loaded ? fill(s.loaded.changed ? Lx.loadedChange : Lx.loaded, { name: s.loaded.name, active: s.loaded.previous || '' })
         : doneLine + ' ' + fill(Lx.doneMeta, { b: v && v.blocks != null ? v.blocks : '—', n: res.round == null ? 0 : res.round, q: u && u.requests != null ? u.requests : '—' })) : '');
       show(N.ok, s.phase === 'done');
+      var metaLine = s.phase === 'done' || s.phase === 'failed' ? metaText(lg, s.meta) : '';
+      text(N.meta, metaLine); show(N.meta, !!metaLine);
       text(N.textLabel, s.phase === 'failed' && s.draft ? Lx.draftLabel : Lx.textLabel);
       text(N.text, s.text); show(N.text.parentNode, !!s.text);
       if (live) N.text.scrollTop = N.text.scrollHeight;

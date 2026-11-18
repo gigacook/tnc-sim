@@ -31,3 +31,6 @@ tnc-sim.lnk
 # rendered hero video: reproduce with npm run render:hero (the poster images are tracked)
 web/public/play/hero.mp4
 web/public/play/hero.webm
+# generated test evidence (screenshots, proof frames): made again by the tests; only the showcase report is tracked
+artifacts/*
+!artifacts/showcase/

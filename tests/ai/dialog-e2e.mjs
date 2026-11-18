@@ -220,6 +220,7 @@ try {
   check(/Avbrutet\. Inget laddades\./.test(await txt('#aigen-error')) && (await txt('#aigen-go')) === 'GENERERA' && (await page.getAttribute('#aigen-go', 'data-mode')) === 'generate', 'cancelled: said so, the primary action is GENERERA again (not Ladda)', await txt('#aigen-error'));
   check(/Utkast \(inte laddat\)/.test(await txt('#aigen-textbox')) && (await txt('#aigen-text')).includes('BEGIN PGM SLOT MM'), 'cancelled: the draft so far is kept and labelled as a draft');
   check(/× Generering \(avbruten\)/.test(await txt('#aigen-steps')), 'cancelled: the step shows it stopped', await txt('#aigen-steps'));
+  check((await vis('#aigen-meta')) && /^Tid \d+ s($| · kostnad )/.test(await txt('#aigen-meta')) && (await txt('#aigen-live')).includes(await txt('#aigen-meta')), 'cancelled: one quiet line says how long the job ran; the live region says it too', await txt('#aigen-meta'));
   await until('the provider to see the dropped connection', () => mock.chat()[0]?.aborted);
   await sleep(600);
   check(mock.chat().length === 1 && mock.script.length === 1 && jobs.length === 1, 'cancelled: no further request to the provider', mock.chat().length);
@@ -245,6 +246,8 @@ provider requests: ${mock.chat().length}`); throw e; });
   check(/nytt program, SLOT\.H\./.test(await txt('#aigen-loadnote')) && (await txt('#aigen-loadnote')).includes(`${before.name} ligger kvar oförändrat`), 'success: one line says what Ladda does to the active program', await txt('#aigen-loadnote'));
   check((await txt('#aigen-text')) === GOOD, 'success: the validated program text is shown');
   check((await txt('#aigen-live')).length > 0 && (await page.getAttribute('#aigen-live', 'aria-live')) === 'polite', 'status changes go through a polite live region', await txt('#aigen-live'));
+  check((await vis('#aigen-meta')) && /^Tid \d+ s · kostnad \$0\.00[1-9]$/.test(await txt('#aigen-meta')) && (await page.getAttribute('#aigen-meta', 'class')) === 'ag-muted', 'success: one quiet line with the elapsed time and the cost the server reported (usage.cost_usd)', await txt('#aigen-meta'));
+  check((await txt('#aigen-live')).endsWith(await txt('#aigen-meta')), 'success: the time and the cost are announced through the live region', await txt('#aigen-live'));
   check((await page.evaluate(() => window.TNC_UI.program.name)) === before.name && !(await page.evaluate(() => 'SLOT.H' in window.TNC_UI.state.pgms[window.TNC_UI.state.machine])), 'success: still nothing loaded before Ladda is pressed');
   check((await small()).length === 0, 'success: every control is at least 44 x 44', await small());
   await shot('done-1920x1080');
