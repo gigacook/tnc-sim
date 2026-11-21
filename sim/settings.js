@@ -16,6 +16,8 @@
                                                  cream is the one light theme. Supersedes env for the frame (env still sets the 3-D scene)
      fskey    one key name (KeyboardEvent.key)   the fullscreen shortcut, default 'F11'
      replay   boolean                            offer the machining replay when a run finishes
+     keepgoing boolean                           the simulator's "continue after errors": default false = as the control (a fatal
+                                                 error or a crash ends the run); true = errors and crashes are listed and marked, the run goes on
      groups   object {group: mode}               the settings panel's per-group mode ('calm', 'full', 'custom' …); free-form, sim/setpanel.js owns it
 
    Migration (first read without a "tnc.settings.v1"): the language from "tnc.lang" and the sound switch from the
@@ -32,7 +34,7 @@ var TNC_SETTINGS = (function () {
     quality: ['low', 'medium', 'high'], motion: ['auto', 'full', 'reduced'],
     theme: ['night', 'graphite', 'mocha', 'acid', 'oled', 'cream'] };
   var DEF = { v: 1, lang: 'sv', decimal: 'auto', skin: 'auto', env: 'cold-steel', quality: 'high', motion: 'auto', sound: true, setup: 0, tips: true,
-    theme: 'night', fskey: 'F11', replay: true, groups: {} };
+    theme: 'night', fskey: 'F11', replay: true, keepgoing: false, groups: {} };
   var hasWin = typeof window !== 'undefined';
 
   function lsGet(k) { try { return hasWin && window.localStorage ? window.localStorage.getItem(k) : null; } catch { return null; } }
@@ -40,7 +42,7 @@ var TNC_SETTINGS = (function () {
   /* one value, checked: the value itself or undefined */
   function clean(k, v) {
     if (ENUM[k]) return ENUM[k].indexOf(v) >= 0 ? v : undefined;
-    if (k === 'sound' || k === 'tips' || k === 'replay') return typeof v === 'boolean' ? v : undefined;
+    if (k === 'sound' || k === 'tips' || k === 'replay' || k === 'keepgoing') return typeof v === 'boolean' ? v : undefined;
     if (k === 'fskey') return typeof v === 'string' && v.length > 0 && v.length <= 16 ? v : undefined;
     if (k === 'groups') { if (!v || typeof v !== 'object' || Array.isArray(v)) return undefined;
       var g = {}, n; for (n in v) if (/^[a-z]{1,16}$/.test(n) && typeof v[n] === 'string' && /^[a-z]{1,16}$/.test(v[n])) g[n] = v[n]; return g; }

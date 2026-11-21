@@ -597,7 +597,10 @@ pub fn parse(text: &str) -> Parsed {
             let q = b.args.num("q").unwrap_or(0.0);
             // SL cycles 20-25 take Q1-Q19 (manual 8.6, p. 290-296); every other Q-style cycle Q200 and up
             let sl = (20.0..=25.0).contains(&cyc) && (1.0..=19.0).contains(&q);
-            let in_cycle = matches!(ctx, Some("CYCLDEF") | Some("CYCLPARM") | Some("TCHPROBE")) && (q >= 200.0 || sl) && !matches!(b.args.get("value"), Some(V::Null));
+            // a cycle line ending in ~ says the next line is still the cycle, whatever its Q number (the operator's 430:
+            // "CYCL DEF 303 ~" / "Q1=180 ;", the machine builder's head cycles, MOTORRAM-X.H)
+            let tilde = blocks.iter().rev().find(|p: &&Block| p.kind != Kind::Blank).is_some_and(|p| matches!(p.kind, Kind::CyclDef | Kind::CyclParm | Kind::TchProbe) && p.raw.trim_end().ends_with('~'));
+            let in_cycle = matches!(ctx, Some("CYCLDEF") | Some("CYCLPARM") | Some("TCHPROBE")) && (q >= 200.0 || sl || tilde) && !matches!(b.args.get("value"), Some(V::Null));
             if in_cycle { b.kind = Kind::CyclParm; b.indent = true; b.args.remove("expr"); }
             else { b.kind = Kind::Formula; if !matches!(b.args.get("expr"), Some(V::Ast(_))) { mark_err(&mut b, "ARITHMETICAL ERROR"); } }
         }

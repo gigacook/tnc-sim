@@ -32,6 +32,7 @@ verified, where it ran, and the commit (pushed to main).
 | x | #25 | Operator's post: cycles 241 / 252 are not 426/430 cycles, now refused as CYCLE n NOT ON TNC 426/430 (as the control would); probe 415 moved to #26 | 10-18 | post.js, parity re-recorded (19 programs: message only) | Win 11 | 12174ba |
 | x | #26 | TCH PROBE 415 (datum inside corner), written by the operator's post: touch points and directions read off the iTNC 530 manual's figures (p. 361-362); wall distance placeholder P415 | 10-20 | manual.js, post.js 0 open, parity unchanged | Win 11 | see git log |
 | x | #27 | Preassigned Q108-Q114 (p. 386), ~ comment continuation, CALL PGM errors name the called block; the user's Plan.h via CALL PGM runs clean | 10-18 | manual.js, parity, corpus 2,807/2,829 | Win 11 | 3d07421 |
+| x | #30 | Operator's 430 head (answers 11-21, MOTORRAM-X.H in private/): CYCL DEF 303 Q1 turns the A head, 304 Q2 the B head (machine-builder cycles, placeholder H1); cycle 19 only tilts the plane on the 430 (c19pos false); the line after "CYCL DEF … ~" belongs to the cycle whatever its Q number (it was read as Q1 = 180 and shifted the block numbers); a head turn alone is no longer dropped in programs with RL / RR; "continue after errors" (settings keepgoing, default off) runs past TOOL AXIS n NOT SIMULATED and crashes | 11-21 | tests/head430.js 16 / 16, manual.js, post.js, cargo test, parity re-recorded (430 programs with cycle 19 / L A B only) | Linux cloud: Node 22, Rust | see git log |
 
 ### 2. Shipping
 | ✓ | id | task | date | verified via | tested on | commit |
@@ -96,3 +97,4 @@ FK solver · horizontal spindle (TOOL CALL X / Y) · cylinder surface 27 / 28 (r
 | AI1 | part.js | engraving font is the simulator's own |
 | AI2 | part.js compare | feature edges within half a grid cell not counted; Z tolerance 0.1 mm |
 | SF1 | dialogs.js, ui.js screen form | rapid feed shown as `F MAX` (stored `FMAX`): the 426/430 manual prints both spellings (p. 155 `7 LP PR+60 PA+180 R0 F MAX`); not confirmed from a screen photo. Decimal character follows MP 7280 (p. 457: 0 comma, 1 point), default here = by interface language; the control's factory default is not in the manual |
+| H1 | machines.js headCycles, exec.rs CyclDef | operator's 430: 303 Q1 = A head angle, 304 Q2 = B head angle, turned at rapid on the cycle block; an angle outside the limits is taken modulo 360 (303 Q1=180 -> A-180: open question to the operator, the program machines in the A-90 plane right after); cycle 19 does not turn the head (c19pos false) |

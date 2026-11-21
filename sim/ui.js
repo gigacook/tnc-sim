@@ -107,18 +107,21 @@ const SHOWCASE=(()=>{ const sc=window.TNC_SHOWCASE; if(!sc||!sc.sources) return 
 const showcaseFor=id=>{ const o={}; SHOWCASE.list.forEach(it=>{ if(it.machines.includes(id)) o[it.name]=it.text; }); return o; };
 const MACHINES={
   '426':{ id:'426', label:'TNC 426', axes:['X','Y','Z'], tools:TNC.TOOLS,
-    run:t=>TNC.run(t,{tools:mtools('426'),holder:holderOpt('426'),programs:S.pgms['426']}), expand:r=>TNC_SIM.expand(r),
+    run:t=>TNC.run(t,{tools:mtools('426'),holder:holderOpt('426'),programs:S.pgms['426'],keepGoing:KEEPGOING()}), expand:r=>TNC_SIM.expand(r),
     analyse:(r,ex)=>TNC_SIM.analyse(r,ex,TNC_SIM.grid(r.stock,ex.segs)),
     programs:Object.assign({},window.TNC_PROGRAMS||{},showcaseFor('426')), lessons:window.TNC_LESSONS||null }
 };
 /* TNC 430: the operator's machine parameters live in machines.js (shared with the server's engine). */
 const MACHINE_430=(window.TNC_MACHINE_CONFIGS||{})['430']||{};
 MACHINES['430']={ id:'430', label:'TNC 430', axes:['X','Y','Z','B','A'], tools:TNC.TOOLS, machine:MACHINE_430,
-  run:t=>TNC.run(t,{tools:mtools('430'),machine:MACHINE_430,holder:holderOpt('430'),programs:S.pgms['430']}), expand:r=>TNC_SIM.expand(r),
+  run:t=>TNC.run(t,{tools:mtools('430'),machine:MACHINE_430,holder:holderOpt('430'),programs:S.pgms['430'],keepGoing:KEEPGOING()}), expand:r=>TNC_SIM.expand(r),
   analyse:(r,ex)=>TNC_SIM.analyse(r,ex,TNC_SIM.grid(r.stock,ex.segs)),
   programs:Object.assign({},window.TNC_PROGRAMS||{},showcaseFor('430')), lessons:window.TNC_LESSONS||null };
 Object.keys(window.TNC_MACHINES||{}).forEach(k=>{ MACHINES[k]=window.TNC_MACHINES[k]; });
 const M=()=>MACHINES[S.machine];
+/* "continue after errors" (settings keepgoing, default off = as the control): the engine runs past its own stops and a crash
+   no longer holds the feed; every error and crash is still listed, marked on its block and raised as an alarm */
+function KEEPGOING(){ try{ return !!(window.TNC_SETTINGS&&TNC_SETTINGS.get('keepgoing')); }catch(e){ return false; } }
 
 /* ================= state ================= */
 const P=readPrefs();
@@ -597,7 +600,7 @@ function seek(t, fire){
   if(fire){
     while(S.evIdx<S.events.length && S.events[S.evIdx].t<=t+1e-9){
       const ev=S.events[S.evIdx++]; raise(ev);
-      if(ev.sev==='crash'){ t=ev.t; S.running=false; setState('CRASH · FEED HOLD'); break; }
+      if(ev.sev==='crash'&&!KEEPGOING()){ t=ev.t; S.running=false; setState('CRASH · FEED HOLD'); break; }
     }
   } else { const i=S.events.findIndex(e=>e.t>t+1e-9); S.evIdx=i<0?S.events.length:i; }
   if(t<S.stampT-1e-9) rewind(t); else applyCuts(t);
@@ -1856,6 +1859,7 @@ if(SET) SET.on((keys,o)=>{
   if(keys.includes('lang')){ if(window.TNC_I18N) TNC_I18N.set(SET.get('lang')); langSync(); }
   else if(keys.includes('decimal')){ if(S.res) renderList(); if(S.wiz){ const d=wizStep().dflt; dlgIn.placeholder=d!=null&&d!==''?shown(String(d)):''; wizPreview(); } }
   if(keys.includes('env')) envApply();
+  if(keys.includes('keepgoing')) compile();
   if(keys.includes('quality')) qualityApply();
   if(keys.includes('motion')) motionApply();
   if(keys.includes('skin')) skinApply();

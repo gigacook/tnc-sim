@@ -39,6 +39,7 @@ pub fn opts_from_json(s: &str) -> Opts {
     }).collect());
     let mach = mach_from(v.get("machine"));
     Opts { tools, mach, holder_a: v.get("holder_a").and_then(|x| x.as_f64()), auto_tools: v.get("auto_tools").and_then(|x| x.as_bool()).unwrap_or(false),
+        keep_going: v.get("keep_going").and_then(|x| x.as_bool()).unwrap_or(false),
         programs: v.get("programs").and_then(|p| p.as_object()).map(|o| o.iter().filter_map(|(k, t)| t.as_str().map(|t| (k.to_uppercase(), t.to_string()))).collect()).unwrap_or_default() }
 }
 
@@ -54,6 +55,9 @@ pub fn mach_from(m: Option<&Value>) -> Mach {
         if let Some(a) = m.get("axes").and_then(|a| a.as_array()) { mach.axes = a.iter().filter_map(|x| x.as_str().map(String::from)).collect(); }
         mach.c19pos_false = m.get("c19pos") == Some(&Value::Bool(false));
         mach.mp7420 = f(m.get("mp7420"));
+        if let Some(h) = m.get("headCycles").and_then(|h| h.as_object()) {
+            for (k, v) in h { if let (Ok(n), Some(ax), Some(q)) = (k.parse::<f64>(), v.get("axis").and_then(|a| a.as_str()).and_then(|a| a.chars().next()), v.get("q").and_then(|q| q.as_f64())) { mach.head_cycles.push((n, ax.to_ascii_uppercase(), q)); } }
+        }
         if let Some(p) = m.get("probe").filter(|p| p.is_object()) { mach.probe = Some([f(p.get("f")), f(p.get("rapid")), f(p.get("clr"))]); }
     }
     mach

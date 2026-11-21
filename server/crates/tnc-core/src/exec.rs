@@ -84,10 +84,15 @@ pub struct Mach {
     /// MP 7420 (SL cycles), NaN = 0
     pub mp7420: f64,
     pub probe: Option<[f64; 3]>, // f rapid clr (NaN = missing)
+    /// machine-builder head cycles (machines.js "headCycles"): cycle number -> (axis A/B/C, Q number of the angle).
+    /// The operator's 430 (11-21): CYCL DEF 303 Q1 turns the A head, CYCL DEF 304 Q2 the B head; not in the 426/430 manual.
+    pub head_cycles: Vec<(f64, char, f64)>,
 }
 
 #[derive(Clone, Debug)]
-pub struct Opts { pub tools: Option<Vec<ToolEntry>>, pub mach: Mach, pub holder_a: Option<f64>, pub auto_tools: bool, pub programs: HashMap<String, String> }
+/// keep_going: the simulator's "continue after errors" (off = as the control: a fatal error ends the run). Errors are still
+/// listed; only the stops that are the simulator's own limits (TOOL AXIS n NOT SIMULATED) no longer end the run.
+pub struct Opts { pub tools: Option<Vec<ToolEntry>>, pub mach: Mach, pub holder_a: Option<f64>, pub auto_tools: bool, pub programs: HashMap<String, String>, pub keep_going: bool }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum MK { Rapid, Feed, Arc }
@@ -168,7 +173,7 @@ pub struct St<'a> {
     tool_defs: HashMap<String, ToolEntry>, presets: HashMap<String, Vec<(char, f64)>>, q: QMap, cycle: Option<Cycle>,
     pub moves: Vec<Item>, pub errors: Vec<(usize, String)>, pub stock: Stock, abort: bool, done: bool,
     tool_order: Vec<f64>, tool_stat: HashMap<String, ToolStat>,
-    tool_table: Vec<ToolEntry>, mach: Mach, arc_tol: f64, holder: Option<f64>, auto_tools: bool,
+    tool_table: Vec<ToolEntry>, mach: Mach, arc_tol: f64, holder: Option<f64>, auto_tools: bool, keep_going: bool,
     labels: HashMap<String, usize>, comment_tools: HashMap<String, f64>, auto_feed: f64,
     /// SL cycles: capturing a contour subprogram (emit records program coordinates only); cycle 14 labels; cycle 20 data
     cap: bool, sl_labels: Option<Vec<f64>>, sl_data: Option<Cycle>,
@@ -1557,7 +1562,9 @@ fn do_tool_call(st: &mut St, bi: usize) {
     if !a.truthy("axis") { fail(st, bi, "TOOL AXIS MISSING"); }
     // p. 205: infeed is in the TOOL CALL axis. The engine, the height-field stock and the 3-D view are built for Z only
     // (all 3,564 TOOL CALLs in the corpus are Z), so X / Y stops the run instead of milling as if it were Z.
-    if let Some(ax) = a.str("axis") { if !ax.eq_ignore_ascii_case("Z") { fail(st, bi, &format!("TOOL AXIS {} NOT SIMULATED", ax.to_uppercase())); st.abort = true; return; } }
+    // keep_going: the error stays listed and the tool call is taken as Z (the operator's 430 programs call TOOL CALL n Y
+    // and then the same tool in Z with no move between, MOTORRAM-X.H blocks 21 / 25)
+    if let Some(ax) = a.str("axis") { if !ax.eq_ignore_ascii_case("Z") { fail(st, bi, &format!("TOOL AXIS {} NOT SIMULATED", ax.to_uppercase())); if !st.keep_going { st.abort = true; return; } } }
     if st.tool.t != t { st.spin_dir = 0.0; }
     if let Some(s) = a.get("s") { if !matches!(s, V::Null) { if let Some(s) = resolve(s.as_nq(), &st.q) { st.s_rpm = s.abs(); } } }
     st.spindle = st.s_rpm * st.spin_dir;
@@ -1692,6 +1699,23 @@ fn exec_range(st: &mut St, from: usize, to: isize, depth: i32) {
                     if cn == 20.0 { st.sl_data = Some(c); i += 1; continue; }
                     // placeholder O13: the angle only takes effect on M19/M20 (spindle angle not modelled), so cycle 13 is accepted and keeps the active machining cycle
                     if cn == 13.0 { i += 1; continue; }
+                    // placeholder H1: machine-builder head cycles (the operator's answer 11-21, not in the 426/430 manual): the
+                    // angle Q turns that head axis at rapid, like an L A.. / L B.. block; it keeps the active machining cycle.
+                    // An angle outside the limits is taken modulo 360 when that lands inside them (303 Q1=180 -> A-180).
+                    if let Some(&(_, ax, qn)) = st.mach.head_cycles.iter().find(|h| h.0 == cn) {
+                        match c.params.get(&qk(qn)).copied().flatten() {
+                            None => fail(st, iu, "CYCL DEF INCOMPLETE"),
+                            Some(mut v) => {
+                                if let Some(l) = st.mach.limits.get(&ax).copied() {
+                                    if v > l[1] + 1e-9 && v - 360.0 >= l[0] - 1e-9 { v -= 360.0; } else if v < l[0] - 1e-9 && v + 360.0 <= l[1] + 1e-9 { v += 360.0; }
+                                }
+                                let k = match ax { 'A' => 0, 'B' => 1, _ => 2 };
+                                let rt = st.rot_to.get_or_insert([None; 3]); rt[k] = Some(v);
+                                let p = st.pos; emit(st, MK::Rapid, p, RAPID_RATE, iu, None, None);
+                            }
+                        }
+                        i += 1; continue;
+                    }
                     st.cycle = Some(c);
                     // placeholder CS1: 27/28 need a rotary table the builder prepared (p. 297, 299); no profile has one (the 430's A/B is the swivel head), so they are refused; the message is ours
                     if cn == 27.0 || cn == 28.0 { fail(st, iu, &format!("CYCLE {} NEEDS A ROTARY TABLE", js::num_str(cn))); i += 1; continue; }
@@ -2177,8 +2201,10 @@ fn contour_pass(st: &mut St) {
         }
         i += 1;
     }
-    st.moves.retain(|m| match m { Item::K(_) => false, Item::M(m) => m.len > EPS || m.rc_act });
-    st.moves.retain(|m| match m { Item::M(m) => m.len > EPS, _ => false });
+    // a move that only turns the head (cycle 19 / L A.. / the head cycles) has no length but must stay: it carries the turn
+    let turns = |m: &Move| match (m.rot0, m.rot1) { (Some(a), Some(b)) => (a.a - b.a).abs() > EPS || (a.b - b.b).abs() > EPS || (a.c - b.c).abs() > EPS, _ => false };
+    st.moves.retain(|m| match m { Item::K(_) => false, Item::M(m) => m.len > EPS || m.rc_act || turns(m) });
+    st.moves.retain(|m| match m { Item::M(m) => m.len > EPS || turns(m), _ => false });
 }
 
 /* ------------------------------------------------------------------ compile */
@@ -2197,7 +2223,7 @@ pub fn compile(blocks: &mut Vec<Block>, opts: &Opts) -> Compiled {
         spindle: 0.0, s_rpm: 0.0, spin_dir: 0.0, coolant: false, cc: None, rc: "R0".into(), rc_act: false, last_tan: None,
         tool_defs: HashMap::new(), presets: HashMap::new(), q: QMap::default(), cycle: None, moves: vec![], errors: vec![], stock: Stock::default(),
         abort: false, done: false, tool_order: vec![], tool_stat: HashMap::new(),
-        tool_table: opts.tools.clone().unwrap_or(builtin), mach: opts.mach.clone(), arc_tol: js::or(opts.mach.arc_tol, ARC_TOL), holder: opts.holder_a, auto_tools: opts.auto_tools,
+        tool_table: opts.tools.clone().unwrap_or(builtin), mach: opts.mach.clone(), arc_tol: js::or(opts.mach.arc_tol, ARC_TOL), holder: opts.holder_a, auto_tools: opts.auto_tools, keep_going: opts.keep_going,
         labels: HashMap::new(), comment_tools: HashMap::new(), auto_feed: f64::NAN,
         cap: false, sl_labels: None, sl_data: None, cap_xf: Xf { s: 1.0, ..Default::default() }, programs: opts.programs.clone(), pgm_depth: 0,
     };
