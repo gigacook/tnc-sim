@@ -86,6 +86,7 @@ MODULES = [
     ('dialogs.js',   'Programming dialogs: path functions, CYCL DEF, TOOL CALL'),
     ('i18n.js',      'i18n: language strings (en/sv)'),
     ('autosave.js',  'Autosave drafts for text boxes (data-autosave)'),
+    ('setpanel.js',  'Settings panel behind the gear (replaces the settings modal and the Effects and view menu)'),
     ('ui.js',        'Simulator UI'),
 ]
 
