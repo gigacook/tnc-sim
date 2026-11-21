@@ -77,6 +77,7 @@ MODULES = [
     ('fx.js',        'Effects'),
     ('materials.js', 'Materials'),
     ('look.js',      'Look: environment, antialiasing'),
+    ('stockview.js', 'Stock drawing: display field, edge snapping, machined-metal shader'),
     ('profile.js',   'User profile storage'),
     ('part.js',      'Part spec: target geometry, lettering, measured comparison (AI loop)'),
     ('ai.js',        'AI program generation (OpenRouter)'),
