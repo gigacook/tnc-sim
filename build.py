@@ -90,6 +90,7 @@ MODULES = [
     ('cine.js',      'Machining replay: cinematic camera, time remap, post pass, synthesised sound'),
     ('sheet.js',     'Profile sheet: flat profile lines and the program cards (TNC_SHEET)'),
     ('editor.js',    'Text editor for .H programs and text files (TNC_EDITOR)'),
+    ('setpanel.js',  'Settings panel behind the gear (replaces the settings modal and the Effects and view menu)'),
     ('ui.js',        'Simulator UI'),
 ]
 
