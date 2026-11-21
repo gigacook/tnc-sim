@@ -271,6 +271,83 @@ const UIAPI={ THREE, scene, camera, renderer, controls, lights:{key:keyL,fill:fi
   lock:(on,reason)=>setLock(on,reason), cameraPreset:v=>camPreset(v), setMachine:id=>setMachine(id),
   tools:{ get:()=>mtools().map(t=>({t:t.t,name:t.name,l:t.l,r:t.r})), set:list=>setTools(list) },
   inspect:panel=>inspPanel(panel),
+  /* ---- the profile sheet (sheet.js) and the text editor (editor.js). Added entries only: each one reuses the functions above. ---- */
+  library:{
+    /* every program on every machine: own = yours or a changed built-in; meta {c created, m edited, v versions, o last opened} */
+    list:()=>{ const out=[]; for(const m in S.pgms) for(const n in S.pgms[m]){ if(n===TEMP) continue; const t=S.pgms[m][n], o=(S.orig[m]||{})[n];
+      out.push({machine:m, label:(MACHINES[m]||{}).label||m, name:n, bytes:String(t).length, builtin:o!=null, changed:o!=null&&t!==o, own:o==null||t!==o,
+        meta:Object.assign({},(S.meta[m]||{})[n]||{}), current:m===S.machine&&n===S.pgm}); } return out; },
+    text:(m,n)=>{ const p=S.pgms[m||S.machine]; return p&&p[n]!=null?p[n]:null; },
+    machines:()=>Object.values(MACHINES).map(x=>({id:x.id,label:x.label})),
+    open:(m,n)=>{ m=m||S.machine; if(!S.pgms[m]||S.pgms[m][n]==null) return false; if(S.editing) endEdit(false); if(S.raw) toggleRaw();
+      if(m!==S.machine) setMachine(m); if(S.pgm!==n) openPgm(n); return true; },
+    /* last opened: kept in the program's meta, so "last used" survives a reload */
+    stamp:(m,n)=>{ if(!n||n===TEMP||!S.pgms[m]||S.pgms[m][n]==null) return; const mm=S.meta[m]=S.meta[m]||{}, now=new Date().toISOString();
+      if(!mm[n]) mm[n]={c:null,m:null,v:0}; mm[n].o=now; persist(); },
+    /* text saved under a name (the editor's Save): an existing program gets it as one undo step, a new name is created; it becomes the active program */
+    save:(m,n,text)=>{ m=MACHINES[m]?m:S.machine; text=String(text).replace(/\r/g,'');
+      n=String(n||'PGM').toUpperCase().replace(/\.[HI]$/,'').replace(/[^A-Z0-9_]/g,'_').slice(0,16)+'.H';
+      if(S.editing) endEdit(false); if(S.raw) toggleRaw(); if(m!==S.machine) setMachine(m);
+      const had=pg()[n];
+      if(had==null){ pg()[n]=text; touchMeta(n,true); openPgm(n); return n; }
+      if(S.pgm===n){ if(text!==S.text) edit(text,S.cursor); return n; }
+      if(had!==text){ const k=S.machine+':'+n; (UNDO[k]=UNDO[k]||[]).push({text:had,cursor:0}); REDO[k]=[]; pg()[n]=text; touchMeta(n); }
+      openPgm(n); return n; },
+    create:(name,text)=>addPgm(name,text||`BEGIN PGM ${String(name||'PGM').toUpperCase().replace(/[^A-Z0-9_]/g,'_').slice(0,16)} MM\nEND PGM ${String(name||'PGM').toUpperCase().replace(/[^A-Z0-9_]/g,'_').slice(0,16)} MM`),
+    /* your own programs only (a built-in keeps its name); the file is renamed, the text is not touched. Returns the new name or {error} */
+    rename:(m,n,to)=>{ const p=S.pgms[m]; if(!p||p[n]==null) return {error:'missing'}; if((S.orig[m]||{})[n]!=null) return {error:'builtin'};
+      to=String(to||'').toUpperCase().replace(/\.[HI]$/,'').replace(/[^A-Z0-9_]/g,'_').slice(0,16); if(!to) return {error:'empty'}; to+='.H';
+      if(to===n) return to; if(p[to]!=null) return {error:'exists'};
+      p[to]=p[n]; delete p[n]; const mm=S.meta[m]||{}; if(mm[n]){ mm[to]=mm[n]; delete mm[n]; }
+      [[UNDO,m+':'],[REDO,m+':']].forEach(([o,k])=>{ if(o[k+n]){ o[k+to]=o[k+n]; delete o[k+n]; } });
+      if(S.cur[m]===n) S.cur[m]=to; S.projects.forEach(pj=>{ (pj.pgms||[]).forEach(r=>{ if(r.m===m&&r.name===n) r.name=to; }); });
+      if(m===S.machine&&S.pgm===n){ S.pgm=to; $('pgm-path').textContent='TNC:\\'+to; hdrStat(); }
+      persist(); renderUserPrograms(); if(S.mgt) renderMgt(); return to; },
+    /* delete (asked first by the caller): yours are removed, a changed built-in goes back to its original, an unchanged built-in stays */
+    remove:(m,n)=>{ const p=S.pgms[m]; if(!p||p[n]==null) return false; const o=(S.orig[m]||{})[n];
+      if(o!=null){ if(p[n]===o) return false; if(m===S.machine&&S.pgm===n) edit(o,0); else p[n]=o; persist(); return 'restored'; }
+      delete p[n]; if(S.meta[m]) delete S.meta[m][n]; delete UNDO[m+':'+n]; delete REDO[m+':'+n];
+      S.projects.forEach(pj=>{ pj.pgms=(pj.pgms||[]).filter(r=>!(r.m===m&&r.name===n)); }); if(S.cur[m]===n) S.cur[m]=null;
+      if(m===S.machine&&S.pgm===n){ S.pgm=Object.keys(pg()).filter(x=>x!==TEMP)[0]||null;
+        if(!S.pgm){ S.pgm='NEW.H'; pg()[S.pgm]='BEGIN PGM NEW MM\nEND PGM NEW MM'; } S.text=pg()[S.pgm]; raw.value=S.text; S.cursor=0; compile(); }
+      persist(); renderUserPrograms(); if(S.mgt) renderMgt(); return true; },
+    /* Save .H for any program: the numbered TNC listing into the downloads folder */
+    download:(m,n)=>{ const t=(S.pgms[m]||{})[n]; if(t==null) return false; const keep=S.machine; S.machine=MACHINES[m]?m:keep; const lst=listing(t); S.machine=keep;
+      download(n,new Blob([lst],{type:'text/plain'})); return true; },
+    /* run a text on a machine's interpreter without touching the simulator (the editor's live check, the cards' summary) */
+    run:(m,text,o)=>{ m=MACHINES[m]?m:S.machine; const mm=MACHINES[m]; let res=null, ex=null, events=null;
+      try{ res=mm.run(String(text)); }catch(e){ res={blocks:[],moves:[],stats:{},errors:[{block:0,msg:'INTERNAL: '+e.message}]}; }
+      if(o&&o.expand){ try{ ex=mm.expand(res); }catch(e){ ex=null; }
+        if(o.analyse&&ex&&res.stock) try{ events=mm.analyse(res,ex)||[]; }catch(e){ events=null; } }
+      if(m!==S.machine) holderOpt(S.machine);
+      return {res,ex,events}; },
+    unique:name=>uniqueName(name)
+  },
+  profile:{
+    get name(){ return (PROF&&PROF.name)||''; },
+    setName:v=>{ if(!PROF) return; PROF.name=String(v||'').trim().slice(0,40); profChip(); persist(); },
+    get savedAt(){ return PSTORE.lastSaved||null; },
+    get blocked(){ const b=$('b-prof'); return !!(b&&b.classList.contains('warn')); },
+    export:()=>exportProfile(),
+    importFiles:files=>importFiles([...files]),
+    read:file=>window.TNC_PROFILE?TNC_PROFILE.readFile(file):Promise.reject(new Error('PROFILE MODULE MISSING FROM THIS BUILD')),
+    describe:inc=>({name:inc.name||'', programs:Object.values(inc.machines||{}).reduce((a,m)=>a+Object.keys(m.pgms||{}).length,0)}),
+    merge:inc=>{ const m=TNC_PROFILE.merge(profileNow(),inc); m.profile.name=(PROF&&PROF.name)||inc.name||''; return finishImport(m.profile,'MERGED'+(m.renamed?' · '+m.renamed+' RENAMED':'')); },
+    replace:inc=>finishImport(inc,'REPLACED'),
+    fresh:()=>newProfile(),
+    pickFolder:()=>pickDlDir(),
+    regrant:()=>dlDirGet(true).then(d=>!!d),
+    /* the downloads folder: {state:'ok'|'warn'|'bad', path} — 'default' when none is picked (files go to Downloads) */
+    folder:async()=>{ if(!window.showDirectoryPicker) return {state:'ok',path:'default',plain:true};
+      let h=dlDir; try{ if(!h&&window.idbKeyval) h=await idbKeyval.get('tnc.dldir'); }catch(e){ h=null; }
+      if(!h) return {state:'ok',path:'default'};
+      const path=h.name+'/'+DL_ROOT;
+      try{ const st=await h.queryPermission({mode:'readwrite'}); if(st==='denied') return {state:'bad',path,why:'denied'};
+        if(st!=='granted') return {state:'warn',path,why:'permission'}; await h.values().next(); return {state:'ok',path}; }
+      catch(e){ return {state:'bad',path,why:(e&&e.name)||'error'}; } }
+  },
+  download:(name,blob,kind)=>download(name,blob,kind),
+  openSettings:tab=>openSettings(tab), toolTable:()=>act('tt'),
   runState:()=>runState(), get lang(){ return LANG(); } };
 window.TNC_UI=UIAPI;
 
