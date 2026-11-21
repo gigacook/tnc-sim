@@ -70,10 +70,89 @@
   --gc-shadow-ring2-danger:0 0 0 2px var(--gc-danger);
   --gc-dur-alarm:500ms; --gc-dur-spin:700ms;
 }
-/* environment "Workshop Night": the warm dark neutrals of tokens.css (theme yellow, dark column); "Cold Steel" is :root */
+/* ================= themes (settings.js "theme"): one token set each, on <html data-theme>. Set before the first paint by the
+   script at the end of this file's head part; ui.js re-reads the scene tokens when it changes. Every dark theme makes the program
+   screen dark too (light text): the --gcl-* column is remapped, so --scr-* follows. "cream" is the one light theme. Text pairs
+   (ink, ink-2, muted on canvas / surface / elevated; on-accent on accent-fill; the screen's ink and muted on --scr) are WCAG AA,
+   checked by tests/ui/shell.mjs. ================= */
+html[data-theme]{color-scheme:dark}
+/* night: the cold dark frame above, and now a dark program screen as well */
+html[data-theme="night"]{
+  --gcl-canvas:#0E0E10; --gcl-surface:#121214; --gcl-elevated:#1A1A1D; --gcl-fill:#1C1C1F; --gcl-line:#2A2A2E; --gcl-line-strong:#55555B;
+  --gcl-ink:#F2F2F4; --gcl-ink-2:#C9C9CE; --gcl-muted:#8E8E94; --gcl-accent:#5AABFF; --gcl-accent-soft:#11253D;
+  --gcl-success:#3DDC6E; --gcl-warning:#FFB340; --gcl-danger:#FF7B7B;
+}
+/* graphite: neutral mid-dark grey, one high-contrast amber accent */
+html[data-theme="graphite"]{
+  --gc-canvas:#1C1D20; --gc-surface:#25272A; --gc-hover:#2E3034; --gc-elevated:#2F3135; --gc-fill:#383B3F;
+  --gc-line-subtle:#2B2D31; --gc-line:#3D4045; --gc-line-strong:#8C9097; --gc-scroll-thumb:#4A4D52;
+  --gc-ink:#EEEFF1; --gc-ink-2:#C9CCD0; --gc-muted:#A3A7AD;
+  --gc-accent:#FFA53D; --gc-accent-fill:#FFA53D; --gc-accent-fill-hover:#FFB761; --gc-on-accent:#17120A; --gc-accent-soft:#3D2C16; --gc-focus:#FFA53D;
+  --gc-success:#5BD98A; --gc-warning:#F4D03F; --gc-danger:#FF7A72;
+  --gcl-canvas:#191A1D; --gcl-surface:#1F2124; --gcl-elevated:#282A2E; --gcl-fill:#2D3034; --gcl-line:#373A3F; --gcl-line-strong:#6C7178;
+  --gcl-ink:#F1F2F4; --gcl-ink-2:#CDD0D4; --gcl-muted:#9EA2A9; --gcl-accent:#FFB25C; --gcl-accent-soft:#3A2A15;
+  --gcl-success:#5BD98A; --gcl-warning:#F4D03F; --gcl-danger:#FF8A82;
+  --steel:#2A2C30; --steel-lo:#26282B; --steel-hi:#4A4D52;
+}
+/* mocha: warm cappuccino browns, cream text, soft pastel accents */
+html[data-theme="mocha"]{
+  --gc-canvas:#191311; --gc-surface:#221A16; --gc-hover:#2C221D; --gc-elevated:#312620; --gc-fill:#3A2E27;
+  --gc-line-subtle:#2A201B; --gc-line:#43362D; --gc-line-strong:#A08A79; --gc-scroll-thumb:#54443A;
+  --gc-ink:#F4E7D9; --gc-ink-2:#DDCCB9; --gc-muted:#B9A390;
+  --gc-accent:#F5BE91; --gc-accent-fill:#F5BE91; --gc-accent-fill-hover:#F8CDA8; --gc-on-accent:#2A1B12; --gc-accent-soft:#4A3426; --gc-focus:#F5BE91;
+  --gc-success:#A6E3A1; --gc-warning:#F9E2AF; --gc-danger:#F38BA8;
+  --gcl-canvas:#1D1613; --gcl-surface:#251C18; --gcl-elevated:#2E241F; --gcl-fill:#372B24; --gcl-line:#45372E; --gcl-line-strong:#80695A;
+  --gcl-ink:#F6EADD; --gcl-ink-2:#DECDBB; --gcl-muted:#B39D8A; --gcl-accent:#8CB7FA; --gcl-accent-soft:#2D3346;
+  --gcl-success:#A6E3A1; --gcl-warning:#F9D29A; --gcl-danger:#F38BA8;
+  --steel:#2B211C; --steel-lo:#271E19; --steel-hi:#5A4A3F;
+}
+/* acid: true black, acid lime, a hot magenta focus ring, hard edges */
+html[data-theme="acid"]{
+  --gc-canvas:#000000; --gc-surface:#0A0A0A; --gc-hover:#161616; --gc-elevated:#111111; --gc-fill:#1A1A1A;
+  --gc-line-subtle:#141414; --gc-line:#2A2A2A; --gc-line-strong:#7A7A7A; --gc-scroll-thumb:#333333;
+  --gc-ink:#FFFFFF; --gc-ink-2:#D6D6D6; --gc-muted:#A0A0A0;
+  --gc-accent:#C6FF1A; --gc-accent-fill:#C6FF1A; --gc-accent-fill-hover:#D8FF5C; --gc-on-accent:#000000; --gc-accent-soft:#1E2A00; --gc-focus:#FF2BD6;
+  --gc-success:#3DFF8B; --gc-warning:#FFD400; --gc-danger:#FF3D6E;
+  --gc-radius-xs:0; --gc-radius-btn:0; --gc-radius-md:0; --gc-radius-xl:0;
+  --gcl-canvas:#000000; --gcl-surface:#050505; --gcl-elevated:#0F0F0F; --gcl-fill:#141414; --gcl-line:#242424; --gcl-line-strong:#5C5C5C;
+  --gcl-ink:#F7F7F7; --gcl-ink-2:#D2D2D2; --gcl-muted:#959595; --gcl-accent:#C6FF1A; --gcl-accent-soft:#1A2400;
+  --gcl-success:#3DFF8B; --gcl-warning:#FFD400; --gcl-danger:#FF4D7A;
+  --steel:#0D0D0D; --steel-lo:#0A0A0A; --steel-hi:#3A3A3A;
+}
+/* oled: pure black, monochrome, the white control is the accent */
+html[data-theme="oled"]{
+  --gc-canvas:#000000; --gc-surface:#000000; --gc-hover:#0E0E0E; --gc-elevated:#0A0A0A; --gc-fill:#141414;
+  --gc-line-subtle:#0F0F0F; --gc-line:#1F1F1F; --gc-line-strong:#5E5E5E; --gc-scroll-thumb:#262626;
+  --gc-ink:#E9E9E9; --gc-ink-2:#BFBFBF; --gc-muted:#8E8E8E;
+  --gc-accent:#E9E9E9; --gc-accent-fill:#E9E9E9; --gc-accent-fill-hover:#FFFFFF; --gc-on-accent:#000000; --gc-accent-soft:#1C1C1C; --gc-focus:#FFFFFF;
+  --gc-success:#3FCF6A; --gc-warning:#F0A43A; --gc-danger:#FF6E66;
+  --gc-shadow-2:0 4px 16px rgb(0 0 0 / .8),0 0 0 1px rgb(255 255 255 / .14);
+  --gc-shadow-3:0 24px 64px rgb(0 0 0 / .9),0 0 0 1px rgb(255 255 255 / .16);
+  --gcl-canvas:#000000; --gcl-surface:#000000; --gcl-elevated:#0B0B0B; --gcl-fill:#111111; --gcl-line:#1C1C1C; --gcl-line-strong:#4A4A4A;
+  --gcl-ink:#E6E6E6; --gcl-ink-2:#BDBDBD; --gcl-muted:#8A8A8A; --gcl-accent:#9CC3FF; --gcl-accent-soft:#0F1A2A;
+  --gcl-success:#3FCF6A; --gcl-warning:#F0A43A; --gcl-danger:#FF6E66;
+  --steel:#050505; --steel-lo:#000000; --steel-hi:#2A2A2A;
+}
+/* cream: the one light theme — warm cream page, neutral greys, a strong blue accent; the program screen stays light */
+html[data-theme="cream"]{
+  color-scheme:light;
+  --gc-canvas:#EFEDE7; --gc-surface:#F7F6F2; --gc-hover:#ECEAE3; --gc-elevated:#FFFFFF; --gc-fill:#E3E1DA;
+  --gc-line-subtle:#E6E4DD; --gc-line:#D6D4CC; --gc-line-strong:#86847C; --gc-scroll-thumb:#C9C7BF;
+  --gc-ink:#1A1A1C; --gc-ink-2:#3C3C40; --gc-muted:#5F5F64;
+  --gc-accent:#0058C7; --gc-accent-fill:#0058C7; --gc-accent-fill-hover:#00479F; --gc-on-accent:#FFFFFF; --gc-accent-soft:#DCE8F8; --gc-focus:#0058C7;
+  --gc-success:#16803A; --gc-warning:#A04F00; --gc-danger:#C8102E;
+  --gc-shade:rgb(0 0 0 / .12); --gc-scrim:rgb(30 28 24 / .35);
+  --gc-shadow-2:0 4px 16px rgb(0 0 0 / .12),0 0 0 1px rgb(0 0 0 / .08);
+  --gc-shadow-3:0 24px 64px rgb(0 0 0 / .18),0 0 0 1px rgb(0 0 0 / .08);
+  --gcl-canvas:#FAF9F6; --gcl-surface:#FCFBF8; --gcl-elevated:#FFFFFF; --gcl-fill:#ECEAE4; --gcl-line:#DAD9D3; --gcl-line-strong:#86868B;
+  --gcl-ink:#1D1D1F; --gcl-ink-2:#424245; --gcl-muted:#646469; --gcl-accent:#0058C7; --gcl-accent-soft:#E3EDFA;
+  --gcl-success:#18793A; --gcl-warning:#A04F00; --gcl-danger:#C8102E;
+  --steel:#E6E4DD; --steel-lo:#ECEAE4; --steel-hi:#C9C7BF;
+  --scene-bg:#E2E0D9; --scene-grid:#C6C4BC; --scene-grid-2:#D4D2CA;
+}
+/* environment "Workshop Night" (settings env): the warm dark neutrals of tokens.css for the 3-D scene only; the theme owns the frame */
 html[data-env="workshop-night"]{
-  --gc-canvas:var(--gcw-canvas); --gc-surface:var(--gcw-surface); --gc-hover:var(--gcw-hover); --gc-elevated:var(--gcw-elevated); --gc-fill:var(--gcw-fill);
-  --gc-line-subtle:var(--gcw-line-subtle); --gc-line:var(--gcw-line); --scene-tint:var(--gc-warning);
+  --scene-bg:var(--gcw-canvas); --scene-grid:var(--gcw-line); --scene-grid-2:var(--gcw-line-subtle); --scene-tint:var(--gc-warning);
 }
 html,body{height:100%}
 body{margin:0;background:var(--gc-canvas);color:var(--gc-ink);font-family:var(--gc-font-sans);font-size:15px;line-height:22px;
@@ -100,12 +179,11 @@ h1.ttlbox{margin:0;font:inherit}
 .bar .ttlbox{order:1;display:flex;flex-direction:column;line-height:1.15}
 .ttl{font-weight:600;font-size:15px}
 .sub-ttl{font-family:var(--gc-font-mono);font-size:10.5px;color:var(--gc-muted)}
-.bar .modes{order:2}
 .bar .runbox{order:3}
 .bar>#b-mgt{order:4}
 .hmore{display:contents}                       /* wide screens: its controls sit in the bar */
 .hmore>*{order:5}
-.hmore>#b-new{margin-left:auto}
+.hmore>.machwrap{margin-left:auto}
 .hbtn{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500;line-height:18px;white-space:nowrap;
   background:transparent;color:var(--gc-ink);border:1px solid var(--gc-line);padding:0 12px;min-height:32px;border-radius:var(--gc-radius-btn)}
 .hbtn:hover{border-color:var(--gc-line-strong);background:var(--gc-hover)}
@@ -141,8 +219,7 @@ h1.ttlbox{margin:0;font:inherit}
 @media (min-width:1500px){ .mode .lg{display:inline} .mode .sm{display:none} .lbl-w{display:inline} .rb .lb{display:inline} .rb{padding:0 11px} }
 @media (max-width:1180px){ .bar .ttlbox .sub-ttl{display:none} }
 
-.main{flex:1;display:grid;grid-template-columns:minmax(420px,1fr) minmax(440px,1.6fr) 300px;gap:1px;background:var(--gc-line);min-height:0}
-body.focus .main{grid-template-columns:minmax(380px,1fr) minmax(480px,1.9fr)}
+.main{flex:1;display:grid;grid-template-columns:minmax(380px,1fr) minmax(440px,1.9fr) 40px;gap:1px;background:var(--gc-line);min-height:0;position:relative}
 .col{background:var(--gc-surface);display:flex;flex-direction:column;min-height:0;min-width:0}
 .ch{display:flex;align-items:center;gap:8px;padding:0 10px;min-height:36px;background:var(--gc-surface);border-bottom:1px solid var(--gc-line);
   flex:none;flex-wrap:wrap;font-size:12px;line-height:16px;font-weight:500;color:var(--gc-muted)}
@@ -228,6 +305,7 @@ html[data-tips="off"] .sk .kh{display:none}
 .sk.go{border-color:var(--gc-accent);box-shadow:var(--gc-inset-t3-accent-fill)}
 .sk.go::before{content:"\25B6\00A0";font-size:.8em}
 .sk.stop::before{content:"\25A0\00A0";font-size:.8em}
+@media (min-width:901px) and (max-width:1500px){ .sks .sk.go::before,.sks .sk.stop::before{content:none} }   /* narrow keys: START / STOP whole, no glyph that breaks the word */
 .sk.here{outline:2px solid var(--gc-focus);outline-offset:-2px}
 .sk.on{background:var(--gc-accent-soft);border-color:var(--gc-accent);box-shadow:var(--gc-inset-in0-2-4-shade)}
 .sk.on::before{content:"\2713\00A0"}
@@ -260,15 +338,14 @@ html[data-skin="430"] .mode{font-family:var(--gc-font-sans);border-width:0 0 2px
 html[data-skin="430"] .mode[aria-pressed="true"]{box-shadow:none;border-color:var(--gc-accent)}
 @media (min-width:901px){
   html[data-skin="430"] .col-gfx{order:-1}
-  html[data-skin="430"] .main{grid-template-columns:minmax(440px,1.6fr) minmax(420px,1fr) 300px}
-  html[data-skin="430"] body.focus .main{grid-template-columns:minmax(480px,1.9fr) minmax(380px,1fr)}
+  html[data-skin="430"] .main{grid-template-columns:minmax(440px,1.9fr) minmax(380px,1fr) 40px}
   html[data-skin="430"] .col-side{order:1}
   html[data-skin="430"] .col-pgm>.dlg{order:-1;margin-top:4px;border-top:0;box-shadow:var(--gc-inset-ring1-scr-line-strong)}
   html[data-skin="430"] .col-pgm>.ch{order:-2}
 }
 
 /* ================= graphics ================= */
-.gfx{flex:1;position:relative;min-height:0;background:var(--scene-bg);overflow:hidden}
+.gfx{flex:1;position:relative;min-height:0;background:var(--scene-bg);overflow:hidden;isolation:isolate}   /* its overlays (callouts z 40) stay under the inspector flyout */
 #gl{display:block;width:100%;height:100%;touch-action:none}
 .ovl{position:absolute;font-family:var(--gc-font-mono);font-size:12.5px;pointer-events:none;line-height:1.6;color:var(--gc-ink-2)}
 .ovl-tl{top:8px;left:10px}.ovl-tr{top:8px;right:10px;text-align:right}
@@ -324,20 +401,12 @@ html[data-tips="off"] .tb small{display:none}
 /* the run position: a ruler with a tick every tenth */
 .scrub{width:100%;accent-color:var(--gc-accent);margin:0;height:18px;
   background:repeating-linear-gradient(90deg,var(--gc-line-strong) 0 1px,transparent 1px 10%) 0 100%/100% 4px no-repeat}
-.spd{display:flex;gap:1px;margin-left:auto}
-.spd button{font-family:var(--gc-font-mono);font-size:12.5px;padding:0 9px;background:transparent;border:1px solid var(--gc-line);color:var(--gc-ink-2);border-radius:var(--gc-radius-btn);min-height:28px}
-.spd button[data-on="1"]{background:var(--gc-fill);border-color:var(--gc-line-strong);color:var(--gc-ink);font-weight:600;box-shadow:var(--gc-inset-b2-accent)}
 .tp-state{font-family:var(--gc-font-mono);font-size:12px;color:var(--gc-muted);align-self:center;margin-right:auto}
-.fxmenu>summary{cursor:pointer;font-size:12px;color:var(--gc-ink-2);padding:2px;list-style:none}
-.fxmenu>summary::before{content:'\25B8  '}.fxmenu[open]>summary::before{content:'\25BE  '}
-.fxmenu[open]>summary{margin-bottom:6px}
 .tp .coach{margin:0}
 .tp.lesson>.tp-row,.tp.lesson>.fxmenu{display:none!important}
 .tp.lesson .coach-bd{max-height:26vh;overflow:auto}
 
 /* ================= inspector (right pane) ================= */
-.col-side{overflow-y:auto}
-body.focus .col-side{display:none}
 .insp-hd{display:flex;align-items:center;gap:8px;padding:0 6px 0 12px;min-height:36px;border-bottom:1px solid var(--gc-line);font-size:12px;font-weight:500;color:var(--gc-muted)}
 .insp-hd .grow{flex:1}
 .xbtn{display:inline-flex;align-items:center;justify-content:center;min-width:28px;min-height:28px;background:transparent;border:1px solid transparent;border-radius:var(--gc-radius-btn);color:var(--gc-ink-2)}
@@ -366,17 +435,6 @@ body.focus .col-side{display:none}
 .cmp .d.up{color:var(--gc-danger)}.cmp .d.dn{color:var(--gc-success)}.cmp .d.eq{color:var(--gc-muted)}
 .mini{width:100%;background:transparent;border:1px solid var(--gc-line);color:var(--gc-ink);font-size:12.5px;padding:0 9px;border-radius:var(--gc-radius-btn);margin-top:6px;min-height:30px;text-align:left}
 .mini:hover{border-color:var(--gc-line-strong);background:var(--gc-hover)}
-.proj{display:grid;gap:4px}
-.prow{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:6px;align-items:center;padding:5px 6px;border-radius:var(--gc-radius-btn);border:1px solid var(--gc-line);font-size:13px}
-.prow.on{border-color:var(--gc-accent);background:var(--gc-accent-soft)}
-.prow input{accent-color:var(--gc-accent-fill);margin:0}
-.prow .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.prow .ct{font-family:var(--gc-font-mono);font-size:12px;color:var(--gc-ink-2)}
-.prow button{background:none;border:1px solid var(--gc-line-strong);color:var(--gc-ink);font-family:var(--gc-font-mono);font-size:12px;padding:2px 7px;border-radius:var(--gc-radius-btn);min-height:24px}
-.prow button:hover{background:var(--gc-hover)}
-.pnew{display:flex;gap:4px;margin-top:6px}
-.pnew input{flex:1;min-width:0;background:var(--gc-canvas);border:1px solid var(--gc-line-strong);border-radius:var(--gc-radius-md);padding:5px 7px;font-size:13px}
-.pnew button{background:transparent;border:1px solid var(--gc-line-strong);color:var(--gc-ink);border-radius:var(--gc-radius-btn);padding:0 10px;font-size:13px;min-height:30px}
 .note{font-size:12.5px;color:var(--gc-ink-2);margin:6px 0 0;line-height:1.5}
 .refbar{padding:6px 12px;border-bottom:1px solid var(--gc-line)}
 .refbar select,.fld select{appearance:auto}
@@ -390,9 +448,6 @@ body.focus .col-side{display:none}
 .pgroup>summary::before{content:'\25B8  ';color:var(--gc-ink-2)}.pgroup[open]>summary::before{content:'\25BE  '}
 .pgroup .cnt{display:inline-block;min-width:22px;text-align:center;border:1px solid var(--gc-line-strong);border-radius:var(--gc-radius-btn);padding:0 6px;margin-left:6px;color:var(--gc-ink);font-family:var(--gc-font-mono);font-weight:400}
 .pgroup .in{padding:0 12px 10px}
-.uplist table{width:100%;border-collapse:collapse;font-family:var(--gc-font-mono);font-size:12px}.uplist td,.uplist th{padding:4px 6px;border-bottom:1px solid var(--gc-line);text-align:left}
-.uplist th{color:var(--gc-ink-2);font-weight:500}
-.uplist tr.pg{cursor:pointer}.uplist tr.pg:hover{background:var(--gc-hover)}.uplist tr.cur td:first-child{font-weight:700;box-shadow:var(--gc-inset-l2-accent)}
 .copy{padding:12px;border-top:1px solid var(--gc-line)}
 .copy .c1{font-weight:600;font-size:12.5px;color:var(--gc-ink)}
 .copy .c2{font-size:12px;color:var(--gc-ink-2);margin-top:4px;line-height:1.5}
@@ -553,12 +608,99 @@ html[data-motion="reduced"] *,html[data-motion="reduced"] *::before,html[data-mo
 .tb:focus-visible,.spd button:focus-visible,.skpager button:focus-visible,.modal [role=tablist] button:focus-visible,.gear:focus-visible{outline:2px solid var(--gc-focus);outline-offset:-2px}
 .rb.go:focus-visible,.hbtn.pri:focus-visible,.cbtn.pri:focus-visible{outline-color:var(--gc-on-accent);outline-offset:-4px}
 
+/* ================= top bar: brand · run · Program ▾ … machine ▾ · profile ================= */
+.pgmwrap{position:relative;display:inline-flex}
+.pgmbtn .caret{width:14px;height:14px;margin:0 -3px 0 0;opacity:.85}
+.pgmbtn[aria-expanded="true"]{border-color:var(--gc-line-strong);background:var(--gc-hover)}
+.pmenu{position:absolute;top:calc(100% + 6px);left:0;z-index:70;min-width:290px;display:flex;flex-direction:column;padding:6px;
+  background:var(--gc-elevated);color:var(--gc-ink);border-radius:var(--gc-radius-xl);box-shadow:var(--gc-shadow-3)}
+.pmenu button{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:transparent;border:0;border-radius:var(--gc-radius-md);
+  padding:0 10px;min-height:34px;font-size:13.5px;line-height:18px;color:var(--gc-ink);white-space:nowrap}
+.pmenu button:hover,.pmenu button:focus{background:var(--gc-accent-soft);outline:none}
+.pmenu button:focus-visible{box-shadow:inset 0 0 0 2px var(--gc-focus)}
+.pmenu kbd{margin-left:auto;font:12px/1 var(--gc-font-mono);color:var(--gc-muted)}
+.pmenu .rec{font:12.5px var(--gc-font-mono);color:var(--gc-ink-2)}
+.pmenu .rec small{margin-left:auto;font-size:11.5px;color:var(--gc-muted)}
+.pm-sep{height:1px;background:var(--gc-line);margin:5px 4px}
+.pm-h{font-size:11px;line-height:16px;letter-spacing:.06em;text-transform:uppercase;color:var(--gc-muted);padding:4px 10px 2px}
+.pm-none{font:12px var(--gc-font-mono);color:var(--gc-muted);padding:4px 10px 6px}
+.machwrap{display:inline-flex}
+.machsel{appearance:none;-webkit-appearance:none;font:600 13px var(--gc-font-mono);color:var(--gc-ink);background-color:transparent;
+  border:1px solid var(--gc-line);border-radius:var(--gc-radius-btn);min-height:32px;padding:0 28px 0 10px;cursor:pointer;
+  background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%);
+  background-position:calc(100% - 14px) 50%,calc(100% - 10px) 50%;background-size:4px 4px;background-repeat:no-repeat}
+.machsel:hover{border-color:var(--gc-line-strong);background-color:var(--gc-hover)}
+.machsel option{background:var(--gc-elevated);color:var(--gc-ink)}
+@media (min-width:901px){ #b-mgt{display:none} }       /* wide screens: All programs… sits in the Program menu (M) */
+
+/* ================= inspector: a 40 px rail; the flyout opens over the view, never reflowing the columns ================= */
+.col-side{position:relative;z-index:6;overflow:visible;background:var(--gc-surface)}
+.irail{height:100%;width:40px}
+.irail-b{display:flex;flex-direction:column;align-items:center;gap:8px;width:100%;height:100%;padding:10px 0;background:transparent;border:0;
+  color:var(--gc-ink-2);border-radius:0}
+.irail-b:hover,.irail-b[aria-expanded="true"]{background:var(--gc-hover);color:var(--gc-ink)}
+.irail-b:focus-visible{outline:2px solid var(--gc-focus);outline-offset:-3px}
+.irail-b .chev{transition:transform var(--gc-dur-2) var(--gc-ease)}
+.irail-b[aria-expanded="true"] .chev{transform:rotate(180deg)}
+.irail-b .k{font:600 11px/1 var(--gc-font-mono);color:var(--gc-muted)}
+.irail-b .dot{width:8px;height:8px;border-radius:50%;background:var(--gc-success)}
+.irail-b .dot.warn{background:var(--gc-warning)}.irail-b .dot.bad{background:var(--gc-danger)}
+.irail-b .vt{writing-mode:vertical-rl;transform:rotate(180deg);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--gc-muted)}
+.ifly{position:absolute;top:0;bottom:0;right:40px;width:min(360px,calc(100vw - 120px));display:flex;flex-direction:column;
+  background:var(--gc-elevated);border-left:1px solid var(--gc-line);box-shadow:var(--gc-shadow-3);
+  opacity:0;visibility:hidden;transform:translateX(10px);transition:opacity 140ms var(--gc-ease),transform 140ms var(--gc-ease),visibility 0s linear 140ms}
+.ifly.open{opacity:1;visibility:visible;transform:none;transition:opacity 140ms var(--gc-ease),transform 140ms var(--gc-ease)}
+html[data-skin="430"] .ifly{right:40px}
+.ifly .stabs{position:static;background:transparent}
+.ibody{flex:1;min-height:0;overflow:auto}
+.pinmark{font:11px/16px var(--gc-font-mono);color:var(--gc-accent);border:1px solid var(--gc-accent);border-radius:var(--gc-radius-btn);padding:0 5px}
+
+/* ================= bottom bar: gear · modes · state · checks … F V H · full screen · ? · Play ================= */
+.sbar{gap:6px;min-height:32px;white-space:nowrap;overflow:hidden}
+.sbar .modes{gap:2px;flex:none}
+.sbar .mode{min-height:24px;font-size:12px;line-height:16px;padding:0 8px;box-shadow:none}
+.sbar .mode[aria-pressed="true"]{box-shadow:none}
+.sb-sep{flex:none;width:1px;height:16px;background:var(--gc-line);margin:0 2px}
+.sb-chk{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.sbk{flex:none;display:inline-flex;align-items:center;gap:5px;font:12px/16px var(--gc-font-mono);background:transparent;border:1px solid transparent;
+  border-radius:var(--gc-radius-btn);color:var(--gc-ink-2);padding:0 6px;min-height:24px}
+.sbk b{color:var(--gc-muted);font-weight:600}
+.sbk:hover{border-color:var(--gc-line);color:var(--gc-ink)}
+.sbk[aria-pressed="true"],.sbk[aria-expanded="true"]{color:var(--gc-ink);border-color:var(--gc-line-strong)}
+.sbk svg{width:14px;height:14px}
+.sb-q{flex:none;font:11px/16px var(--gc-font-mono);color:var(--gc-muted);background:transparent;border:0;opacity:.45;padding:0 3px;min-height:24px;
+  display:inline-flex;align-items:center;text-decoration:none}
+.sb-q:hover,.sb-q:focus-visible{opacity:1;color:var(--gc-ink)}
+.sb-q svg{width:13px;height:13px}
+.hmore #b-help b{display:none}
+.hmore #b-help span{display:inline-block}.hmore #b-help span::first-letter{text-transform:uppercase}
+.sbk:focus-visible,.sb-q:focus-visible,.spdchip:focus-visible,.pgmbtn:focus-visible,.machsel:focus-visible{outline:2px solid var(--gc-focus);outline-offset:-2px}
+@media (max-width:1180px){ .sbk span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap} .sbar{gap:4px} }
+@media (max-width:1080px){ .sb-state{display:none} .sbar .mode{padding:0 6px} }
+
+/* ================= run panel: the speed chip, Replay; the replay offer in the view ================= */
+.spdchip{flex:none;display:inline-flex;align-items:center;gap:5px;font:600 13px/1 var(--gc-font-mono);font-variant-numeric:tabular-nums;color:var(--gc-ink);
+  background:transparent;border:1px solid var(--gc-line-strong);border-radius:14px;padding:0 10px 0 8px;min-height:28px;user-select:none}
+.spdchip .ar{color:var(--gc-muted);font-weight:400}
+.spdchip .v{min-width:4.2ch;text-align:center}
+.spdchip .dotf{fill:currentColor;stroke:none}
+.spdchip:hover,.spdchip.hov{border-color:var(--gc-accent);box-shadow:0 0 0 3px var(--gc-accent-soft)}
+.tb.replay{display:inline-flex;align-items:center;gap:6px;min-height:28px}
+.replay-offer{position:absolute;right:12px;bottom:36px;z-index:4;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;
+  color:var(--gc-ink);background:var(--gc-elevated);border:1px solid var(--gc-line-strong);border-radius:16px;padding:0 12px;min-height:30px;box-shadow:var(--gc-shadow-2)}
+.replay-offer>span:first-child{color:var(--gc-accent)}
+.replay-offer:hover{border-color:var(--gc-accent)}
+
+/* ================= help as its own page, when no new window may open: a full-page view ================= */
+.helppage{position:fixed;inset:0;z-index:96;background:var(--gc-canvas);color:var(--gc-ink);overflow:auto}
+.helppage .hp-bar{position:sticky;top:0;display:flex;align-items:center;gap:12px;padding:10px 20px;background:var(--gc-surface);border-bottom:1px solid var(--gc-line)}
+.helppage .hp-bar b{font-size:15px;flex:1}
+.helppage .hp-in{max-width:880px;margin:0 auto;padding:20px}
+
 /* ================= tablets and narrow desktops: the inspector drops under the two views ================= */
 @media (max-width:1250px){
-  .main{grid-template-columns:1fr 1fr;grid-template-rows:minmax(0,1fr) auto}
-  body.focus .main{grid-template-columns:1fr 1fr;grid-template-rows:minmax(0,1fr)}
-  html[data-skin="430"] .main,html[data-skin="430"] body.focus .main{grid-template-columns:1fr 1fr}
-  .col-side{grid-column:1/-1;max-height:310px}
+  .main{grid-template-columns:minmax(0,1fr) minmax(0,1.3fr) 40px}
+  html[data-skin="430"] .main{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) 40px}
 }
 @media (pointer:coarse){
   .hbtn,.mode,.chb,.stabs button,.tb,.mhead .x,.alarm button,.cbtn,.rb,.seg button,.gear,.xbtn,.mini,.setnav button,.mtabs2 button,.sb-chk,.setup-bd .olist button{min-height:44px}
@@ -587,7 +729,7 @@ html[data-motion="reduced"] *,html[data-motion="reduced"] *::before,html[data-mo
   .rb,.rb.go{min-width:44px;min-height:44px;padding:0}
   .rb .lb,.rb.go .lb{display:none}
   .hdr-menu{display:inline-flex;align-items:center;gap:6px;order:5;padding:0 12px;min-height:44px}
-  .bar .modes{order:9;width:100%;margin:0;flex-wrap:nowrap}
+  .bar .modes{order:9;width:100%;margin:0;flex-wrap:nowrap;gap:1px}
   .mode{flex:1 1 0;min-width:0;min-height:44px;padding:8px 4px;text-align:center}
   .mode .lg,.mode b{display:none}.mode .sm{display:inline}
   /* the drawer: everything furthest from the machine code */
@@ -597,10 +739,9 @@ html[data-motion="reduced"] *,html[data-motion="reduced"] *::before,html[data-mo
     transform:translateX(105%);visibility:hidden;transition:transform var(--gc-dur-2) var(--gc-ease),visibility 0s linear var(--gc-dur-2)}
   .hmore.open{transform:none;visibility:visible;transition:transform var(--gc-dur-2) var(--gc-ease)}
   .hmore>*{order:0}
-  .hmore>#b-new{margin-left:0}
+  .hmore>.machwrap{margin-left:0}
   .hmore .hbtn{width:100%;max-width:none;text-align:left;min-height:48px;display:flex}
   .hmore .seg{display:flex}.hmore .seg button{flex:1;min-height:48px}
-  .hmore #b-insp{display:none}                  /* phones: the inspector is the Status workspace */
   .hmore .lbl-w{display:inline}
   .dhead{display:flex;align-items:center;gap:8px;margin-bottom:4px}
   .dtitle{flex:1;font-weight:600;color:var(--gc-ink-2)}
@@ -617,10 +758,19 @@ html[data-motion="reduced"] *,html[data-motion="reduced"] *::before,html[data-mo
   .mtabs button:last-child{border-right:0}
   .mtabs button[aria-selected="true"]{color:var(--gc-ink);font-weight:600;box-shadow:var(--gc-inset-b3-accent);background:var(--gc-elevated)}
   /* one workspace at a time, in the page's own vertical scroll */
-  .main,body.focus .main,html[data-skin="430"] .main,html[data-skin="430"] body.focus .main{display:block;position:static;background:none}
+  .main,html[data-skin="430"] .main{display:block;position:static;background:none}
   .main>.col{position:static;display:none;min-height:0}
   .main[data-pane="pgm"]>.col-pgm,.main[data-pane="gfx"]>.col-gfx{display:flex}
-  .main[data-pane="side"]>.col-side,body.focus .main[data-pane="side"]>.col-side{display:block;max-height:none;overflow:visible}
+  .main[data-pane="side"]>.col-side{display:block;max-height:none;overflow:visible}
+  .irail{display:none!important}
+  .ifly,.ifly.open{position:static;display:block;width:auto;box-shadow:none;border:0;transform:none;visibility:visible;opacity:1;background:var(--gc-surface)}
+  .ibody{overflow:visible}
+  .pgmwrap{display:flex;flex-direction:column;gap:4px}
+  .pgmwrap .pgmbtn{width:100%;min-height:48px}
+  .pmenu{position:static;box-shadow:none;border:1px solid var(--gc-line);min-width:0;width:100%}
+  .pmenu button{min-height:44px}
+  .pmenu kbd{display:none}
+  .machsel{width:100%;min-height:48px}
   .insp-hd{display:none}
   .col{padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
   .col-pgm,html[data-skin="426"] .col-pgm,html[data-skin="430"] .col-pgm{padding:0}
@@ -690,6 +840,20 @@ html[data-motion="reduced"] *,html[data-motion="reduced"] *::before,html[data-mo
   .col-gfx>.ch{display:none}
 }
 </style>
+<script>
+/* the themes (settings.js "theme"), for the settings panel: id, name per language, dark or light, a 4-colour swatch [page, surface, text, accent].
+   Applied here, in <head>, before the first paint: no flash of the wrong theme. ui.js keeps it in step when the setting changes. */
+window.TNC_THEMES=[
+  {id:'night',   name:{sv:'Natt',     en:'Night',    sr:'Noć'},     dark:true,  swatch:['#0B0B0D','#141416','#F5F5F7','#2997FF']},
+  {id:'graphite',name:{sv:'Grafit',   en:'Graphite', sr:'Grafit'},  dark:true,  swatch:['#1C1D20','#25272A','#EEEFF1','#FFA53D']},
+  {id:'mocha',   name:{sv:'Mocka',    en:'Mocha',    sr:'Moka'},    dark:true,  swatch:['#191311','#221A16','#F4E7D9','#F5BE91']},
+  {id:'acid',    name:{sv:'Syra',     en:'Acid',     sr:'Kiselina'},dark:true,  swatch:['#000000','#0A0A0A','#FFFFFF','#C6FF1A']},
+  {id:'oled',    name:{sv:'OLED',     en:'OLED',     sr:'OLED'},    dark:true,  swatch:['#000000','#000000','#E9E9E9','#E9E9E9']},
+  {id:'cream',   name:{sv:'Grädde',   en:'Cream',    sr:'Krem'},    dark:false, swatch:['#EFEDE7','#F7F6F2','#1A1A1C','#0058C7']}];
+(function(){ var t='night'; try{ var o=JSON.parse(localStorage.getItem('tnc.settings.v1')||'null'); if(o&&typeof o.theme==='string') t=o.theme; }catch(e){}
+  if(!window.TNC_THEMES.some(function(x){ return x.id===t; })) t='night';
+  document.documentElement.setAttribute('data-theme',t); })();
+</script>
 
 <style>html{color-scheme:dark} img{max-width:100%} [hidden]{display:none!important}</style>
 </head>
@@ -698,12 +862,7 @@ html[data-motion="reduced"] *,html[data-motion="reduced"] *::before,html[data-mo
  <a class="skip" href="#crt" data-i18n="skip.program">Till programmet</a>
  <header class="bar">
    <span class="brand" aria-hidden="true">TNC</span>
-   <div class="modes" id="modes" role="group" aria-label="Driftart" data-i18n-label="aria.modes">
-     <button class="mode" data-m="edit"   aria-pressed="false"><b>1</b><span class="lg" data-i18n="mode.edit">PRG EDIT</span><span class="sm" data-i18n="mode.edit.s">PRG EDIT</span></button>
-     <button class="mode" data-m="test"   aria-pressed="true"><b>2</b><span class="lg" data-i18n="mode.test">TEST</span><span class="sm" data-i18n="mode.test.s">TEST</span></button>
-     <button class="mode" data-m="single" aria-pressed="false"><b>3</b><span class="lg" data-i18n="mode.single">SINGLE-BLOCK</span><span class="sm" data-i18n="mode.single.s">SINGLE</span></button>
-     <button class="mode" data-m="full"   aria-pressed="false"><b>4</b><span class="lg" data-i18n="mode.full">FULL-RUN</span><span class="sm" data-i18n="mode.full.s">FULL</span></button>
-   </div>
+   <h1 class="ttlbox"><span class="ttl">TNC 426</span><span class="sub-ttl">NC SW 280 476-17</span></h1>
    <!-- run · pause · stop: the simulator's own NC START, NC STOP (feed hold) and RESET -->
    <div class="runbox" id="runbox" role="group" aria-label="Körning" data-i18n-label="aria.run">
      <button class="rb go" id="b-start" type="button" aria-label="Kör" data-i18n-label="run.start" data-i18n-tip="tip.run" data-key="SPACE"><svg class="ic solid" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5z"/></svg><span class="lb" data-i18n="run.start">Kör</span></button>
@@ -714,19 +873,29 @@ html[data-motion="reduced"] *,html[data-motion="reduced"] *::before,html[data-mo
    <span class="hdr-m hdr-stat" id="hdr-stat" aria-hidden="true"></span>
    <button class="hdr-m hdr-err" id="hdr-err" type="button" aria-describedby="hdr-err-d"><span id="hdr-err-t">0</span></button>
    <span class="sr-only" id="hdr-err-d" data-i18n="hdr.errdesc">Öppnar kontrollerna i arbetsytan Status</span>
-   <!-- program, machine, inspector, help, profile: in the bar on wide screens, a drawer (MENU) on phones -->
+   <!-- Program menu, machine, profile: in the bar on wide screens, a drawer (MENU) on phones -->
    <div class="hmore" id="hmore" aria-labelledby="hmore-t">
    <div class="dhead"><span class="dtitle" id="hmore-t" data-i18n="drawer.title">Meny</span>
      <button class="hbtn dclose" id="hmore-x" type="button" data-i18n="btn.close">Stäng</button></div>
-   <button class="hbtn" id="b-new" type="button" aria-haspopup="dialog" data-i18n-tip="tip.new" data-key="N"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg><span data-i18n="btn.new">Nytt program</span></button>
-   <div class="seg" id="mach-seg" role="group" aria-label="Maskin" data-i18n-label="aria.machine"></div>
-   <button class="hbtn" id="b-insp" type="button" aria-pressed="false" aria-controls="ws-side" aria-label="Inspektör" data-i18n-label="btn.insp" data-i18n-tip="tip.insp" data-key="F"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 3h12v10H2zM10 3v10"/></svg><span class="lbl-w" data-i18n="btn.insp">Inspektör</span></button>
-   <button class="hbtn" id="b-help" type="button" aria-haspopup="dialog" aria-label="Hjälp" data-i18n-label="btn.help" data-i18n-tip="tip.help" data-key="H"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M6.3 6.2a1.8 1.8 0 1 1 2.6 1.7c-.6.3-.9.7-.9 1.4M8 11.6v.2"/></svg><span class="lbl-w" data-i18n="btn.help">Hjälp</span></button>
+   <div class="pgmwrap" id="pgmwrap">
+     <button class="hbtn pgmbtn" id="b-pgm" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="pgm-menu"><span data-i18n="pm.title">Program</span><svg class="ic caret" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 6.5L8 10l3.5-3.5"/></svg></button>
+     <div class="pmenu" id="pgm-menu" role="menu" aria-labelledby="b-pgm" hidden>
+       <button role="menuitem" type="button" id="b-new" tabindex="-1" aria-haspopup="dialog"><span data-i18n="pm.new">Nytt program…</span><kbd>N</kbd></button>
+       <button role="menuitem" type="button" id="pm-edit" tabindex="-1"><span data-i18n="pm.edit">Öppna i texteditor</span><kbd>Ctrl E</kbd></button>
+       <button role="menuitem" type="button" id="pm-load" tabindex="-1"><span data-i18n="pm.load">Öppna fil från datorn…</span><kbd>Ctrl O</kbd></button>
+       <button role="menuitem" type="button" id="pm-save" tabindex="-1"><span data-i18n="pm.save">Spara .H</span><kbd>Ctrl S</kbd></button>
+       <div class="pm-sep" role="separator"></div>
+       <div class="pm-h" id="pm-rec-h" data-i18n="pm.recent">Senaste</div>
+       <div id="pm-rec" role="group" aria-labelledby="pm-rec-h"></div>
+       <div class="pm-sep" role="separator"></div>
+       <button role="menuitem" type="button" id="pm-all" tabindex="-1"><span data-i18n="pm.all">Alla program…</span><kbd>M</kbd></button>
+     </div>
+   </div>
+   <label class="machwrap"><span class="sr-only" data-i18n="aria.machine">Maskin</span><select class="machsel" id="mach-sel"></select></label>
    <button class="hbtn prof" id="b-prof" type="button" aria-haspopup="dialog" data-i18n-tip="tip.prof">Profil</button>
    <button class="hbtn" id="b-exit" type="button" hidden><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M9 3H3v10h6M7 8h7M11.5 5.5L14 8l-2.5 2.5"/></svg><span data-i18n="btn.exit">Till verkstaden</span></button>
    <div class="gear-row" id="gear-row"></div>
    </div>
-   <h1 class="ttlbox"><span class="ttl">TNC 426</span><span class="sub-ttl">NC SW 280 476-17</span></h1>
    <button class="hbtn hdr-menu" id="b-menu" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="hmore"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"/></svg> <span data-i18n="btn.menu">Meny</span></button>
  </header>
 
@@ -786,6 +955,7 @@ html[data-motion="reduced"] *,html[data-motion="reduced"] *::before,html[data-mo
          <div class="coach-ft"><span class="pg" id="coach-pg"></span>
            <button class="cbtn" id="coach-back" type="button" data-i18n="coach.back">Bakåt</button><button class="cbtn pri" id="coach-next" type="button">Nästa</button></div>
        </div>
+       <button class="replay-offer" id="replay-offer" type="button" hidden><span aria-hidden="true">▶</span> <span data-i18n="btn.replay">Replay</span></button>
        <div class="lgd">
          <span><i class="dash"></i><span data-i18n="lgd.rapid">SNABB</span></span>
          <span><i class="solid"></i><span data-i18n="lgd.feed">MATNING</span></span>
@@ -796,34 +966,40 @@ html[data-motion="reduced"] *,html[data-motion="reduced"] *::before,html[data-mo
        <input type="range" class="scrub" id="scrub" min="0" max="1000" value="0" step="1" aria-label="Körposition" data-i18n-label="aria.scrub">
        <div class="tp-row">
          <span class="tp-state" id="tp-state"></span>
-         <div class="spd" id="spd" role="group" aria-label="Hastighet" data-i18n-label="aria.speed">
-           <button type="button" data-s="1">1&times;</button><button type="button" data-s="4">4&times;</button>
-           <button type="button" data-s="16">16&times;</button><button type="button" data-s="64">64&times;</button>
-           <button type="button" data-s="0">MAX</button>
-         </div>
+         <button class="spdchip" id="spd-chip" type="button" aria-label="Hastighet" data-i18n-label="aria.speed" data-i18n-tip="tip.speed"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.6 11.5a5.6 5.6 0 1 1 10.8 0"/><path d="M8 9.5l2.6-3.4"/><circle cx="8" cy="9.6" r=".9" class="dotf"/></svg><span class="ar" aria-hidden="true">‹</span><span class="v" id="spd-v">16×</span><span class="ar" aria-hidden="true">›</span></button>
+         <button class="tb replay" id="b-replay" type="button" hidden><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 4.5h8v7h-8zM10.5 7l3-2v6l-3-2"/></svg><span data-i18n="btn.replay">Replay</span></button>
        </div>
-       <details class="fxmenu" id="fxmenu"><summary data-i18n="btn.effects">Effekter och vy</summary>
-       <div class="tp-row">
-         <button class="tb fx" id="b-view" type="button" aria-pressed="false" data-i18n-tip="tip.flow" data-key="V"><span data-i18n="btn.flow">Flödesvy</span></button>
-         <button class="tb fx" id="b-fx" type="button"><span data-i18n="btn.fx">Spån</span><small>P</small></button>
-         <button class="tb fx" id="b-cool" type="button"><span data-i18n="btn.cool">Kylvätska</span><small>K</small></button>
-         <button class="tb fx" id="b-fire" type="button"><span data-i18n="btn.fire">Rök</span><small>B</small></button>
-         <button class="tb fx" id="b-labels" type="button"><span data-i18n="btn.labels">Etiketter</span><small>L</small></button>
+       <!-- the view toggles: driven by the keys (P K B L …), the settings panel (UIAPI.view) and plugins; no menu of their own -->
+       <div class="fxmenu" id="fxmenu" hidden>
+         <button class="tb fx" id="b-view" type="button" aria-pressed="false"><span data-i18n="btn.flow">Flödesvy</span></button>
+         <button class="tb fx" id="b-fx" type="button"><span data-i18n="btn.fx">Spån</span></button>
+         <button class="tb fx" id="b-cool" type="button"><span data-i18n="btn.cool">Kylvätska</span></button>
+         <button class="tb fx" id="b-fire" type="button"><span data-i18n="btn.fire">Rök</span></button>
+         <button class="tb fx" id="b-labels" type="button"><span data-i18n="btn.labels">Etiketter</span></button>
          <button class="tb fx" id="b-vice" type="button"><span data-i18n="btn.vice">Skruvstycke</span></button>
          <span id="fx-slot" hidden></span><!-- plugins put their controls after this mark: stock material (materials.js), click to pick and axis vectors (viz.js) -->
-       </div></details>
+       </div>
      </div>
    </section>
 
-   <!-- INSPECTOR -->
+   <!-- INSPECTOR: a 40 px rail; hover, F, a tap or the arrow keys open its flyout over the view (phones: the Status workspace) -->
    <aside class="col col-side" id="ws-side" aria-label="Inspektör">
-     <div class="insp-hd"><span data-i18n="btn.insp">Inspektör</span><span class="grow"></span>
-       <button class="xbtn" id="insp-x" type="button" aria-label="Stäng inspektören" data-i18n-label="insp.close" data-i18n-tip="insp.close" data-key="F"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button></div>
-     <div class="stabs" role="tablist" id="stabs" aria-label="Inspektör" data-i18n-label="btn.insp">
-       <button role="tab" data-tab="diag" id="st-diag" aria-controls="sp-diag" aria-selected="true" data-i18n="tab.diag">Diagnostik</button>
-       <button role="tab" data-tab="ref" id="st-ref" aria-controls="sp-ref" aria-selected="false" data-i18n="tab.ref">Referens</button>
-       <button role="tab" data-tab="progs" aria-controls="sp-progs" aria-selected="false" id="tab-progs">Program</button>
+     <div class="irail" id="irail">
+       <button class="irail-b" id="insp-rail" type="button" aria-expanded="false" aria-controls="insp-fly" aria-label="Inspektör" data-i18n-label="btn.insp" data-key="F">
+         <svg class="ic chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3.5L5.5 8l4.5 4.5"/></svg>
+         <span class="k" aria-hidden="true">F</span>
+         <span class="dot" id="insp-dot" aria-hidden="true"></span>
+         <span class="vt" aria-hidden="true" data-i18n="btn.insp">Inspektör</span>
+       </button>
      </div>
+     <div class="ifly" id="insp-fly" role="region" aria-label="Inspektör" data-i18n-label="btn.insp">
+     <div class="insp-hd"><span data-i18n="btn.insp">Inspektör</span><span class="grow"></span><span class="pinmark" id="insp-pin" hidden data-i18n="insp.pinned">fäst</span>
+       <button class="xbtn" id="insp-x" type="button" aria-label="Stäng inspektören" data-i18n-label="insp.close" data-key="F"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg></button></div>
+     <div class="stabs" role="tablist" id="stabs" aria-label="Inspektör" data-i18n-label="btn.insp">
+       <button role="tab" data-tab="diag" id="st-diag" aria-controls="sp-diag" aria-selected="true" data-i18n="tab.run">Körning</button>
+       <button role="tab" data-tab="ref" id="st-ref" aria-controls="sp-ref" aria-selected="false" data-i18n="tab.manual">Manual</button>
+     </div>
+     <div class="ibody">
      <div class="spane" id="sp-diag" role="tabpanel" aria-labelledby="st-diag">
      <div class="card card-run"><h3><span data-i18n="panel.run">Körning</span> <span class="tagx" id="run-state">READY</span></h3>
        <div class="in"><dl class="kv" id="runkv"></dl></div></div>
@@ -838,31 +1014,36 @@ html[data-motion="reduced"] *,html[data-motion="reduced"] *::before,html[data-mo
        <div class="refbar"><select id="ref-sel" aria-label="Visa" data-i18n-label="aria.refsel"></select></div>
        <div class="refbody" id="ref-body"></div>
      </div>
-     <div class="spane" id="sp-progs" role="tabpanel" aria-labelledby="tab-progs" hidden>
-       <details class="pgroup" id="up-box"><summary><span id="up-t">Program</span> <span class="cnt" id="up-n">0</span></summary>
-         <div class="uplist" id="uplist"></div></details>
-       <details class="pgroup" id="pj-box"><summary><span data-i18n="panel.projects">Projekt</span> <span class="cnt" id="proj-t"></span></summary>
-         <div class="in"><div class="proj" id="proj"></div>
-         <div class="pnew"><input id="proj-name" data-autosave placeholder="Nytt projektnamn" maxlength="40" aria-label="Nytt projektnamn" data-i18n-label="proj.newname" data-i18n-ph="proj.newname">
-           <button id="b-proj-new" type="button" data-i18n="proj.create">Skapa</button></div>
-         <button class="mini" id="b-proj-add" type="button" data-i18n="btn.projadd">Lägg aktuellt program i aktivt projekt</button>
-         <p class="note" data-i18n="proj.note">Ett projekt är en namngiven mapp med program. Nya program hamnar i det aktiva projektet; ZIP hämtar mappen som .H-filer.</p></div></details>
-     </div>
      <div class="copy">
        <div class="c1">&copy; 2026 TNC 426 Simulator</div>
        <div class="c2" data-i18n="about.notice">Inte knuten till DR. JOHANNES HEIDENHAIN GmbH. &rdquo;HEIDENHAIN&rdquo; och &rdquo;TNC&rdquo; är deras varumärken.</div>
      </div>
+     </div>
+     </div>
    </aside>
  </main>
 
- <!-- bottom: the settings gear, the run state and the checks at a glance -->
+ <!-- bottom: the settings gear, the operating modes, the run state and the checks, the panel keys, full screen -->
  <footer class="sbar" id="sbar">
    <button class="gear" id="b-gear" type="button" aria-haspopup="dialog" aria-label="Inställningar" data-i18n-label="set.title" data-i18n-tip="set.title" data-key=","><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/></svg><span class="lb" data-i18n="set.title">Inställningar</span></button>
+   <div class="modes" id="modes" role="group" aria-label="Driftart" data-i18n-label="aria.modes">
+     <button class="mode" data-m="edit"   aria-pressed="false"><b>1</b><span class="lg" data-i18n="mode.edit">PRG EDIT</span><span class="sm" data-i18n="mode.edit.s">PRG EDIT</span></button>
+     <button class="mode" data-m="test"   aria-pressed="true"><b>2</b><span class="lg" data-i18n="mode.test">TEST</span><span class="sm" data-i18n="mode.test.s">TEST</span></button>
+     <button class="mode" data-m="single" aria-pressed="false"><b>3</b><span class="lg" data-i18n="mode.single">SINGLE-BLOCK</span><span class="sm" data-i18n="mode.single.s">SINGLE</span></button>
+     <button class="mode" data-m="full"   aria-pressed="false"><b>4</b><span class="lg" data-i18n="mode.full">FULL-RUN</span><span class="sm" data-i18n="mode.full.s">FULL</span></button>
+   </div>
+   <span class="sb-sep" aria-hidden="true"></span>
    <span class="sb-state" id="sb-state"></span>
    <button class="sb-chk" id="sb-chk" type="button"></button>
    <span class="sb-lock" id="sb-lock" hidden></span>
    <span class="grow"></span>
-   <span class="sb-hint" id="sb-hint" aria-hidden="true"></span>
+   <button class="sbk" id="b-insp-k" type="button" aria-controls="insp-fly"><b>F</b><span data-i18n="sb.insp">inspektör</span></button>
+   <button class="sbk" id="b-viewk" type="button" aria-haspopup="dialog"><b>V</b><span data-i18n="sb.view">vy</span></button>
+   <button class="sbk" id="b-help" type="button" aria-haspopup="dialog"><b>H</b><span data-i18n="sb.help">hjälp</span></button>
+   <span class="sb-sep" aria-hidden="true"></span>
+   <button class="sbk" id="b-fs" type="button" aria-pressed="false"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/></svg><b id="b-fs-k">F11</b><span data-i18n="sb.fs">helskärm</span></button>
+   <button class="sb-q" id="b-helppage" type="button" aria-label="Hjälp som egen sida" data-i18n-label="sb.helppage" data-i18n-tip="sb.helppage"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.6 5.6a2.4 2.4 0 1 1 3.5 2.1c-.7.4-1.1.9-1.1 1.8M8 12v.4"/></svg></button>
+   <a class="sb-q sb-play" id="a-play" href="/play" target="_top" hidden aria-label="Play" data-i18n-label="sb.play" data-i18n-tip="sb.play"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.5v9l7-4.5z"/></svg></a>
  </footer>
 
  <!-- phones: the soft keys (and the block line in PRG EDIT) live here, under every workspace -->
@@ -6778,6 +6959,11 @@ window.TNC_WASM_GZ = "H4sIAAAAAAAC/+y9C4Ac1XUmXHXr2V3dMyUxEoNHWao77GYUwFE2RA/sP1
      sound    boolean
      setup    0 | 1                              1 = the first-run setup was finished or skipped
      tips     boolean                            shortcut hints on the keys and in tooltips
+     theme    'night' | 'graphite' | 'mocha' | 'acid' | 'oled' | 'cream'   colour theme of the whole page; default 'night' (dark).
+                                                 cream is the one light theme. Supersedes env for the frame (env still sets the 3-D scene)
+     fskey    one key name (KeyboardEvent.key)   the fullscreen shortcut, default 'F11'
+     replay   boolean                            offer the machining replay when a run finishes
+     groups   object {group: mode}               the settings panel's per-group mode ('calm', 'full', 'custom' …); free-form, sim/setpanel.js owns it
 
    Migration (first read without a "tnc.settings.v1"): the language from "tnc.lang" and the sound switch from the
    "tnc426_prefs" cookie. The old keys are read, never deleted. Unknown or malformed values fall back to the default.
@@ -6790,8 +6976,10 @@ var TNC_SETTINGS = (function () {
      The Swedish and the English manual print the same block with a comma and with a point (280 476-xx, p. 173). */
   var LOCALES = { sv: { html: 'sv', name: 'Svenska', comma: true }, en: { html: 'en', name: 'English', comma: false }, sr: { html: 'sr-Latn', name: 'Srpski', comma: true } };
   var ENUM = { lang: Object.keys(LOCALES), decimal: ['auto', 'comma', 'point'], skin: ['auto', '426', '430'], env: ['cold-steel', 'workshop-night'],
-    quality: ['low', 'medium', 'high'], motion: ['auto', 'full', 'reduced'] };
-  var DEF = { v: 1, lang: 'sv', decimal: 'auto', skin: 'auto', env: 'cold-steel', quality: 'high', motion: 'auto', sound: true, setup: 0, tips: true };
+    quality: ['low', 'medium', 'high'], motion: ['auto', 'full', 'reduced'],
+    theme: ['night', 'graphite', 'mocha', 'acid', 'oled', 'cream'] };
+  var DEF = { v: 1, lang: 'sv', decimal: 'auto', skin: 'auto', env: 'cold-steel', quality: 'high', motion: 'auto', sound: true, setup: 0, tips: true,
+    theme: 'night', fskey: 'F11', replay: true, groups: {} };
   var hasWin = typeof window !== 'undefined';
 
   function lsGet(k) { try { return hasWin && window.localStorage ? window.localStorage.getItem(k) : null; } catch { return null; } }
@@ -6799,7 +6987,10 @@ var TNC_SETTINGS = (function () {
   /* one value, checked: the value itself or undefined */
   function clean(k, v) {
     if (ENUM[k]) return ENUM[k].indexOf(v) >= 0 ? v : undefined;
-    if (k === 'sound' || k === 'tips') return typeof v === 'boolean' ? v : undefined;
+    if (k === 'sound' || k === 'tips' || k === 'replay') return typeof v === 'boolean' ? v : undefined;
+    if (k === 'fskey') return typeof v === 'string' && v.length > 0 && v.length <= 16 ? v : undefined;
+    if (k === 'groups') { if (!v || typeof v !== 'object' || Array.isArray(v)) return undefined;
+      var g = {}, n; for (n in v) if (/^[a-z]{1,16}$/.test(n) && typeof v[n] === 'string' && /^[a-z]{1,16}$/.test(v[n])) g[n] = v[n]; return g; }
     if (k === 'setup') return v === 1 || v === true ? 1 : (v === 0 || v === false ? 0 : undefined);
     return undefined;
   }
@@ -14607,6 +14798,29 @@ var TNC_I18N = (function () {
   /* ---- (a) static shell dictionary: data-i18n="key" on sim-shell.html ---- */
   var SHELL = {
     en: {
+      /* shell 2026-11: Program menu, bottom bar, inspector rail, speed chip */
+      'pm.title': 'Program',
+      'pm.new': 'New program…',
+      'pm.edit': 'Open in text editor',
+      'pm.load': 'Open file from computer…',
+      'pm.save': 'Save .H',
+      'pm.recent': 'Recent',
+      'pm.all': 'All programs…',
+      'btn.replay': 'Replay',
+      'tip.speed': 'Speed: wheel, ← →, click',
+      'insp.pinned': 'pinned',
+      'tab.run': 'Run',
+      'tab.manual': 'Manual',
+      'sb.insp': 'inspector',
+      'sb.view': 'view',
+      'sb.help': 'help',
+      'sb.fs': 'full screen',
+      'sb.helppage': 'Help as its own page',
+      'sb.play': 'Play edition',
+      'set.theme': 'Theme',
+      'set.theme.d': 'Colours of the whole page.',
+      'fs.denied': 'FULL SCREEN NOT ALLOWED HERE',
+      'helppage.title': 'TNC 426 / 430 Simulator — help',
       'set.decimal': 'Decimal character (MP 7280)',
       'set.decimal.d': 'On the screen only. Input takes both; the stored program keeps the point.',
       'dec.auto': 'Follow language',
@@ -14646,10 +14860,8 @@ var TNC_I18N = (function () {
       'btn.fx': 'Chips',
       'btn.cool': 'Coolant',
       'btn.fire': 'Smoke',
-      'btn.effects': 'Effects and view',
       'btn.snap': 'Store run as reference A',
       'btn.restore': 'Open reference program',
-      'btn.projadd': 'Add program to project',
       'insp.close': 'Close inspector',
       'coach.close': 'Close lesson',
       'coach.back': 'Back',
@@ -14657,9 +14869,6 @@ var TNC_I18N = (function () {
       'coach.finish': 'Finish',
       'coach.learn': 'LESSON',
       'coach.break': 'CRASH IT',
-      'proj.newname': 'New project name',
-      'proj.create': 'Create',
-      'proj.note': 'A project is a named folder of programs. New programs join the active project; ZIP downloads the folder as .H files.',
       'about.notice': 'Not affiliated with DR. JOHANNES HEIDENHAIN GmbH. “HEIDENHAIN” and “TNC” are their trademarks.',
       'about.edu': 'An educational simulator — never use it to prove out a program for a real machine.',
       'about.gh': 'gigacook on GitHub',
@@ -14777,7 +14986,6 @@ var TNC_I18N = (function () {
       'panel.run': 'Run',
       'panel.checks': 'Checks',
       'panel.compare': 'Compare',
-      'panel.projects': 'Projects',
       'btn.pgmmgt': 'Programs',
       'btn.save': 'Save .H',
       'btn.labels': 'Labels',
@@ -14841,6 +15049,29 @@ var TNC_I18N = (function () {
       'dlg.hint': 'E edit · I insert · D delete'
     },
     sv: {
+      /* shell 2026-11: Program menu, bottom bar, inspector rail, speed chip */
+      'pm.title': 'Program',
+      'pm.new': 'Nytt program…',
+      'pm.edit': 'Öppna i texteditor',
+      'pm.load': 'Öppna fil från datorn…',
+      'pm.save': 'Spara .H',
+      'pm.recent': 'Senaste',
+      'pm.all': 'Alla program…',
+      'btn.replay': 'Repris',
+      'tip.speed': 'Hastighet: hjul, ← →, klick',
+      'insp.pinned': 'fäst',
+      'tab.run': 'Körning',
+      'tab.manual': 'Manual',
+      'sb.insp': 'inspektör',
+      'sb.view': 'vy',
+      'sb.help': 'hjälp',
+      'sb.fs': 'helskärm',
+      'sb.helppage': 'Hjälp som egen sida',
+      'sb.play': 'Play-utgåvan',
+      'set.theme': 'Tema',
+      'set.theme.d': 'Färger för hela sidan.',
+      'fs.denied': 'HELSKÄRM TILLÅTS INTE HÄR',
+      'helppage.title': 'TNC 426 / 430 Simulator — hjälp',
       /* unofficial Swedish -- see file header */
       'set.decimal': 'Decimaltecken (MP 7280)',
       'set.decimal.d': 'Bara på skärmen. Inmatning tar båda; det sparade programmet behåller punkten.',
@@ -14880,10 +15111,8 @@ var TNC_I18N = (function () {
       'btn.fx': 'Spån',
       'btn.cool': 'Kylvätska',
       'btn.fire': 'Rök',
-      'btn.effects': 'Effekter och vy',
       'btn.snap': 'Spara körning som referens A',
       'btn.restore': 'Öppna referensprogram',
-      'btn.projadd': 'Lägg program i projekt',
       'insp.close': 'Stäng inspektören',
       'coach.close': 'Stäng lektionen',
       'coach.back': 'Bakåt',
@@ -14891,9 +15120,6 @@ var TNC_I18N = (function () {
       'coach.finish': 'Klar',
       'coach.learn': 'LEKTION',
       'coach.break': 'KRASCHA',
-      'proj.newname': 'Nytt projektnamn',
-      'proj.create': 'Skapa',
-      'proj.note': 'Ett projekt är en namngiven mapp med program. Nya program hamnar i det aktiva projektet; ZIP hämtar mappen som .H-filer.',
       'about.notice': 'Inte knuten till DR. JOHANNES HEIDENHAIN GmbH. ”HEIDENHAIN” och ”TNC” är deras varumärken.',
       'about.edu': 'En simulator för utbildning — använd den aldrig för att köra in ett program till en riktig maskin.',
       'about.gh': 'gigacook on GitHub',
@@ -15011,7 +15237,6 @@ var TNC_I18N = (function () {
       'panel.run': 'Körning',
       'panel.checks': 'Kontroller',
       'panel.compare': 'Jämförelse',
-      'panel.projects': 'Projekt',
       'btn.pgmmgt': 'Program',
       'btn.save': 'Spara .H',
       'btn.labels': 'Etiketter',
@@ -15073,6 +15298,29 @@ var TNC_I18N = (function () {
       'dlg.hint': 'E redigera · I infoga · D radera'
     },
     sr: {
+      /* shell 2026-11: Program menu, bottom bar, inspector rail, speed chip */
+      'pm.title': 'Programi',
+      'pm.new': 'Novi program…',
+      'pm.edit': 'Otvori u uređivaču teksta',
+      'pm.load': 'Otvori fajl sa računara…',
+      'pm.save': 'Sačuvaj .H',
+      'pm.recent': 'Nedavno',
+      'pm.all': 'Svi programi…',
+      'btn.replay': 'Ponovi snimak',
+      'tip.speed': 'Brzina: točkić, ← →, klik',
+      'insp.pinned': 'zakačeno',
+      'tab.run': 'Rad',
+      'tab.manual': 'Priručnik',
+      'sb.insp': 'inspektor',
+      'sb.view': 'prikaz',
+      'sb.help': 'pomoć',
+      'sb.fs': 'ceo ekran',
+      'sb.helppage': 'Pomoć kao posebna stranica',
+      'sb.play': 'Play izdanje',
+      'set.theme': 'Tema',
+      'set.theme.d': 'Boje cele stranice.',
+      'fs.denied': 'CEO EKRAN NIJE DOZVOLJEN OVDE',
+      'helppage.title': 'TNC 426 / 430 Simulator — pomoć',
       /* unofficial Serbian (Latin script), shop-floor wording -- see file header */
       'set.decimal': 'Decimalni znak (MP 7280)',
       'set.decimal.d': 'Samo na ekranu. Unos prima oba; sačuvani program zadržava tačku.',
@@ -15112,10 +15360,8 @@ var TNC_I18N = (function () {
       'btn.fx': 'Strugotina',
       'btn.cool': 'Emulzija',
       'btn.fire': 'Dim',
-      'btn.effects': 'Efekti i prikaz',
       'btn.snap': 'Sačuvaj rad kao referencu A',
       'btn.restore': 'Otvori referentni program',
-      'btn.projadd': 'Dodaj program u projekat',
       'insp.close': 'Zatvori inspektor',
       'coach.close': 'Zatvori lekciju',
       'coach.back': 'Nazad',
@@ -15123,9 +15369,6 @@ var TNC_I18N = (function () {
       'coach.finish': 'Gotovo',
       'coach.learn': 'LEKCIJA',
       'coach.break': 'SUDAR',
-      'proj.newname': 'Ime novog projekta',
-      'proj.create': 'Napravi',
-      'proj.note': 'Projekat je imenovana fascikla sa programima. Novi programi idu u aktivni projekat; ZIP preuzima fasciklu kao .H fajlove.',
       'about.notice': 'Nije povezano sa DR. JOHANNES HEIDENHAIN GmbH. „HEIDENHAIN“ i „TNC“ su njihovi zaštitni znaci.',
       'about.edu': 'Simulator za obuku — nikada ga ne koristite za uhodavanje programa za pravu mašinu.',
       'about.gh': 'gigacook on GitHub',
@@ -15243,7 +15486,6 @@ var TNC_I18N = (function () {
       'panel.run': 'Rad',
       'panel.checks': 'Provere',
       'panel.compare': 'Poređenje',
-      'panel.projects': 'Projekti',
       'btn.pgmmgt': 'Programi',
       'btn.save': 'Sačuvaj .H',
       'btn.labels': 'Oznake',
@@ -15555,12 +15797,13 @@ var TNC_I18N = (function () {
       'Help, lessons, manual': 'Hjälp, lektioner, handbok',
       'Settings': 'Inställningar',
       'A path block as its dialog (while editing a block) · back to text': 'Ett banblock som dialog (när ett block redigeras) · tillbaka till text',
-      'Flowchart view': 'Flödesvy',
+      'View and effects': 'Vy och effekter',
+      'Full screen (Settings: the key)': 'Helskärm (tangenten väljs i Inställningar)',
       '3D / TOP / FRONT / SIDE': '3D / OVAN / FRAM / SIDA',
       'Operating mode': 'Driftläge',
       'Speed 1× 4× 16× 64× MAX': 'Hastighet 1× 4× 16× 64× MAX',
       'Tool table': 'Verktygstabell',
-      'Inspector: open / close the right pane': 'Inspektör: öppna / stäng högerpanelen',
+      'Inspector: open / close': 'Inspektör: öppna / stäng',
       'Y CYCL DEF · W TOOL CALL · A APPR/DEP · Q Q-parameter · soft keys for L CC C CR CT CP RND CHF, TOOL DEF, LBL': 'Y CYCL DEF · W TOOL CALL · A APPR/DEP · Q Q-parameter · funktionstangenter för L CC C CR CT CP RND CHF, TOOL DEF, LBL',
       'X Y Z (B A) axis · I incremental · P polar · Q parameter · + − sign · # actual position · DELETE = CE · ENTER = ENT · ⇧ENTER = NO ENT · END · ESC = DEL': 'X Y Z (B A) axel · I inkrementell · P polär · Q parameter · + − tecken · # är-position · DELETE = CE · ENTER = ENT · ⇧ENTER = NO ENT · END · ESC = DEL',
       'Feed override': 'Matningsoverride',
@@ -15667,12 +15910,13 @@ var TNC_I18N = (function () {
       'Help, lessons, manual': 'Pomoć, lekcije, priručnik',
       'Settings': 'Podešavanja',
       'A path block as its dialog (while editing a block) · back to text': 'Blok putanje kao dijalog (dok se blok menja) · nazad na tekst',
-      'Flowchart view': 'Dijagram toka',
+      'View and effects': 'Prikaz i efekti',
+      'Full screen (Settings: the key)': 'Ceo ekran (taster se bira u Podešavanjima)',
       '3D / TOP / FRONT / SIDE': '3D / ODOZGO / SPREDA / BOČNO',
       'Operating mode': 'Režim rada',
       'Speed 1× 4× 16× 64× MAX': 'Brzina 1× 4× 16× 64× MAX',
       'Tool table': 'Tabela alata',
-      'Inspector: open / close the right pane': 'Inspektor: otvori / zatvori desni panel',
+      'Inspector: open / close': 'Inspektor: otvori / zatvori',
       'Y CYCL DEF · W TOOL CALL · A APPR/DEP · Q Q-parameter · soft keys for L CC C CR CT CP RND CHF, TOOL DEF, LBL': 'Y CYCL DEF · W TOOL CALL · A APPR/DEP · Q Q parametar · funkcijski tasteri za L CC C CR CT CP RND CHF, TOOL DEF, LBL',
       'X Y Z (B A) axis · I incremental · P polar · Q parameter · + − sign · # actual position · DELETE = CE · ENTER = ENT · ⇧ENTER = NO ENT · END · ESC = DEL': 'X Y Z (B A) osa · I inkrementalno · P polarno · Q parametar · + − znak · # stvarna pozicija · DELETE = CE · ENTER = ENT · ⇧ENTER = NO ENT · END · ESC = DEL',
       'Feed override': 'Override pomaka',
@@ -15977,13 +16221,13 @@ function readPrefs(){
 function writePrefs(){
   try{
     const v=encodeURIComponent(JSON.stringify({speed:S.speed, ovr:S.ovr, view:S.view, mode:S.mode, fx:S.fx,
-      cool:S.fxCool, fire:S.fxFire, labels:S.labels, vice:S.vice, sound:S.sound, machine:S.machine, flow:S.flowView, focus:S.focusView, side:S.sideTab, ref:S.ref}));
+      cool:S.fxCool, fire:S.fxFire, labels:S.labels, vice:S.vice, sound:S.sound, machine:S.machine, flow:S.flowView, side:S.sideTab, ref:S.ref}));
     const path=location.pathname.replace(/[^/]*$/,'')||'/';
     document.cookie=`${PREF}=${v}; Max-Age=31536000; Path=${path}; SameSite=Lax${location.protocol==='https:'?'; Secure':''}`;
   }catch(e){}
   if(PROF) persist();
 }
-const prefsNow=()=>({speed:S.speed, ovr:S.ovr, view:S.view, mode:S.mode, fx:S.fx, cool:S.fxCool, fire:S.fxFire, labels:S.labels, vice:S.vice, sound:S.sound, machine:S.machine, flow:S.flowView, focus:S.focusView, side:S.sideTab, ref:S.ref});
+const prefsNow=()=>({speed:S.speed, ovr:S.ovr, view:S.view, mode:S.mode, fx:S.fx, cool:S.fxCool, fire:S.fxFire, labels:S.labels, vice:S.vice, sound:S.sound, machine:S.machine, flow:S.flowView, side:S.sideTab, ref:S.ref});
 
 /* per-edition preferences: "tnc.edition.<edition>.v1" (docs/BUILD_STATE.md). Other fields in it are kept as they are. */
 const ED_LS='tnc.edition.'+((SET&&SET.edition)||'core')+'.v1';
@@ -16029,8 +16273,8 @@ const S={
   cursor:0, editing:false, raw:false, mgt:false, mgtSel:0, flowView:!!P.flow,
   fx:P.fx!==undefined?!!P.fx:!REDUCED, fxCool:P.cool!==undefined?!!P.cool:true, fxFire:!!P.fire,
   labels:P.labels!==undefined?!!P.labels:true, vice:P.vice!==undefined?!!P.vice:true, sound:SET?!!SET.get('sound'):(P.sound!==undefined?!!P.sound:true),
-  /* focusView = the inspector (right pane) is closed: the default layout. F or the Inspector control opens it; the choice is kept. */
-  cmpRef:null, pos:null, seg:null, shake:0, lesson:null, focus:null, focusView:typeof edPref().inspector==='boolean'?!edPref().inspector:(P.focus!==undefined?!!P.focus:true), lock:null, cam:null, cutting:false, sideTab:P.side||'diag', ref:P.ref||'keys', pickPath:null, execB:-1, wiz:null, pick:null, tt:false
+  /* insp = the inspector flyout over the view: closed by default; open = shown, pinned = stays open when the pointer leaves */
+  cmpRef:null, pos:null, seg:null, shake:0, lesson:null, focus:null, insp:{open:false,pinned:false}, lock:null, cam:null, cutting:false, sideTab:P.side==='ref'?'ref':'diag', ref:P.ref||'keys', pickPath:null, execB:-1, wiz:null, pick:null, tt:false
 };
 const TEMP='LESSON.H';
 const pg=()=>{ if(!S.pgms[S.machine]) S.pgms[S.machine]={}; return S.pgms[S.machine]; };
@@ -16078,7 +16322,7 @@ let persistT=0;
 function persist(){
   if(!PROF) return;
   clearTimeout(persistT);
-  persistT=setTimeout(()=>{ PROF=profileNow(); PSTORE.save(PROF).then(r=>{ profChip(r); }); renderUserPrograms(); },300);
+  persistT=setTimeout(()=>{ PROF=profileNow(); PSTORE.save(PROF).then(r=>{ profChip(r); }); },300);
 }
 
 /* ================= undo / redo (per program) ================= */
@@ -16135,6 +16379,8 @@ const scene=new THREE.Scene(); scene.background=new THREE.Color(0x0b0b0d);   // 
 const camera=new THREE.PerspectiveCamera(40,1,1,6000); camera.up.set(0,0,1);
 const controls=new THREE.OrbitControls(camera,renderer.domElement);
 controls.enableDamping=true; controls.dampingFactor=.09;
+/* touch (phones, tablets, touchscreen laptops): one finger orbits, two fingers pinch to zoom and drag to pan; #gl has touch-action:none */
+controls.touches={ONE:THREE.TOUCH.ROTATE,TWO:THREE.TOUCH.DOLLY_PAN};
 const LK=(+THREE.REVISION>=155)?Math.PI:1;       // r155+: physical light units; x PI keeps the r128 brightness
 const hemiL=new THREE.HemisphereLight(0x9fc4ff,0x0a0f18,.6*LK); scene.add(hemiL);
 const keyL=new THREE.DirectionalLight(0xffffff,1.35*LK); keyL.position.set(180,-140,260); scene.add(keyL);
@@ -16535,7 +16781,7 @@ function start(){
 function stop(){ if(S.running){ S.running=false; setState('FEED HOLD'); } }
 /* NC START does what the operating mode says: SINGLE-BLOCK = the next block, TEST / FULL-RUN = run, PROGRAM = nothing */
 function ncStart(){ if(S.mode==='single') stepBlock(); else if(S.mode==='edit') say('PROGRAM MODE — NC START WORKS IN 2 TEST, 3 SINGLE-BLOCK, 4 FULL-RUN'); else start(); }
-function runMax(){ S.running=false; seek(S.total,true); if(S.t>=S.total-1e-6) setState('PROGRAM END'); }
+function runMax(){ S.running=false; seek(S.total,true); if(S.t>=S.total-1e-6){ setState('PROGRAM END'); replayOffer(); } }
 function stepBlock(){                                   // NC START in SINGLE-BLOCK: exactly the highlighted block, then the next one is highlighted
   if(locked()) return;
   const E=EX(); if(!E.length) return;
@@ -16704,14 +16950,14 @@ const SK={
   single:[['NC START\nNEXT BLOCK','step'],['NC\nSTOP','stop'],['RESET','reset'],['OVR\n−','ovrd'],['OVR\n+','ovru'],['3-D\nVIEW','v3'],['TOOL\nLIST','tt'],['PROGRAMS','mgt']],
   full:  [['NC\nSTART','start'],['NC\nSTOP','stop'],['RESET','reset'],['OVR\n−','ovrd'],['OVR\n+','ovru'],['3-D\nVIEW','v3'],['TOOL\nLIST','tt'],['PROGRAMS','mgt']],
   tt:    [['ADD\nMISSING','ttmiss'],['IMPORT\nTOOL.T','load'],['EXPORT\nTOOL.T','ttexp'],['',''],['',''],['',''],['',''],['END','ttend']],
-  mgt:   [['NEW','new'],['OPEN','open'],['LOAD\nFROM PC','load'],['SAVE\n.H','save'],['RESTORE\nORIGINAL','restore'],['DELETE','mdel'],['ADD TO\nPROJECT','padd'],['END','end']]
+  mgt:   [['NEW','new'],['OPEN','open'],['LOAD\nFROM PC','load'],['SAVE\n.H','save'],['RESTORE\nORIGINAL','restore'],['DELETE','mdel'],['',''],['END','end']]
 };
 /* a block open on the block line: DIALOG turns a path block (L LP CC C CP CR CT CTP RND CHF) back into its questions */
 function lineSK(){ const b=S.res.blocks[S.cursor], d=DLG&&b&&!S.insertPending&&DLG.parseBlock(b.raw);
   return [d?['DIALOG','redlg']:['',''],['',''],['',''],['',''],['',''],['',''],['ENT','edok'],['ESC','edesc']]; }
 function skRows(){ if(S.wiz) return wizSK(); if(S.editing) return lineSK(); if(S.pick) return S.pick; if(S.mgt) return SK.mgt; if(S.tt) return SK.tt; return SK[S.mode]||SK.test; }
 /* soft keys: the same look and the same behaviour everywhere; NC START green, NC STOP red; a path row when nested */
-const SKKEY={ed:'E',ins:'I',del:'DEL',undo:'CTRL Z',redo:'CTRL Y',rawt:'TAB',tt:'T',mgt:'M',focus:'F',flow:'V',start:'SPACE',stop:'ESC',reset:'R',
+const SKKEY={ed:'E',ins:'I',del:'DEL',undo:'CTRL Z',redo:'CTRL Y',rawt:'TAB',tt:'T',mgt:'M',focus:'F',start:'SPACE',stop:'ESC',reset:'R',
   v3:'G',vt:'G',vf:'G',vs:'G',ovrd:'−',ovru:'+',cycldef:'Y','w:TOOLCALL':'W',apprdep:'A','w:Q':'Q',load:'CTRL O',save:'CTRL S',new:'N',mdel:'DEL',restore:'R',end:'ESC',
   ttend:'ESC',pickend:'ESC',wend:'END',wcancel:'ESC',wskip:'⇧ ENTER',wok:'ENTER',wsign:'− / +',wact:'#',wce:'DELETE',redlg:'F2',edok:'ENTER',edesc:'ESC',wtext:'F2'};
 function skKey(a){ if(a==='step') return S.mode==='single'?'SPACE / S':'S'; if(a.startsWith('wa:')) return 'XYZ'.includes(a.slice(3))?'':a.slice(3); return SKKEY[a]||''; }
@@ -16762,7 +17008,7 @@ function act(a){
     case 'new': closeMgt(); openNew(); break; case 'open': openPgm(mgtNames()[S.mgtSel]); break;
     case 'load': loadFromDisk(); break; case 'save': saveH(); break;
     case 'restore': restoreOriginal(mgtNames()[S.mgtSel]); break; case 'mdel': deletePgm(mgtNames()[S.mgtSel]); break;
-    case 'padd': addToProject(mgtNames()[S.mgtSel]); break; case 'end': closeMgt(); break;
+    case 'end': closeMgt(); break;
   }
 }
 
@@ -16870,7 +17116,7 @@ function openPgm(name){
   if(!name||pg()[name]==null) return;
   if(S.editing) endEdit(false);
   if(S.lesson&&name!==TEMP) endLesson(true);
-  S.pgm=name; S.text=pg()[name]; raw.value=S.text; S.cursor=0; closeMgt(); compile(); persist();
+  S.pgm=name; S.text=pg()[name]; raw.value=S.text; S.cursor=0; closeMgt(); compile(); persist(); recentPush(name);
   say('PGM '+name+' SELECTED');
   emit('program',{name,machine:S.machine});
 }
@@ -16886,7 +17132,7 @@ function openExternal(name,text,{machine,tools}={}){
 function addPgm(name,text,{open=true,project=true}={}){
   const n=uniqueName(name); pg()[n]=text; touchMeta(n,true);
   if(project&&S.active){ const p=S.projects.find(p=>p.id===S.active); if(p&&!p.pgms.some(r=>r.m===S.machine&&r.name===n)) p.pgms.push({m:S.machine,name:n}); }
-  persist(); renderProjects(); if(open) openPgm(n); return n;
+  persist(); if(open) openPgm(n); return n;
 }
 function deletePgm(name){
   if(!name) return;
@@ -16894,7 +17140,7 @@ function deletePgm(name){
   if(!confirm(X('Delete {n}? This cannot be undone.',{n:name}))) return;
   delete pg()[name]; if(S.meta[S.machine]) delete S.meta[S.machine][name]; S.projects.forEach(p=>{ p.pgms=p.pgms.filter(r=>!(r.m===S.machine&&r.name===name)); });
   if(S.pgm===name){ S.pgm=Object.keys(pg())[0]; S.text=pg()[S.pgm]; compile(); }
-  S.mgtSel=Math.min(S.mgtSel,mgtNames().length-1); persist(); renderMgt(); renderProjects(); say(name+' DELETED');
+  S.mgtSel=Math.min(S.mgtSel,mgtNames().length-1); persist(); renderMgt(); say(name+' DELETED');
 }
 function restoreOriginal(name){
   const o=S.orig[S.machine][name]; if(o==null){ say('NOT A BUILT-IN PROGRAM'); return; }
@@ -16958,14 +17204,11 @@ function closeMgt(){ if(!S.mgt) return; S.mgt=false; mgtEl.hidden=true; plist.hi
   renderSK(); $('pgm-path').textContent='TNC:\\'+S.pgm; setState('READY'); }
 function renderMgt(){
   const names=mgtNames();
-  mgtEl.innerHTML=`<div class="mhd"><span>FILE NAME</span><span style="text-align:right">BYTES</span><span>STATUS</span><span>PROJECT</span></div>`+
+  mgtEl.innerHTML=`<div class="mhd"><span>FILE NAME</span><span style="text-align:right">BYTES</span><span>STATUS</span><span></span></div>`+
     names.map((n,i)=>{ const t=pg()[n], o=S.orig[S.machine][n];
       const st=(n===S.pgm?'S':' ')+(o==null?'+':(t!==o?'*':' '));
-      const pj=S.projects.filter(p=>p.pgms.some(r=>r.m===S.machine&&r.name===n)).map(p=>p.name).join(', ')||'—';
-      return `<div class="mrow${i===S.mgtSel?' sel':''}" data-i="${i}"><span>${esc(n)}</span><span class="by">${t.length}</span><span class="st">${st}</span><span class="pj">${esc(pj)}</span></div>`; }).join('')+
-    `<div class="mft">TNC:\\ · ${M().label} · ${names.length} FILES · S SELECTED · * MODIFIED · + YOURS<br>`+
-    `↑ ↓ SELECT · ENT OPEN · N NEW · L LOAD FROM PC · R RESTORE ORIGINAL · DEL DELETE · ESC BACK<br>`+
-    `DROP .H FILES ANYWHERE ON THIS PANEL TO LOAD THEM</div>`;
+      return `<div class="mrow${i===S.mgtSel?' sel':''}" data-i="${i}"><span>${esc(n)}</span><span class="by">${t.length}</span><span class="st">${st}</span><span></span></div>`; }).join('')+
+    `<div class="mft">TNC:\\ · ${M().label} · ${names.length} FILES · S SELECTED · * MODIFIED · + YOURS</div>`;
   const sel=mgtEl.querySelector('.mrow.sel'); if(sel) sel.scrollIntoView({block:'nearest'});
 }
 mgtEl.addEventListener('click',e=>{ const r=e.target.closest('.mrow'); if(!r) return;
@@ -16983,48 +17226,7 @@ function mgtKey(e){
 }
 $('b-mgt').onclick=()=>S.mgt?closeMgt():openMgt();
 
-/* ================= projects ================= */
-function renderProjects(){
-  const act=S.projects.find(p=>p.id===S.active);
-  $('proj-t').textContent=S.projects.length+(act?' · '+act.name:'');
-  $('proj').innerHTML=S.projects.length?S.projects.map(p=>`<div class="prow${p.id===S.active?' on':''}">
-      <input type="radio" name="proj" value="${p.id}"${p.id===S.active?' checked':''} aria-label="Make ${esc(p.name)} active">
-      <span class="nm" data-tip="${esc(p.name)}">${esc(p.name)}</span><span class="ct">${p.pgms.length} PGM</span>
-      <span><button data-zip="${p.id}" data-tip="${esc(X('Download as .zip'))}">ZIP</button> <button data-del="${p.id}" data-tip="${esc(X('Delete project'))}" aria-label="${esc(X('Delete project'))}">×</button></span></div>`).join('')
-    :`<p class="note">${esc(X('No projects yet. Create one and every program you make lands in it.'))}</p>`;
-}
-$('proj').addEventListener('change',e=>{ if(e.target.name==='proj'){ S.active=e.target.value; persist(); renderProjects(); } });
-$('proj').addEventListener('click',e=>{
-  const z=e.target.closest('[data-zip]'), d=e.target.closest('[data-del]');
-  if(z) zipProject(z.dataset.zip);
-  if(d){ const p=S.projects.find(p=>p.id===d.dataset.del); if(p&&confirm(X('Delete project "{n}"? Its programs stay on the control.',{n:p.name}))){
-    S.projects=S.projects.filter(x=>x!==p); if(S.active===p.id) S.active=(S.projects[0]||{}).id||null; persist(); renderProjects(); if(S.mgt) renderMgt(); } }
-});
-$('b-proj-new').onclick=()=>{ const inp=$('proj-name'), name=inp.value.trim()||('PROJECT '+(S.projects.length+1));
-  const p={id:Date.now().toString(36),name:name.slice(0,40),created:new Date().toISOString(),pgms:[]};
-  S.projects.push(p); S.active=p.id; inp.value=''; GCDraft.clear(inp); persist(); renderProjects(); say('PROJECT "'+p.name+'" ACTIVE'); };
-$('proj-name').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); $('b-proj-new').click(); } e.stopPropagation(); });
-$('b-proj-add').onclick=()=>addToProject(S.pgm);
-function addToProject(name){
-  const p=S.projects.find(p=>p.id===S.active); if(!p){ say('CREATE A PROJECT FIRST'); return; }
-  if(!name||name===TEMP){ say('NOTHING TO ADD'); return; }
-  if(p.pgms.some(r=>r.m===S.machine&&r.name===name)){ say(name+' IS ALREADY IN '+p.name); return; }
-  p.pgms.push({m:S.machine,name}); persist(); renderProjects(); if(S.mgt) renderMgt(); say(name+' ADDED TO '+p.name);
-}
-function zipProject(id){
-  const p=S.projects.find(p=>p.id===id); if(!p) return;
-  if(!window.JSZip){ say('ZIP LIBRARY MISSING FROM THIS BUILD'); return; }
-  const z=new JSZip(), keep=S.machine, names=[];
-  p.pgms.forEach(r=>{ const t=(S.pgms[r.m]||{})[r.name]; if(t==null) return;
-    const prev=S.machine; S.machine=r.m; const lst=listing(t); S.machine=prev;
-    z.file((r.m!=='426'?'TNC'+r.m+'/':'')+r.name,lst); names.push(r.name+'  ('+(MACHINES[r.m]||{}).label+')'); });
-  S.machine=keep;
-  z.file('README.txt',[p.name,'Exported '+new Date().toISOString().slice(0,16).replace('T',' ')+' from the TNC 426 Simulator','',
-    'Programs:',...names.map(n=>'  '+n),'','Numbered TNC listing format, CRLF line ends.',
-    'Simulator output only - prove out any program on the real machine the usual way.','',
-    '(c) 2026 TNC 426 Simulator contributors'].join('\r\n'));
-  z.generateAsync({type:'blob'}).then(b=>{ download(p.name.replace(/[^\w.-]+/g,'_')+'.zip',b); say('PROJECT ZIP SAVED — '+names.length+' PROGRAM(S)'); });
-}
+/* projects: stored in the profile and kept readable (S.projects), no UI any more */
 
 /* ================= flow view (flow.js) ================= */
 let FLOW=null;
@@ -17058,7 +17260,8 @@ function startLesson(kind,idx){
   const Ls=lessonsOf(); if(!Ls) return; const L=(kind==='learn'?Ls.learn:Ls.breakit)[idx]; if(!L) return;
   closeModal(); if(S.mgt) closeMgt();
   S.lesson={kind,idx,L,steps:stepsFor(kind,L),i:0,prev:S.lesson?S.lesson.prev:S.pgm};
-  coach.hidden=false; document.querySelector('.tp').classList.add('lesson'); $('coach-k').textContent=T(kind==='learn'?'coach.learn':'coach.break');
+  coach.hidden=false; if(S.insp.open) inspClose(true);   // the lesson text sits under the view: the inspector flyout must not cover it
+  document.querySelector('.tp').classList.add('lesson'); $('coach-k').textContent=T(kind==='learn'?'coach.learn':'coach.break');
   $('coach-t').textContent=L.title;
   coachStep(0); showPane('gfx');
 }
@@ -17132,6 +17335,7 @@ function renderHelp(){
       sec.rows.slice(1).map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`:'')+'</details>').join('')+'</div>';
 }
 $('b-help').onclick=()=>openHelp();
+$('b-helppage').onclick=()=>helpPage();
 $('help-setup').onclick=()=>{ closeModal(true); setupOpen(0); };
 
 /* ---------- NEW PROGRAM ---------- */
@@ -17266,7 +17470,7 @@ async function newProfile(){
   clearTimeout(persistT); await PSTORE.wipe(); try{ localStorage.removeItem(LS_KEY); }catch(e){}
   PROF=PSTORE.blank(''); await PSTORE.save(PROF); sess.set('tnc.askname','1'); location.reload();   // the new profile asks for its name once
 }
-if($('b-prof')) $('b-prof').onclick=openProfile;
+if($('b-prof')) $('b-prof').onclick=()=>{ if(window.TNC_SHEET) TNC_SHEET.open(); else openProfile(); };
 
 
 /* ================= programming dialogs (dialogs.js): one question per step, soft keys for the choices ================= */
@@ -17401,24 +17605,43 @@ function renderTT(){ const ms=mset(); mgtEl.innerHTML=`<div class="ttview"><div 
   wireToolTable(mgtEl,renderTT); const cur=mgtEl.querySelector('tr[data-cur]'); if(cur){ cur.style.outline='2px solid var(--cyan)'; cur.scrollIntoView({block:'nearest'}); } }
 function closeTT(){ if(!S.tt) return; S.tt=false; mgtEl.hidden=true; plist.hidden=S.flowView&&!!FLOW; $('flow').hidden=!(S.flowView&&FLOW); renderSK(); $('pgm-path').textContent='TNC:\\'+S.pgm; }
 
-/* ================= inspector: the right pane, closed in the default layout =================
-   S.focusView = closed. The Inspector control, its close button and F toggle it; what it shows (tab, reference page,
-   scroll, the stored comparison) stays as it was while it is closed. Phones: it is the Status workspace, always there. */
-function toggleFocus(quiet){ S.focusView=!S.focusView; inspSync(); edSet('inspector',!S.focusView);
-  writePrefs(); renderSK(); requestAnimationFrame(()=>{ resize(); requestAnimationFrame(resize); });
-  if(quiet!==true) say(T(S.focusView?'insp.closed':'insp.opened')); }
-function inspSync(){ document.body.classList.toggle('focus',S.focusView); $('b-insp').setAttribute('aria-pressed',String(!S.focusView)); }
-function inspOpen(tab){ if(S.focusView&&!isPhone()) toggleFocus(true); if(isPhone()) showPane('side'); if(tab) setSideTab(tab); }
-function inspPanel(panel){ const tab={compare:'diag',diag:'diag',ref:'ref',progs:'progs'}[panel]; if(!tab) return false; inspOpen(tab);
+/* ================= inspector: a 40 px rail on the right; its flyout opens over the view, the columns never reflow =================
+   Collapsed by default, every time. The pointer resting on the rail opens it (a short intent delay) and leaving closes it, unless a
+   click pinned it; F and the bottom bar's F toggle it pinned; a tap toggles it; the arrow keys on the focused rail open it and move
+   into it; Esc or × closes it. Phones: it is the Status workspace, always there. */
+var railB=$('insp-rail'), flyEl=$('insp-fly'), inspT=0;
+function inspSync(){ const ph=isPhone(), o=S.insp.open&&!ph;
+  flyEl.classList.toggle('open',o); railB.setAttribute('aria-expanded',String(o)); $('b-insp-k').setAttribute('aria-expanded',String(o));
+  $('insp-pin').hidden=!(o&&S.insp.pinned); flyEl.inert=!ph&&!o; }
+function inspOpenFly(pinned){ clearTimeout(inspT); S.insp.open=true; if(pinned) S.insp.pinned=true; inspSync(); }
+function inspClose(keepFocus){ clearTimeout(inspT); const inside=flyEl.contains(document.activeElement); S.insp.open=false; S.insp.pinned=false; inspSync();
+  if(inside&&!keepFocus) try{ railB.focus({preventScroll:true}); }catch(e){} }
+function inspToggle(){ if(isPhone()){ showPane(paneNow()==='side'?'gfx':'side'); return; }
+  if(S.insp.open&&S.insp.pinned) inspClose(); else inspOpenFly(true); }
+function inspOpen(tab){ if(isPhone()) showPane('side'); else inspOpenFly(true); if(tab) setSideTab(tab); }
+function inspPanel(panel){
+  if(panel==='progs'){ if(window.TNC_SHEET) TNC_SHEET.open(); else openMgt(); return true; }   // programs live in the profile sheet now
+  const tab={compare:'diag',diag:'diag',run:'diag',ref:'ref',manual:'ref'}[panel]; if(!tab) return false; inspOpen(tab);
   if(panel==='compare'){ const c=document.querySelector('.card-compare'); if(c) c.scrollIntoView({block:'nearest'}); } return true; }
-$('b-insp').onclick=()=>toggleFocus();
-$('insp-x').onclick=()=>{ if(!S.focusView) toggleFocus(); $('b-insp').focus(); };
+{ const side=$('ws-side');
+  side.addEventListener('pointerenter',e=>{ if(e.pointerType==='touch'||isPhone()) return; clearTimeout(inspT);
+    if(!S.insp.open) inspT=setTimeout(()=>inspOpenFly(false),160); });
+  side.addEventListener('pointerleave',e=>{ if(e.pointerType==='touch'||isPhone()) return; clearTimeout(inspT);
+    if(S.insp.open&&!S.insp.pinned&&!flyEl.contains(document.activeElement)) inspT=setTimeout(()=>inspClose(true),280); });
+}
+railB.addEventListener('click',()=>{ if(S.insp.open&&S.insp.pinned) inspClose(); else inspOpenFly(true); });
+railB.addEventListener('keydown',e=>{ if(!/^Arrow(Left|Down|Up|Right)$/.test(e.key)) return; e.preventDefault(); e.stopPropagation();
+  inspOpenFly(true); const t=$('stabs').querySelector('[aria-selected="true"]'); if(t) requestAnimationFrame(()=>t.focus()); });
+flyEl.addEventListener('keydown',e=>{ if(e.key==='Escape'&&!isPhone()){ e.preventDefault(); e.stopPropagation(); inspClose(); } });
+document.addEventListener('pointerdown',e=>{ if(!S.insp.open||isPhone()) return; if($('ws-side').contains(e.target)||$('b-insp-k').contains(e.target)||$('sb-chk').contains(e.target)) return;
+  if(e.pointerType==='touch'||!S.insp.pinned) inspClose(true); },true);
+$('insp-x').onclick=()=>{ inspClose(true); railB.focus(); };
+$('b-insp-k').onclick=()=>inspToggle();
 $('sb-chk').onclick=()=>{ inspOpen('diag'); const el=$('elist'); if(el) el.scrollIntoView({block:'nearest'}); };
 
-
-/* ================= right pane: DIAGNOSTICS · REFERENCE · <name>'s PROGRAMS ================= */
-function setSideTab(t){ S.sideTab=t; [...$('stabs').children].forEach(b=>{ b.setAttribute('aria-selected',b.dataset.tab===t); });
-  ['diag','ref','progs'].forEach(k=>{ const el=$('sp-'+k); if(el) el.hidden=k!==t; }); if(t==='ref') renderRef(); if(t==='progs') renderUserPrograms(); writePrefs(); }
+/* ================= inspector tabs: RUN (state, checks, compare) · MANUAL (keys, cycles, tools, machine, the manual) ================= */
+function setSideTab(t){ if(t!=='ref') t='diag'; S.sideTab=t; [...$('stabs').children].forEach(b=>{ b.setAttribute('aria-selected',b.dataset.tab===t); });
+  ['diag','ref'].forEach(k=>{ const el=$('sp-'+k); if(el) el.hidden=k!==t; }); if(t==='ref') renderRef(); writePrefs(); }
 $('stabs').addEventListener('click',e=>{ const b=e.target.closest('[data-tab]'); if(b) setSideTab(b.dataset.tab); });
 function refOptions(){
   const o=[['keys','Keys'],['cycles','Cycles — CYCL DEF'],['tools','Tool list'],['machine','Machine: '+M().label]], Ls=lessonsOf();
@@ -17430,9 +17653,9 @@ $('ref-sel').addEventListener('keydown',e=>e.stopPropagation());
 function renderRef(){
   refOptions(); const v=$('ref-sel').value, b=$('ref-body'), Ls=lessonsOf();
   if(v==='keys') b.innerHTML='<table>'+KEYS.map(([k,d])=>`<tr><td class="k">${esc(X(k))}</td><td>${esc(X(d))}</td></tr>`).join('')+'</table>';
-  else if(v==='cycles'&&DLG) b.innerHTML='<p class="note">Click a cycle to program it (PROGRAM mode, one question per parameter).</p><table>'+
+  else if(v==='cycles'&&DLG) b.innerHTML='<table>'+
     DLG.GROUPS.map(g=>`<tr><th colspan="2">${esc(g[1].replace(/\n/g,' '))}</th></tr>`+DLG.cycleList(g[0]).map(c=>`<tr class="cyc" data-cy="${c.num}"><td>${c.num}</td><td>${esc(c.name)}</td></tr>`).join('')).join('')+'</table>';
-  else if(v==='tools') b.innerHTML='<p class="note">T opens the editable list. * = yours.</p><table><tr><th>T</th><th>NAME</th><th>R</th><th>L</th></tr>'+
+  else if(v==='tools') b.innerHTML='<table><tr><th>T</th><th>NAME</th><th>R</th><th>L</th></tr>'+
     mtools().map(t=>`<tr${t.t===curToolT?' class="now"':''}><td>${t.t}${t.mine?' *':''}</td><td>${esc(t.name)}</td><td>${(+t.r).toFixed(3)}</td><td>${(+t.l).toFixed(2)}</td></tr>`).join('')+'</table>';
   else if(v==='machine'){ const mc=M().machine; b.innerHTML=mc?`<table>
     <tr><td>Axes</td><td>${esc(M().axes.join(' '))}</td></tr>`+Object.entries(mc.limits).map(([a,l])=>`<tr><td>Limit ${a}</td><td>${l[0]} … ${l[1]}${'AB'.includes(a)?'°':' mm'}</td></tr>`).join('')+
@@ -17446,24 +17669,104 @@ function renderRef(){
     (sec.rows&&sec.rows.length?`<div class="tblw"><table><thead><tr>${sec.rows[0].map(c=>`<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${sec.rows.slice(1).map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`:'')+'</div>'; }
   b.onclick=e=>{ const c=e.target.closest('[data-cy]'); if(c) act('cy:'+c.dataset.cy); };
 }
-const fmtD=iso=>{ if(!iso) return '—'; const d=new Date(iso); return d.toLocaleDateString(undefined,{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'}); };
-function renderUserPrograms(){
-  const who=(PROF&&PROF.name)?PROF.name:'My', rows=[];
-  for(const id in S.pgms) for(const n in S.pgms[id]){ if(n===TEMP) continue; const mine=S.orig[id][n]==null||S.pgms[id][n]!==S.orig[id][n]; if(!mine) continue;
-    const m=(S.meta[id]||{})[n]||{}; rows.push({id,n,m}); }
-  rows.sort((a,b)=>String(b.m.m||'').localeCompare(String(a.m.m||'')));
-  const lbl=who==='My'?T('progs.my'):T('progs.of').replace('{name}',who), tab=$('tab-progs'); if(tab) tab.textContent=lbl;
-  $('up-t').textContent=lbl; $('up-n').textContent=rows.length;
-  $('uplist').innerHTML=rows.length?'<table><tr><th>PROGRAM</th><th>MACHINE</th><th>CREATED</th><th>EDITED</th><th>V</th></tr>'+
-    rows.map(r=>`<tr class="pg${r.id===S.machine&&r.n===S.pgm?' cur':''}" data-m="${r.id}" data-n="${esc(r.n)}"><td>${esc(r.n)}</td><td>${esc((MACHINES[r.id]||{}).label||r.id)}</td><td>${fmtD(r.m.c)}</td><td>${fmtD(r.m.m)}</td><td>${r.m.v||'—'}</td></tr>`).join('')+'</table>'
-    :`<p class="note" style="padding:0 12px 10px">${T('progs.none')}</p>`;
-  const pn=$('proj-t'); if(pn) pn.textContent=S.projects.length;
-}
-$('uplist').addEventListener('click',e=>{ const r=e.target.closest('tr.pg'); if(!r) return; if(r.dataset.m!==S.machine) setMachine(r.dataset.m); openPgm(r.dataset.n); renderUserPrograms(); });
+
+/* ================= Program menu (top bar): New · text editor · open · save · recent · all programs =================
+   WAI-ARIA menu button: Enter / Space / ↓ open on the first item, ↑ on the last; ↑ ↓ Home End move; Esc closes and gives the focus
+   back to the button; Tab or a click outside closes it. N and M inside it are the same shortcuts as outside. */
+var pmBtn=$('b-pgm'), pmMenu=$('pgm-menu');
+function pmItems(){ return [...pmMenu.querySelectorAll('[role=menuitem]')].filter(b=>!b.hidden&&b.offsetParent!==null); }
+function pmOpen(last){ if(!pmMenu.hidden) return; tipHide(); recentRender(); pmMenu.hidden=false; pmBtn.setAttribute('aria-expanded','true');
+  const it=pmItems(); const t=last?it[it.length-1]:it[0]; if(t) t.focus(); }
+function pmClose(ret){ if(pmMenu.hidden) return; pmMenu.hidden=true; pmBtn.setAttribute('aria-expanded','false'); if(ret) pmBtn.focus(); }
+pmBtn.addEventListener('click',()=>{ pmMenu.hidden?pmOpen():pmClose(true); });
+pmBtn.addEventListener('keydown',e=>{ if(e.key==='ArrowDown'||e.key==='ArrowUp'){ e.preventDefault(); e.stopPropagation(); pmOpen(e.key==='ArrowUp'); } });
+pmMenu.addEventListener('keydown',e=>{ const it=pmItems(), i=it.indexOf(document.activeElement), k=e.key;
+  e.stopPropagation();                                               // the menu owns its keys: no global shortcut fires behind it
+  if(k==='ArrowDown'||k==='ArrowUp'){ e.preventDefault(); const j=i<0?0:(i+(k==='ArrowDown'?1:-1)+it.length)%it.length; it[j].focus(); }
+  else if(k==='Home'||k==='End'){ e.preventDefault(); it[k==='Home'?0:it.length-1].focus(); }
+  else if(k==='Escape'){ e.preventDefault(); pmClose(true); }
+  else if(k==='Tab'){ pmClose(false); }
+  else if(!e.ctrlKey&&!e.metaKey&&!e.altKey&&(k==='n'||k==='N')){ e.preventDefault(); $('b-new').click(); }
+  else if(!e.ctrlKey&&!e.metaKey&&!e.altKey&&(k==='m'||k==='M')){ e.preventDefault(); $('pm-all').click(); } });
+pmMenu.addEventListener('pointermove',e=>{ const b=e.target.closest('[role=menuitem]'); if(b&&document.activeElement!==b) b.focus({preventScroll:true}); });
+document.addEventListener('pointerdown',e=>{ if(!pmMenu.hidden&&!$('pgmwrap').contains(e.target)) pmClose(false); },true);
+function pmDo(fn){ return ()=>{ pmClose(false); fn(); }; }
+function pmEditor(){ if(window.TNC_EDITOR) TNC_EDITOR.open(); else { if(S.mgt) closeMgt(); if(!S.raw) toggleRaw(); showPane('pgm'); } }
+$('b-new').onclick=pmDo(()=>openNew());
+$('pm-edit').onclick=pmDo(pmEditor);
+$('pm-load').onclick=pmDo(loadFromDisk);
+$('pm-save').onclick=pmDo(saveH);
+$('pm-all').onclick=pmDo(()=>{ S.mgt?closeMgt():openMgt(); });   // like M: opens, or closes again
+$('pm-rec').addEventListener('click',e=>{ const b=e.target.closest('[data-n]'); if(!b) return; pmClose(false);
+  if(b.dataset.m!==S.machine) setMachine(b.dataset.m); openPgm(b.dataset.n); });
+/* the last programs opened (this browser): name and machine, newest first */
+var RECENT_LS='tnc.recent.v1';
+function recentGet(){ try{ const a=JSON.parse(local.get(RECENT_LS)||'[]'); return Array.isArray(a)?a.filter(r=>r&&typeof r.n==='string'&&typeof r.m==='string'):[]; }catch{ return []; } }
+function recentPush(n){ if(!n||n===TEMP) return; const a=recentGet().filter(r=>!(r.m===S.machine&&r.n===n)); a.unshift({m:S.machine,n}); local.set(RECENT_LS,JSON.stringify(a.slice(0,8))); recentRender(); }
+function recentRender(){ const box=$('pm-rec'); if(!box) return;
+  let list=recentGet().filter(r=>S.pgms[r.m]&&S.pgms[r.m][r.n]!=null);
+  if(!list.length&&S.pgm&&S.pgm!==TEMP) list=[{m:S.machine,n:S.pgm}];
+  box.innerHTML=list.slice(0,3).map(r=>`<button role="menuitem" type="button" tabindex="-1" class="rec" data-m="${esc(r.m)}" data-n="${esc(r.n)}">${esc(r.n)}${r.m!==S.machine?`<small>${esc((MACHINES[r.m]||{}).label||r.m)}</small>`:''}</button>`).join('')||'<div class="pm-none">—</div>'; }
+
+/* ================= bottom bar: the panel keys, full screen, help as its own page, the Play edition ================= */
+function openGear(){ if(window.TNC_SETPANEL) TNC_SETPANEL.open(); else openSettings(); }
+function openView(){ if(window.TNC_SETPANEL) TNC_SETPANEL.open('view'); else openSettings('look'); }
+$('b-viewk').onclick=()=>openView();
+/* full screen: the Fullscreen API on the whole page (a user gesture = the browser's own permission); the key comes from Settings */
+function fsEl(){ return document.fullscreenElement||document.webkitFullscreenElement||null; }
+function fsKey(){ return (SET&&SET.get('fskey'))||'F11'; }
+function fullscreen(){ const d=document.documentElement;
+  if(fsEl()){ const ex=document.exitFullscreen||document.webkitExitFullscreen; if(ex) try{ const p=ex.call(document); if(p&&p.catch) p.catch(()=>{}); }catch(e){} return; }
+  const rq=d.requestFullscreen||d.webkitRequestFullscreen;
+  if(!rq||(document.fullscreenEnabled===false&&!document.webkitFullscreenEnabled)){ say(T('fs.denied')); return; }
+  try{ const p=rq.call(d,{navigationUI:'hide'}); if(p&&p.catch) p.catch(()=>say(T('fs.denied'))); }catch(e){ say(T('fs.denied')); } }
+function fsSync(){ const b=$('b-fs'); if(!b) return; const k=fsKey(); b.setAttribute('aria-pressed',String(!!fsEl())); $('b-fs-k').textContent=k;
+  b.setAttribute('aria-label',T('sb.fs')+' ('+k+')'); b.setAttribute('aria-keyshortcuts',k); }
+document.addEventListener('fullscreenchange',()=>{ fsSync(); requestAnimationFrame(resize); });
+document.addEventListener('webkitfullscreenchange',()=>{ fsSync(); requestAnimationFrame(resize); });
+$('b-fs').onclick=()=>fullscreen();
+addEventListener('keydown',e=>{ const k=fsKey(); if(e.key!==k||e.ctrlKey||e.metaKey||e.altKey) return;
+  const tg=e.target&&e.target.tagName; if(k.length===1&&(tg==='INPUT'||tg==='TEXTAREA'||tg==='SELECT'||(e.target&&e.target.isContentEditable))) return;   // a letter key still types
+  e.preventDefault(); e.stopPropagation(); fullscreen(); },true);
+/* help as its own page: a new window built from the help content (works in the offline file); a full-page view when no window may open */
+function helpBodyHTML(){ const Ls=lessonsOf(), tbl=rows=>`<div class="tblw"><table><thead><tr>${rows[0].map(c=>`<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${rows.slice(1).map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  let h=`<h2>${esc(T('help.keys'))}</h2><div class="klist">`+KEYS.map(([k,d])=>`<div><kbd>${esc(X(k))}</kbd><span>${esc(X(d))}</span></div>`).join('')+'</div>';
+  if(Ls&&Ls.manual&&Ls.manual.length) h+=`<h2>${esc(T('help.manual'))}</h2>`+Ls.manual.map(sec=>`<section><h3>${esc(sec.title)}</h3>${md(sec.body)}${sec.rows&&sec.rows.length?tbl(sec.rows):''}</section>`).join('');
+  if(Ls&&Ls.learn&&Ls.learn.length) h+=`<h2>${esc(T('help.learn'))}</h2><ol>`+Ls.learn.map(L=>`<li><b>${esc(L.title)}</b> — ${esc(L.blurb||'')}</li>`).join('')+'</ol>';
+  return `<div class="prose" style="max-width:none">${h}</div>`; }
+function helpPage(){ const cs=getComputedStyle(document.documentElement), v=k=>cs.getPropertyValue(k).trim();
+  const css=`body{margin:0;background:${v('--gc-canvas')};color:${v('--gc-ink')};font:15px/1.55 ${v('--gc-font-sans')};color-scheme:${cs.colorScheme||'dark'}}
+main{max-width:880px;margin:0 auto;padding:24px 20px 60px}h1{font-size:20px;margin:0 0 16px}h2{font-size:16px;margin:28px 0 8px;border-bottom:1px solid ${v('--gc-line')};padding-bottom:4px}
+h3{font-size:14.5px;margin:18px 0 6px}code,kbd{font-family:${v('--gc-font-mono')};font-size:.92em}code{background:${v('--gc-fill')};padding:0 4px}
+.klist div{display:grid;grid-template-columns:150px 1fr;gap:10px;padding:4px 0;border-bottom:1px solid ${v('--gc-line')}}.klist kbd{font-weight:600}.klist span{color:${v('--gc-ink-2')}}
+table{border-collapse:collapse;font-size:13px}th,td{border-bottom:1px solid ${v('--gc-line')};padding:4px 8px;text-align:left;vertical-align:top}td{font-family:${v('--gc-font-mono')}}
+a{color:${v('--gc-accent')}}li{margin:.3em 0}`;
+  const title=T('helppage.title'), body=helpBodyHTML();
+  const doc=`<!DOCTYPE html><html lang="${esc(document.documentElement.lang)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(title)}</title><style>${css}</style></head><body><main><h1>${esc(title)}</h1>${body}</main></body></html>`;
+  let w=null; try{ w=window.open('','_blank'); }catch(e){ w=null; }
+  if(w) try{ w.document.open(); w.document.write(doc); w.document.close(); try{ w.opener=null; }catch(e){} return w; }catch(e){ try{ w.close(); }catch(e2){} }
+  /* no new window here (an embed, a blocker): the same help as a full-page view over the simulator */
+  let pgEl=$('helppage'); if(pgEl) pgEl.remove();
+  pgEl=document.createElement('div'); pgEl.className='helppage'; pgEl.id='helppage'; pgEl.setAttribute('role','dialog'); pgEl.setAttribute('aria-modal','true'); pgEl.setAttribute('aria-label',title);
+  pgEl.innerHTML=`<div class="hp-bar"><b>${esc(title)}</b><button class="cbtn" type="button" id="hp-x">${esc(T('btn.close'))} <small aria-hidden="true">ESC</small></button></div><div class="hp-in">${body}</div>`;
+  document.body.appendChild(pgEl); const ret=document.activeElement, close=()=>{ pgEl.remove(); setInert(false); restoreFocus(ret); };
+  setInert(true); $('hp-x').onclick=close; pgEl.addEventListener('keydown',e=>{ e.stopPropagation(); if(e.key==='Escape'){ e.preventDefault(); close(); } }); $('hp-x').focus(); return null; }
+/* the Play edition: a quiet link where the web app serves /play (http(s), the core edition); none in the offline file or on GitHub Pages */
+function playLink(){ const a=$('a-play'); if(!a) return; const ed=(SET&&SET.edition)||'core';
+  a.hidden=!(/^https?:$/.test(location.protocol)&&!/\.github\.io$/i.test(location.hostname)&&ed==='core'); }
+
+/* ================= Replay (cine.js, when present): a button by the speed chip, and a short offer when a run reaches its end ================= */
+var offerT=0;
+function replaySync(){ $('b-replay').hidden=!window.TNC_CINE; }
+function replayOpen(){ $('replay-offer').hidden=true; if(window.TNC_CINE) try{ TNC_CINE.open(); }catch(e){ console.warn('replay',e); } }
+function replayOffer(){ if(!window.TNC_CINE||(SET&&SET.get('replay')===false)) return; const o=$('replay-offer'); o.hidden=false;
+  clearTimeout(offerT); offerT=setTimeout(()=>{ o.hidden=true; },8000); }
+$('b-replay').onclick=replayOpen; $('replay-offer').onclick=replayOpen;
+
+function shellReady(){ inspSync(); speedSync(); fsSync(); replaySync(); playLink(); recentRender(); }
+
 if($('b-tools')) $('b-tools').onclick=()=>act('tt');
 
-
-$('b-new').onclick=()=>openNew();
 
 /* ================= machine selector ================= */
 function setMachine(id){
@@ -17475,20 +17778,61 @@ function setMachine(id){
   S.text=pg()[S.pgm]; raw.value=S.text; S.cursor=0; curToolT=null; compile(); persist(); writePrefs();
   edSet('machine',id); machSync(); say(M().label+' SELECTED');
 }
-function machSync(){ document.querySelector('.ttl').textContent=M().label;
-  [...$('mach-seg').children].forEach(b=>{ b.setAttribute('aria-pressed',String(b.dataset.m===S.machine)); }); skinApply(); }
-$('mach-seg').innerHTML=Object.values(MACHINES).map(m=>`<button type="button" data-m="${esc(m.id)}" aria-pressed="false" aria-label="${esc(m.label)}">${esc(m.id)}</button>`).join('');
-$('mach-seg').addEventListener('click',e=>{ const b=e.target.closest('[data-m]'); if(b) setMachine(b.dataset.m); });
-$('mach-seg').hidden=Object.keys(MACHINES).length<2;
+function machSync(){ document.querySelector('.ttl').textContent=M().label; $('mach-sel').value=S.machine; skinApply(); }
+$('mach-sel').innerHTML=Object.values(MACHINES).map(m=>`<option value="${esc(m.id)}">${esc(m.label)}</option>`).join('');
+$('mach-sel').addEventListener('change',e=>{ setMachine(e.target.value); });
+$('mach-sel').addEventListener('keydown',e=>e.stopPropagation());
+$('mach-sel').closest('.machwrap').hidden=Object.keys(MACHINES).length<2;
 
 /* ================= modes, toggles, keyboard ================= */
 function setMode(m){ if(m!=='edit'){ if(S.wiz) wizCancel(); S.pick=null; } S.mode=m; document.body.dataset.mode=m;
   const tps=$('tp-state'); if(tps) tps.textContent=T('tp.'+m); [...document.querySelectorAll('.mode')].forEach(b=>{ b.setAttribute('aria-pressed',b.dataset.m===m); });
   if(!S.mgt) renderSK(); if(m==='edit'){ S.running=false; setState('EDITING'); } else setState('READY'); writePrefs(); }
 $('modes').addEventListener('click',e=>{ const b=e.target.closest('.mode'); if(b) setMode(b.dataset.m); });
-function setSpeed(v,quiet){ S.speed=v; [...$('spd').children].forEach(b=>{ b.dataset.on=(+b.dataset.s===v)?'1':'0'; }); writePrefs();
+/* speed: one chip. The pointer on it + the wheel or ← →, the focus on it + ← → (↑ ↓), a click or a tap steps (Shift = back). Keys 5–9 as before. */
+var SPEEDS=[1,4,16,64,0];
+function speedSync(){ const v=$('spd-v'), c=$('spd-chip'); if(!v) return; const t=S.speed?S.speed+'×':'MAX'; v.textContent=t; c.dataset.s=String(S.speed);
+  c.setAttribute('aria-label',T('aria.speed')+': '+t); }
+function setSpeed(v,quiet){ if(!SPEEDS.includes(v)) v=16; S.speed=v; speedSync(); writePrefs();
   if(v===0&&S.running) runMax(); if(!quiet) say(v?'SPEED '+v+'×':'MAX — RUNS TO THE END OR THE FIRST CRASH'); }
-$('spd').addEventListener('click',e=>{ const b=e.target.closest('button'); if(b) setSpeed(+b.dataset.s); });
+function speedStep(d,wrap){ let i=SPEEDS.indexOf(S.speed); if(i<0) i=2; let j=i+d; j=wrap?(j+SPEEDS.length)%SPEEDS.length:clamp(j,0,SPEEDS.length-1); if(j!==i) setSpeed(SPEEDS[j]); }
+{ const chip=$('spd-chip'); let acc=0, lastW=0, hov=false;
+  chip.addEventListener('click',e=>speedStep(e.shiftKey?-1:1,true));
+  chip.addEventListener('wheel',e=>{ e.preventDefault(); const now=performance.now(); if(now-lastW>400) acc=0;
+    acc+=Math.abs(e.deltaY)>=Math.abs(e.deltaX)?e.deltaY:e.deltaX; lastW=now;
+    if(Math.abs(acc)>=40){ speedStep(acc<0?1:-1,false); acc=0; } },{passive:false});
+  chip.addEventListener('keydown',e=>{ const d={ArrowRight:1,ArrowUp:1,ArrowLeft:-1,ArrowDown:-1}[e.key]; if(!d) return; e.preventDefault(); e.stopPropagation(); speedStep(d,false); });
+  chip.addEventListener('pointerenter',e=>{ if(e.pointerType!=='touch'){ hov=true; chip.classList.add('hov'); } });
+  chip.addEventListener('pointerleave',()=>{ hov=false; chip.classList.remove('hov'); });
+  /* while the pointer rests on the chip, ← → change the speed, not the run position */
+  addEventListener('keydown',e=>{ if(!hov||openModalEl||e.ctrlKey||e.metaKey||e.altKey||(e.key!=='ArrowLeft'&&e.key!=='ArrowRight')) return;
+    const tg=e.target&&e.target.tagName; if(tg==='INPUT'||tg==='TEXTAREA'||tg==='SELECT'||S.editing||S.raw||S.wiz) return;
+    e.preventDefault(); e.stopPropagation(); speedStep(e.key==='ArrowRight'?1:-1,false); },true);
+}
+/* what the settings panel (setpanel.js) and other modules call: the view toggles, speed, theme, full screen, the inspector */
+var VIEWB={fx:'b-fx',cool:'b-cool',fire:'b-fire',labels:'b-labels',vice:'b-vice'}, VIEWS_K={fx:'fx',cool:'fxCool',fire:'fxFire',labels:'labels',vice:'vice'};
+UIAPI.view={
+  get:()=>{ const on=id=>$(id)?$(id).dataset.on==='1':null;
+    return {fx:!!S.fx,cool:!!S.fxCool,fire:!!S.fxFire,labels:!!S.labels,vice:!!S.vice,flow:!!S.flowView,pick:on('b-pick'),axes:on('b-vec'),
+      material:$('mat-sel')?$('mat-sel').value:null,view:S.view,speed:S.speed,
+      available:{fx:!!window.TNC_FX,cool:!!window.TNC_FX,fire:!!window.TNC_FX,labels:!!window.TNC_CALLOUTS,vice:true,flow:!!window.TNC_FLOW,
+        pick:!!$('b-pick'),axes:!!$('b-vec'),material:!!$('mat-sel')}}; },
+  set:(k,v)=>{
+    if(VIEWB[k]){ if(!!S[VIEWS_K[k]]!==!!v) $(VIEWB[k]).click(); return true; }
+    if(k==='flow'){ if(!!S.flowView!==!!v) toggleFlow(); return true; }
+    if(k==='pick'||k==='axes'){ const b=$(k==='pick'?'b-pick':'b-vec'); if(b&&(b.dataset.on==='1')!==!!v) b.click(); return !!b; }
+    if(k==='material'){ const sl=$('mat-sel'); if(sl&&sl.value!==v){ sl.value=v; sl.dispatchEvent(new Event('change')); } return !!sl; }
+    if(k==='view'){ if(['3D','TOP','FRONT','SIDE'].includes(v)) setView(v); return true; }
+    if(k==='speed'){ setSpeed(+v); return true; }
+    return false; },
+  keys:{fx:'P',cool:'K',fire:'B',labels:'L',view:'G'},
+  materials:()=>$('mat-sel')?[...$('mat-sel').options].map(o=>({id:o.value,label:o.textContent})):[] };
+UIAPI.setSpeed=v=>setSpeed(+v);
+UIAPI.speeds=SPEEDS.slice();
+UIAPI.setTheme=id=>SET?SET.set('theme',id):[];
+UIAPI.fullscreen=()=>fullscreen();
+UIAPI.inspector={open:tab=>inspOpen(tab),close:()=>inspClose(),toggle:()=>inspToggle(),get open(){ return !!S.insp.open; }};
+
 function syncToggles(){ $('b-fx').dataset.on=S.fx?'1':'0'; $('b-cool').dataset.on=S.fxCool?'1':'0'; $('b-fire').dataset.on=S.fxFire?'1':'0';
   $('b-labels').dataset.on=S.labels?'1':'0'; $('b-vice').dataset.on=S.vice?'1':'0'; if(window.TNC_STOCK) TNC_STOCK.VICE.on=S.vice;
   ['b-fx','b-cool','b-fire','b-labels','b-vice'].forEach(id=>{ $(id).setAttribute('aria-pressed',String($(id).dataset.on==='1')); }); fxApply(); if(CO) CO.setVisible(S.labels); writePrefs(); }
@@ -17501,11 +17845,11 @@ if(!window.TNC_CALLOUTS) $('b-labels').hidden=true;
 $('b-start').onclick=ncStart; $('b-stop').onclick=stop; $('b-reset').onclick=reset;      // run · pause (feed hold) · stop (reset to the start)
 scrub.addEventListener('input',()=>{ S.running=false; seek(+scrub.value/1000*S.total,false); });
 
-const KEYS=[['↑ ↓','Block cursor'],['← →','Scrub the run (Shift ×5)'],['ENTER','Step one block · edit in EDIT mode'],['ESC','Stop · cancel · close'],
+const KEYS=[['↑ ↓','Block cursor'],['← →','Scrub the run (Shift ×5)'],['ENTER','Step one block · edit in EDIT mode'],['ESC','Stop · cancel · close'],['F11','Full screen (Settings: the key)'],
   ['SPACE','NC START (what the mode does) / NC STOP'],['S · R','Single block · reset'],['E I D C','Edit · insert · delete · copy'],['CTRL+Z','Undo  (CTRL+SHIFT+Z / CTRL+Y redo)'],
   ['CTRL+S','Save as .H'],['CTRL+O','Load .H from your computer'],['TAB','Raw text editor (when no control has the focus; otherwise TAB moves the focus)'],['M','Programs'],['N','New program (manual or AI)'],['H','Help, lessons, manual'],
   [',','Settings'],['F2','A path block as its dialog (while editing a block) · back to text'],
-  ['V','Flowchart view'],['G','3D / TOP / FRONT / SIDE'],['1 – 4','Operating mode'],['5 – 9','Speed 1× 4× 16× 64× MAX'],['T','Tool table'],['F','Inspector: open / close the right pane'],['PRG EDIT','Y CYCL DEF · W TOOL CALL · A APPR/DEP · Q Q-parameter · soft keys for L CC C CR CT CP RND CHF, TOOL DEF, LBL'],
+  ['V','View and effects'],['G','3D / TOP / FRONT / SIDE'],['1 – 4','Operating mode'],['5 – 9','Speed 1× 4× 16× 64× MAX'],['T','Tool table'],['F','Inspector: open / close'],['PRG EDIT','Y CYCL DEF · W TOOL CALL · A APPR/DEP · Q Q-parameter · soft keys for L CC C CR CT CP RND CHF, TOOL DEF, LBL'],
   ['COORDINATES ?','X Y Z (B A) axis · I incremental · P polar · Q parameter · + − sign · # actual position · DELETE = CE · ENTER = ENT · ⇧ENTER = NO ENT · END · ESC = DEL'],['+ / −','Feed override'],
   ['P K B','Chips · coolant · smoke & fire'],['L','Labels'],['N (in a lesson)','Next lesson step'],['HOME/END','First / last block'],['PGUP/PGDN','Page']];
 
@@ -17519,6 +17863,7 @@ addEventListener('keydown',e=>{
   if((k==='Enter'||k===' ')&&e.target.matches&&e.target.matches('button:focus-visible,a:focus-visible,summary:focus-visible,[role=tab]:focus-visible')) return;
   if(mod&&k.toLowerCase()==='s'){ e.preventDefault(); saveH(); return; }
   if(mod&&k.toLowerCase()==='o'){ e.preventDefault(); loadFromDisk(); return; }
+  if(mod&&!e.shiftKey&&!e.altKey&&k.toLowerCase()==='e'&&window.TNC_EDITOR){ e.preventDefault(); pmEditor(); return; }
   if(S.wiz){ if(e.target!==dlgIn) dlgIn.focus(); if(wizKey(e)) e.preventDefault(); return; }
   if(S.pick&&k==='Escape'){ e.preventDefault(); if(S.pickPath&&S.pickPath.length>2&&S.pickPath[1]==='CYCL DEF') act('cycldef'); else { S.pick=null; renderSK(); } return; }
   if(S.tt&&k==='Escape'){ e.preventDefault(); closeTT(); return; }
@@ -17553,7 +17898,7 @@ addEventListener('keydown',e=>{
       if(/^[1-4]$/.test(k)) setMode(['edit','test','single','full'][+k-1]);
       else if(/^[5-9]$/.test(k)) setSpeed([1,4,16,64,0][+k-5]);
       else if(/^F[1-4]$/.test(k)){ e.preventDefault(); setMode(['edit','test','single','full'][+k[1]-1]); }
-      else if(K==='t') act('tt'); else if(K==='f') toggleFocus(); else if(k===',') openSettings();
+      else if(K==='t') act('tt'); else if(K==='f') inspToggle(); else if(k===',') openGear();
       else if(K==='n'&&!S.lesson){ e.preventDefault(); openNew(); }
       else if(S.mode==='edit'&&K==='y') act('cycldef'); else if(S.mode==='edit'&&K==='w') act('w:TOOLCALL');
       else if(S.mode==='edit'&&K==='a') act('apprdep'); else if(S.mode==='edit'&&K==='q') act('w:Q');
@@ -17561,7 +17906,7 @@ addEventListener('keydown',e=>{
       else if(K==='e'){ e.preventDefault(); beginEdit(); } else if(K==='i'){ e.preventDefault(); insertBlock(); }
       else if(K==='d'){ e.preventDefault(); deleteBlock(); } else if(K==='c'){ e.preventDefault(); copyBlock(); }
       else if(K==='m'){ e.preventDefault(); openMgt(); } else if(K==='h'){ e.preventDefault(); openHelp(); }
-      else if(K==='v'){ toggleFlow(); } else if(K==='g'){ setView(VIEWS[(VIEWS.indexOf(S.view)+1)%4]); }
+      else if(K==='v'){ openView(); } else if(K==='g'){ setView(VIEWS[(VIEWS.indexOf(S.view)+1)%4]); }
       else if(K==='p') $('b-fx').click(); else if(K==='k') $('b-cool').click(); else if(K==='b') $('b-fire').click();
       else if(K==='l') $('b-labels').click(); else if(K==='n'&&S.lesson) $('coach-next').click();
     }
@@ -17615,6 +17960,7 @@ function checksBadge(nErr,nCrash,nWarn){
   $('hdr-err-t').textContent=n?(bad?'⚠ '+bad:'! '+nWarn):'✓'; he.setAttribute('aria-label',tt('panel.checks')+': '+txt);
   const bd=$('mt-badge'); bd.hidden=!n; bd.className='tbadge'+(bad?'':' warn'); bd.textContent=n?String(n):''; bd.setAttribute('aria-label',txt);
   const sc=$('sb-chk'); sc.className='sb-chk '+(bad?'bad':nWarn?'warn':'ok'); sc.textContent=tt('panel.checks')+': '+txt;
+  const dot=$('insp-dot'); if(dot) dot.className='dot'+(bad?' bad':nWarn?' warn':'');
   const key=nErr+'/'+nCrash+'/'+nWarn; if(lastChecks!==null&&key!==lastChecks) announce(tt('panel.checks')+': '+txt); lastChecks=key; }
 $('hdr-err').onclick=()=>$('sb-chk').click();
 
@@ -17648,7 +17994,7 @@ hmore.addEventListener('keydown',e=>{ if(!drawerOpen()) return;
   if(e.shiftKey&&document.activeElement===f[0]){ e.preventDefault(); f[f.length-1].focus(); }
   else if(!e.shiftKey&&document.activeElement===f[f.length-1]){ e.preventDefault(); f[0].focus(); } });
 /* drawer buttons that open a dialog or start something close the drawer first (menus stay on top of it) */
-['b-new','b-help','b-prof','b-gear','b-exit'].forEach(id=>{ const b=$(id); if(b) b.addEventListener('click',()=>closeDrawer(true),true); });
+['b-new','pm-edit','pm-load','pm-save','pm-all','b-prof','b-gear','b-exit'].forEach(id=>{ const b=$(id); if(b) b.addEventListener('click',()=>closeDrawer(true),true); });
 
 /* swipes: left / right on a workspace switches workspace; right on the drawer closes it.
  * Passive listeners only (vertical scroll and pinch zoom are never blocked). Ignored when the touch
@@ -17680,8 +18026,12 @@ function layout(){ const phone=isPhone(), dock=$('dock'), act=document.activeEle
   if(!phone&&parts[0].parentElement===dock) parts.forEach(n=>{ pgmCol.appendChild(n); });
   const gear=$('b-gear'), gh=phone?$('gear-row'):$('sbar');                 // the settings gear: bottom bar, or the bottom of the drawer on phones
   if(gear.parentElement!==gh) gh.insertBefore(gear,gh.firstChild);
-  const pm=$('b-mgt'), ph=phone?document.querySelector('.col-pgm .ch'):document.querySelector('.bar');   // program access: in the top bar, or in the Program workspace on phones
-  if(pm.parentElement!==ph){ ph.insertBefore(pm,phone?$('b-tools'):$('hdr-stat')); pm.className=phone?'chb':'hbtn'; }
+  const md=$('modes'), mh=phone?document.querySelector('.bar'):$('sbar');   // the operating modes: bottom bar, or the header on phones
+  if(md.parentElement!==mh){ if(phone) mh.insertBefore(md,$('b-menu')); else mh.insertBefore(md,gear.nextSibling); }
+  const hb=$('b-help');                                                       // help: the bottom bar, or the drawer on phones (no bottom bar there)
+  if(phone&&hb.parentElement!==hmore){ hmore.insertBefore(hb,$('b-prof')); hb.className='hbtn'; }
+  if(!phone&&hb.parentElement!==$('sbar')){ $('b-viewk').after(hb); hb.className='sbk'; }
+  inspSync();
   if(act&&act!==document.activeElement&&act.isConnected) try{ act.focus({preventScroll:true}); }catch(e){}
   PANES.forEach(p=>{ const sec=$('ws-'+p); if(phone){ sec.setAttribute('role','tabpanel'); sec.setAttribute('aria-labelledby','mt-'+p); sec.removeAttribute('aria-label'); }
     else { sec.removeAttribute('role'); sec.removeAttribute('aria-labelledby'); sec.setAttribute('aria-label',T({pgm:'panel.program',gfx:'panel.testgfx',side:'btn.insp'}[p])); } });
@@ -17739,16 +18089,20 @@ function motionApply(){ if(SET) REDUCED=SET.reducedMotion(); document.documentEl
 try{ matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',motionApply); }catch{}
 function skinApply(){ document.documentElement.setAttribute('data-skin',SET?SET.skinFor(S.machine):(S.machine==='430'?'430':'426')); requestAnimationFrame(resize); }
 function tipsApply(){ document.documentElement.setAttribute('data-tips',SET&&!SET.get('tips')?'off':'on'); }
-function settingsApply(){ motionApply(); tipsApply(); envApply(); qualityApply(); skinApply(); }
+function themeApply(){ const ids=(window.TNC_THEMES||[]).map(t=>t.id), t=SET?SET.get('theme'):'night';
+  document.documentElement.setAttribute('data-theme',ids.includes(t)?t:'night'); }
+function settingsApply(){ themeApply(); motionApply(); tipsApply(); envApply(); qualityApply(); skinApply(); }
 /* what the web app is told (bridge tnc:settings) and may set (tnc:present): the effective values */
-function presentNow(){ return {lang:LANG(), skin:SET?SET.skinFor(S.machine):'426', env:SET?SET.get('env'):'cold-steel', quality:SET?SET.get('quality'):'high',
+function presentNow(){ return {lang:LANG(), skin:SET?SET.skinFor(S.machine):'426', env:SET?SET.get('env'):'cold-steel', theme:SET?SET.get('theme'):'night', quality:SET?SET.get('quality'):'high',
   motion:REDUCED?'reduced':'full', sound:!!S.sound}; }
 UIAPI.settings=presentNow;
 UIAPI.present=o=>SET?SET.set(o,{silent:true}):[];
 if(SET) SET.on((keys,o)=>{
   if(keys.includes('lang')){ if(window.TNC_I18N) TNC_I18N.set(SET.get('lang')); langSync(); }
   else if(keys.includes('decimal')){ if(S.res) renderList(); if(S.wiz){ const d=wizStep().dflt; dlgIn.placeholder=d!=null&&d!==''?shown(String(d)):''; wizPreview(); } }
-  if(keys.includes('env')) envApply();
+  if(keys.includes('theme')){ themeApply(); envApply(); }
+  if(keys.includes('env')&&!keys.includes('theme')) envApply();
+  if(keys.includes('fskey')) fsSync();
   if(keys.includes('quality')) qualityApply();
   if(keys.includes('motion')) motionApply();
   if(keys.includes('skin')) skinApply();
@@ -17762,7 +18116,7 @@ if(SET) SET.on((keys,o)=>{
 function langSync(){
   document.documentElement.lang=(LOCALES[LANG()]||{html:LANG()}).html; renderSK(); if(S.res){ renderList(); renderChecks(); renderKV(); renderCompare(); } viewLabel();
   const st=TR(setState.last||''); $('run-state').textContent=st; $('sb-state').textContent=st; $('hdr-stat').dataset.t=''; hdrStat();
-  $('tp-state').textContent=T('tp.'+S.mode); $('sb-hint').textContent=T('sb.hint'); lockText(); profChip(); renderUserPrograms(); if(S.sideTab==='ref') renderRef();
+  $('tp-state').textContent=T('tp.'+S.mode); lockText(); profChip(); recentRender(); speedSync(); fsSync(); if(S.sideTab==='ref') renderRef();
   $('b-view').firstElementChild.textContent=T(S.flowView?'btn.listing':'btn.flow');
   if(S.lesson){ $('coach-k').textContent=T(S.lesson.kind==='learn'?'coach.learn':'coach.break'); $('coach-next').textContent=T(S.lesson.i===S.lesson.steps.length-1?'coach.finish':'coach.next'); }
   else $('coach-next').textContent=T('coach.next');
@@ -17770,7 +18124,7 @@ function langSync(){
   if(openModalEl===$('m-help')) renderHelp(); if(openModalEl===$('m-prof')) renderProfile();
   document.querySelectorAll('[data-label]').forEach(b=>{ b.textContent=X(b.dataset.label); });           // plugin controls (viz.js)
   document.querySelectorAll('[data-aria]').forEach(b=>{ b.setAttribute('aria-label',X(b.dataset.aria)); });   // (materials.js)
-  renderProjects(); if(S.tt) renderTT();
+  if(S.tt) renderTT();
   layout();
 }
 function lockText(){ const el=$('sb-lock'); if(el) el.textContent=S.lock?T('lock.title')+' · '+(S.lock.reason||T('lock.default')):''; }
@@ -17785,13 +18139,15 @@ function setTools(list){
 
 let setTab='general';
 function openSettings(tab){ if(tab) setTab=tab; openModal('m-set'); renderSettings(); }
-$('b-gear').onclick=()=>openSettings();
+$('b-gear').onclick=()=>openGear();
 $('set-tabs').addEventListener('click',e=>{ const b=e.target.closest('[data-tab]'); if(b){ setTab=b.dataset.tab; renderSettings(); } });
 const segHTML=(key,opts,cur,label)=>`<div class="seg" role="radiogroup" aria-label="${esc(label)}" data-set="${key}">`+
   opts.map(([v,l])=>`<button type="button" role="radio" aria-checked="${String(v)===String(cur)}" data-v="${esc(v)}">${esc(l)}</button>`).join('')+'</div>';
 const swatchHTML=(key,opts,cur,label,cols)=>`<div class="swatch" role="radiogroup" aria-label="${esc(label)}" data-set="${key}" style="grid-template-columns:repeat(${cols},minmax(0,1fr))">`+
   opts.map(([v,l,pv])=>`<button type="button" role="radio" aria-checked="${String(v)===String(cur)}" data-v="${esc(v)}"><span class="pv ${pv}" aria-hidden="true"><i></i><u></u></span><span class="nm">${esc(l)}</span></button>`).join('')+'</div>';
 const srow=(l,d,c,col)=>`<div class="srow${col?' col':''}"><span class="sl">${esc(l)}</span><span class="sd">${esc(d)}</span><div class="sc">${c}</div></div>`;
+const themeHTML=cur=>`<div class="swatch" role="radiogroup" aria-label="${esc(T('set.theme'))}" data-set="theme" style="grid-template-columns:repeat(3,minmax(0,1fr))">`+
+  (window.TNC_THEMES||[]).map(t=>`<button type="button" role="radio" aria-checked="${t.id===cur}" data-v="${esc(t.id)}"><span class="pv" aria-hidden="true" style="background:${t.swatch[0]};grid-template-columns:1fr 6px"><i style="background:${t.swatch[1]};border:1px solid ${t.swatch[2]}33"></i><u style="background:${t.swatch[3]}"></u></span><span class="nm">${esc(t.name[LANG()]||t.name.en)}</span></button>`).join('')+'</div>';
 const sbtn=(id,l)=>`<button class="cbtn" type="button" id="${id}">${esc(T(l))}</button>`;
 const LANGS=Object.keys(LOCALES).map(k=>[k,LOCALES[k].name]);
 function diagText(){ const gl=renderer.getContext(), st=S.res&&S.res.stats||{}, t=PSTORE.lastSaved;
@@ -17811,7 +18167,7 @@ function renderSettings(){
     srow(T('set.sound'),T('set.sound.d'),segHTML('sound',[[true,T('opt.on')],[false,T('opt.off')]],g('sound'),T('set.sound')))+
     srow(T('set.tips'),T('set.tips.d'),segHTML('tips',[[true,T('opt.on')],[false,T('opt.off')]],g('tips'),T('set.tips')))+
     srow(T('set.profile'),T('set.profile.d'),sbtn('set-prof','set.open'));
-  else if(setTab==='look') h=srow(T('set.skin'),T('set.skin.d'),swatchHTML('skin',[['auto',T('skin.auto'),S.machine==='430'?'s430':'s426'],['426',T('skin.426'),'s426'],['430',T('skin.430'),'s430']],g('skin'),T('set.skin'),3),true)+
+  else if(setTab==='look') h=srow(T('set.theme'),T('set.theme.d'),themeHTML(g('theme')),true)+srow(T('set.skin'),T('set.skin.d'),swatchHTML('skin',[['auto',T('skin.auto'),S.machine==='430'?'s430':'s426'],['426',T('skin.426'),'s426'],['430',T('skin.430'),'s430']],g('skin'),T('set.skin'),3),true)+
     srow(T('set.env'),T('set.env.d'),swatchHTML('env',[['cold-steel',T('env.cold-steel'),'ecs'],['workshop-night',T('env.workshop-night'),'ewn']],g('env'),T('set.env'),2),true)+
     srow(T('set.quality'),T('set.quality.d'),segHTML('quality',[['low',T('q.low')],['medium',T('q.medium')],['high',T('q.high')]],g('quality'),T('set.quality')));
   else if(setTab==='help') h=srow(T('set.helpopen'),T('set.helpopen.d'),sbtn('set-help','set.open'))+srow(T('set.keys'),T('set.keys.d'),sbtn('set-keys','set.show'))+
@@ -17881,7 +18237,7 @@ let last=performance.now(), kvT=0, paintAcc=0, ovlPainted=false;
 function tick(now){
   const dt=Math.min(.1,(now-last)/1000); last=now;
   if(S.running&&S.speed>0){ const nt=S.t+dt*S.speed*(S.ovr/100);
-    if(nt>=S.total){ seek(S.total,true); if(S.running){ S.running=false; setState('PROGRAM END · M2'); } } else seek(nt,true); }
+    if(nt>=S.total){ seek(S.total,true); if(S.running){ S.running=false; setState('PROGRAM END · M2'); replayOffer(); } } else seek(nt,true); }
   if(hmDirty){ paintAcc+=dt; if(paintAcc>(NX*NY>60000?.1:.05)){ paintHM(); paintAcc=0; } }
   if(gPath){ const n=S.segs.length?segAt(S.t)+1:0; gPath.geometry.setDrawRange(0,S.t>0?n*2:0); }
   renderDro(now);
@@ -17919,12 +18275,11 @@ if(!PROF){ PROF=PSTORE.legacy()||PSTORE.blank(''); fresh=true; }
 loadStore();
 if(fresh) persist();
 raw.value=S.text;
-[...$('spd').children].forEach(b=>{ b.dataset.on=(+b.dataset.s===S.speed)?'1':'0'; });
+speedSync();
 [...document.querySelectorAll('.mode')].forEach(b=>{ b.setAttribute('aria-pressed',b.dataset.m===S.mode); });
-inspSync();
 if(window.TNC_I18N) try{ TNC_I18N.set(TNC_I18N.lang||'sv'); }catch{}
 settingsApply();
-compile(); machSync(); setMode(S.mode); renderProjects(); syncToggles(); resize(); profChip(); setSideTab(S.sideTab); renderUserPrograms(); langSync();
+compile(); machSync(); setMode(S.mode); syncToggles(); resize(); profChip(); setSideTab(S.sideTab); recentRender(); langSync(); shellReady();
 if(S.flowView&&window.TNC_FLOW){ S.flowView=false; toggleFlow(); }
 const flash=sess.get('tnc.flash'); if(flash){ sess.del('tnc.flash'); setTimeout(()=>say(flash),400); }
 if(sess.get('tnc.askname')){ sess.del('tnc.askname'); if(!PROF.name) openProfile(); }
