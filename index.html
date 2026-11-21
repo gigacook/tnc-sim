@@ -16211,15 +16211,19 @@ var TNC_CINE = (function () {
     return Math.atan2(dep, open);
   }
   /* the camera sees the cutting edge under the holder: the line from the camera to the tip passes below the ER nut
-     (R 27 from tip + max(stick, L/4)) and below the flange (R 52 from tip + L - 30). Too high: lower it; lower than
-     minZ (out of the blank) allows: move out sideways until it does. */
+     (R 25 from tip + L - 48), the body (R 34 from L - 29) and the flange (R 50 from L - 5), as tools3d.js builds them
+     for ISO 50 / SK40 collet holders. Too high: lower it; lower than minZ (out of the blank) allows: move out sideways. */
+  var RINGS = [[25, 48], [34, 29], [50, 5]];
   function underHolder(p, tip, minZ) {
-    var hb = Math.max(+tip.stick || 0, (tip.L || 80) * 0.25), hf = Math.max(hb + 10, (tip.L || 80) - 30);
-    var dx = p.x - tip.x, dy = p.y - tip.y, h = Math.hypot(dx, dy); if (h < 1e-6) { dx = 1; dy = 0; h = 1; }
-    var need = Math.max((minZ - tip.z) * 27 / (hb * 0.9), (minZ - tip.z) * 52 / (hf * 0.9), 0);
+    var L = tip.L || 80, dx = p.x - tip.x, dy = p.y - tip.y, h = Math.hypot(dx, dy); if (h < 1e-6) { dx = 1; dy = 0; h = 1; }
+    var need = p.z > tip.z - 5 ? Math.max((tip.r || 3) * 2.5 + 12, 32) : 0, i, zr;
+    for (i = 0; i < RINGS.length; i++) { zr = Math.max(4, L - RINGS[i][1]); need = Math.max(need, (minZ - tip.z) * RINGS[i][0] / (zr * 0.85)); }
+    var rel = p.z - tip.z;                                // at the height of the holder: well away from it, not beside it
+    for (i = 0; i < RINGS.length; i++) if (rel > Math.max(4, L - RINGS[i][1]) - 12) need = Math.max(need, RINGS[i][0] * 2.6);
     if (h < need) { var k = need / h; dx *= k; dy *= k; h = need; }
-    var cap = tip.z + Math.min(hb * 0.9 * Math.max(1, h / 27), hf * 0.9 * Math.max(1, h / 52));
-    return V3(tip.x + dx, tip.y + dy, clamp(p.z, minZ, Math.max(minZ, cap)));
+    var cap = Infinity;
+    for (i = 0; i < RINGS.length; i++) { zr = Math.max(4, L - RINGS[i][1]); cap = Math.min(cap, zr * 0.85 * Math.max(1, h / RINGS[i][0])); }
+    return V3(tip.x + dx, tip.y + dy, clamp(p.z, minZ, Math.max(minZ, tip.z + cap)));
   }
   /* the tool deep in a hole the camera cannot look into (held under the holder): frame the mouth of the hole instead */
   function mouth(p, subj, sh, st) {
@@ -16248,9 +16252,9 @@ var TNC_CINE = (function () {
       }
       case 'track': {
         subj = smoothTip(film, ctx, f, 0.7);
-        d = clamp(subj.r * 11, 60, I.span * 0.7 + 50);
-        var a2 = sh.az + sh.sign * 0.4 * (u - 0.5), el2 = clamp(Math.max(14 * DEG, needEl(subj, sh, st) + 6 * DEG), 0, 70 * DEG);
-        p = underHolder(add(subj, sph(a2, el2), d), subj, I.top + 5 + subj.r);
+        d = Math.max(clamp(subj.r * 13, 70, I.span * 0.75 + 55), Math.max(subj.r * 6, Math.max(4, subj.L - 48) + 15) / (2 * Math.tan(16 * DEG) * (ctx.band || 1)));   // the cutter and the nut above it both in the frame
+        var a2 = sh.az + sh.sign * 0.4 * (u - 0.5), el2 = clamp(needEl(subj, sh, st) + 6 * DEG, 14 * DEG, 24 * DEG);
+        p = underHolder(add(subj, sph(a2, el2), d), subj.now, I.top + 5 + subj.r);
         o.fov = 32; t = aim(p, mouth(p, subj, sh, st), sh.side * 0.3, -0.12, o.fov, ctx); o.focus = subj.now; o.dof = 0.35; o.focusR = 0.2; o.st = 0.35;
         break;
       }
@@ -16260,18 +16264,18 @@ var TNC_CINE = (function () {
         var az3 = Math.hypot(b.x - a.x, b.y - a.y) > 0.5 ? mv + sh.side * 62 * DEG : sh.az;
         var el3 = clamp(Math.max(17 * DEG, needEl(subj, sh, st) + 5 * DEG), 0, 72 * DEG);
         d = clamp(subj.r * 5 + 16, 26, 60);
-        p = underHolder(add(subj, sph(az3, el3), d), subj, I.top + subj.r * 0.6 + 3);
+        p = underHolder(add(subj, sph(az3, el3), d), subj.now, I.top + subj.r * 0.6 + 3);
         var aimAt = add(subj.now, V3(0, 0, subj.r * 0.6));
         o.fov = 26; t = aim(p, mouth(p, aimAt, sh, st), sh.side * -0.12, -0.05, o.fov, ctx); o.focus = subj.now; o.dof = 1; o.focusR = 0.1; o.st = 0.4;
         break;
       }
       case 'map': {                                     // high and steep over the area the shot works in, a slow sweep and turn
         var B = sh.box, cx = (B.x0 + B.x1) / 2, cy = (B.y0 + B.y1) / 2, ex = Math.max(B.x1 - B.x0, 40), ey = Math.max(B.y1 - B.y0, 40);
-        o.fov = 24;
+        o.fov = 18;
         var tv = Math.tan(o.fov * DEG / 2), fit = Math.max(ey / 2 / (tv * (ctx.band || 1)), ex / 2 / (tv * (ctx.aspect || 1.78)));
         var along = ex >= ey ? V3(1, 0, 0) : V3(0, 1, 0), sw = (ex >= ey ? ex : ey) * 0.12 * sh.sign;
         t = V3(cx + along.x * lerp(-sw, sw, e), cy + along.y * lerp(-sw, sw, e), I.top);
-        var t0 = tipF(film, ctx, sh.f0 + 0.2), away = Math.hypot(cx - t0.x, cy - t0.y) > Math.min(ex, ey) * 0.15 ? Math.atan2(cy - t0.y, cx - t0.x) : sh.az;
+        var t0 = V3(0, 0, 0); for (var k9 = 0; k9 < 8; k9++) { var q9 = tipF(film, ctx, lerp(sh.f0, sh.f1, (k9 + 0.5) / 8)); t0.x += q9.x / 8; t0.y += q9.y / 8; } var away = Math.hypot(cx - t0.x, cy - t0.y) > Math.min(ex, ey) * 0.15 ? Math.atan2(cy - t0.y, cx - t0.x) : sh.az;
         var azm = away + sh.sign * lerp(-14, 14, e) * DEG;
         p = add(t, sph(azm, 52 * DEG), fit * 1.5 * lerp(1.04, 0.94, e) + 40);
         o.focus = tipF(film, ctx, f); o.dof = 0.7; o.focusR = 0.18; o.st = 0.6;
@@ -16294,7 +16298,7 @@ var TNC_CINE = (function () {
         subj = smoothTip(film, ctx, f, 0.6);               // the new tool, whole: cutter low in the frame, holder above
         var Hs = subj.L + 110, H = V3(subj.x, subj.y, subj.z + Hs * 0.42);   // cutter + holder below the spindle face
         o.fov = 30;
-        var dd = Hs * 1.25 / (2 * Math.tan(o.fov * DEG / 2) * (ctx.band || 1)) * lerp(1.1, 0.9, e);
+        var dd = Hs * 1.05 / (2 * Math.tan(o.fov * DEG / 2) * (ctx.band || 1)) * lerp(1.1, 0.9, e);
         p = add(H, sph(sh.az, -4 * DEG), dd); p.z = Math.max(I.top + 10, p.z); t = aim(p, H, sh.side * 0.2, 0.05, o.fov, ctx); o.roll = lerp(sh.side * 5, 0, e) * DEG; o.focus = subj.now; o.dof = 0.3; o.focusR = 0.3; o.st = 0.3;
         break;
       }
@@ -16549,7 +16553,7 @@ var TNC_CINE = (function () {
       var host = C.host, w = host.clientWidth, h = host.clientHeight, bar = Math.max(0, (h - w / 2.39) / 2);
       C.D.bt.style.height = bar + 'px'; C.D.bb.style.height = Math.max(bar, 0) + 'px';
       C.D.strip.style.background = bar >= 44 ? 'none' : '';
-      C.D.ttl.style.top = (bar + (h - 2 * bar) * 0.66) + "px"; C.D.ttl.style.fontSize = clamp(w / 52, 11, 20) + 'px';
+      C.D.ttl.style.top = (bar + (h - 2 * bar) * 0.74) + "px"; C.D.ttl.style.fontSize = clamp(w / 52, 11, 20) + 'px';
       C.D.lbl.style.top = (bar + 12) + 'px';
       C.band = Math.min(1, (w / 2.39) / Math.max(1, h));
       if (C.post) sizeComposer(C.post.comp);

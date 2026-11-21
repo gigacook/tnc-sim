@@ -33,6 +33,7 @@ async function page(settings) {
   const p = await ctx.newPage();
   p.setDefaultTimeout(30000);
   p.on('pageerror', e => errors.push('pageerror: ' + e.message));
+  p.on('console', m => { if (/cine render|plugin (tick|scene|resize)/.test(m.text())) errors.push('console: ' + m.text().slice(0, 200)); });   // a rig that throws falls back silently: count it
   await p.addInitScript((st) => {
     try { localStorage.setItem('tnc.settings.v1', JSON.stringify(Object.assign({ v: 1, setup: 1, lang: 'en', sound: false }, st))); } catch (e) {}
     window.__ac = 0;                                        // count every AudioContext the page makes
