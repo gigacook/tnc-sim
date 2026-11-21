@@ -1398,6 +1398,19 @@ async function polarFlow(browser, tag) {
         await p.keyboard.press('Enter'); await p.waitForTimeout(60); }
       ok(seen.join('|') === '57|157,5|R0|F MAX|', `${M}: reopened values: PR 57, PA 157,5, R0, F MAX, no M`, seen.join('|'));
       ok(await line(6) === 'LP PR+57 PA+157.5 R0 FMAX' && (await p.evaluate(() => TNC_UI.state.text.split('\n').length)) === 8, `${M}: ENT on every question keeps the block (replaced in place, none added)`, await line(6));
+      /* the LP POLAR soft key = L + P: the same dialog from its first question, the same stored block (manual 6.5: the
+         426/430 has no LP key of its own, so the soft key must give exactly what L then P gives) */
+      if (machine === '426') {
+        await p.keyboard.press('Escape'); await p.click('#plist .blk[data-i="6"]'); await p.waitForTimeout(80);
+        ok(await p.evaluate(() => { const k = document.querySelector('#sks .sk[data-a="w:LP"]'); return !!k && k.innerText.replace(/\s+/g, ' ').startsWith('LP POLAR'); }), `${M}: PRG EDIT has an LP POLAR soft key next to L`);
+        await p.click('#sks .sk[data-a="w:LP"]'); await p.waitForTimeout(100);
+        w = await wiz(); ok(w.on && /POLAR COORDINATES RADIUS PR/.test(w.ask) && w.sys === 'Polära koordinater' && /POLAR LINE LP/.test(w.path), `${M}: LP POLAR opens the polar line dialog at PR, labelled "Polära koordinater"`, JSON.stringify(w));
+        for (const a of ['57', '157,5', 'R0', 'MAX', '']) { await p.fill('#dlg-in', ''); if (a) await p.keyboard.type(a); await p.keyboard.press('Enter'); await p.waitForTimeout(80); }
+        await p.waitForTimeout(150);
+        ok(await line(7) === 'LP PR+57 PA+157.5 R0 FMAX', `${M}: LP POLAR stores the same block as L + P: "LP PR+57 PA+157.5 R0 FMAX"`, await line(7));
+        await p.keyboard.press('Escape'); await p.click('#plist .blk[data-i="7"]'); await p.keyboard.press('Delete'); await p.waitForTimeout(150);
+        ok((await p.evaluate(() => TNC_UI.state.text.split('\n').length)) === 8, `${M}: test block removed again`);
+      }
       /* edit: change the angle, then put it back through the text line (comma typed as text is stored as typed) */
       await p.click('#plist .blk[data-i="6"]'); await p.keyboard.press('e'); await p.keyboard.press('Enter'); await p.keyboard.type('22.5'); await p.keyboard.press('Enter');
       await p.keyboard.press('End'); await p.waitForTimeout(200);

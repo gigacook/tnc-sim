@@ -45,7 +45,7 @@ ok(same.length === 0, `Serbian shell text is not left in English (${same.join(',
 
 /* CNC words stay as the control writes them, in every language */
 for (const l of ['sv', 'sr']) {
-  const cnc = ['CYCL DEF', 'CYCL CALL', 'TOOL DEF', 'TOOL CALL', 'PGM MGT', 'LBL SET', 'LBL CALL', 'APPR DEP', 'CP POLAR', 'RND', 'CHF', 'Q', 'L', 'CC', 'F MAX', 'F AUTO', 'NO ENT', 'ENT'];
+  const cnc = ['CYCL DEF', 'CYCL CALL', 'TOOL DEF', 'TOOL CALL', 'PGM MGT', 'LBL SET', 'LBL CALL', 'APPR DEP', 'CP POLAR', 'LP POLAR', 'RND', 'CHF', 'Q', 'L', 'CC', 'F MAX', 'F AUTO', 'NO ENT', 'ENT'];
   I.set(l);
   const changed = cnc.filter((w) => I.tr(w) !== w);
   ok(changed.length === 0, `${l}: CNC words are not translated (${changed.join(', ')})`);

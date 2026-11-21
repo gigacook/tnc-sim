@@ -801,9 +801,12 @@ function renderDro(now){
 const sks=$('sks');
 const SK={
   /* EDIT: the path-function keys, the program keys (CYCL DEF, TOOL CALL …) and the editing keys — three rows */
-  edit:  [['L','w:L'],['CC','w:CC'],['C','w:C'],['CR','w:CR'],['CT','w:CT'],['CP\nPOLAR','w:CP'],['RND','w:RND'],['CHF','w:CHF'],
-          ['APPR\nDEP','apprdep'],['TOOL\nDEF','w:TOOLDEF'],['TOOL\nCALL','w:TOOLCALL'],['CYCL\nDEF','cycldef'],['CYCL\nCALL','w:CYCLCALL'],['LBL\nSET','w:LBLSET'],['LBL\nCALL','w:LBLCALL'],['Q','w:Q'],
-          ['EDIT','ed'],['INSERT','ins'],['DELETE','del'],['UNDO','undo'],['REDO','redo'],['TOOL\nLIST','tt'],['RAW\nTEXT','rawt'],['CHECK','chk']],
+  /* LP POLAR / CP POLAR are the simulator's shortcuts for L + P and C + P: the 426/430 has no key of their own, the polar
+     form is entered with the orange P key in the coordinate question (manual 6.5; p. 155 "7 LP PR+60 PA+180 R0 F MAX").
+     Both open the same dialog P gives (dialogs.js PATH.LP / PATH.CP). TOOL LIST is on T and the Tools button. */
+  edit:  [['L','w:L'],['LP\nPOLAR','w:LP'],['CC','w:CC'],['C','w:C'],['CP\nPOLAR','w:CP'],['CR','w:CR'],['CT','w:CT'],['RND','w:RND'],
+          ['CHF','w:CHF'],['APPR\nDEP','apprdep'],['TOOL\nDEF','w:TOOLDEF'],['TOOL\nCALL','w:TOOLCALL'],['CYCL\nDEF','cycldef'],['CYCL\nCALL','w:CYCLCALL'],['LBL\nSET','w:LBLSET'],['LBL\nCALL','w:LBLCALL'],
+          ['Q','w:Q'],['EDIT','ed'],['INSERT','ins'],['DELETE','del'],['UNDO','undo'],['REDO','redo'],['RAW\nTEXT','rawt'],['CHECK','chk']],
   test:  [['START','start'],['START\nSINGLE','step'],['STOP','stop'],['RESET','reset'],['3-D\nVIEW','v3'],['PLAN\nVIEW','vt'],['FRONT','vf'],['SIDE','vs']],
   single:[['NC START\nNEXT BLOCK','step'],['NC\nSTOP','stop'],['RESET','reset'],['OVR\n−','ovrd'],['OVR\n+','ovru'],['3-D\nVIEW','v3'],['TOOL\nLIST','tt'],['PROGRAMS','mgt']],
   full:  [['NC\nSTART','start'],['NC\nSTOP','stop'],['RESET','reset'],['OVR\n−','ovrd'],['OVR\n+','ovru'],['3-D\nVIEW','v3'],['TOOL\nLIST','tt'],['PROGRAMS','mgt']],
