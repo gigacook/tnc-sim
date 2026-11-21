@@ -271,7 +271,7 @@ window.TNC_UI=UIAPI;
 
 let world=null, partRoot=null, toolRoot=null, rig=null, stockH=null;
 let gStock=null, gSkirt=null, gFloor=null, gPath=null, gTool=null, toolCutter=null, toolHolder=null, curToolT=null;
-let HM=null, NX=0, NY=0, DX=0, DY=0, ST=null, hmDirty=false, CO=null, gGrid=null;
+let HM=null, NX=0, NY=0, DX=0, DY=0, ST=null, hmDirty=false, CO=null, gGrid=null, SV=null;   // SV: stockview.js, how the height field is drawn
 
 function disposeTree(o){ if(!o) return; o.parent&&o.parent.remove(o);
   o.traverse(c=>{ c.geometry&&c.geometry.dispose();
@@ -280,6 +280,7 @@ function disposeTree(o){ if(!o) return; o.parent&&o.parent.remove(o);
 function buildScene(){
   if(CO){ CO.dispose(); CO=null; }
   if(stockH){ try{ stockH.dispose(); }catch(e){} stockH=null; }
+  if(SV){ SV.dispose(); SV=null; gStock=gSkirt=gFloor=null; }
   disposeTree(world); rig=null; gTool=null; curToolT=null; gGrid=null;
   world=new THREE.Group(); scene.add(world);
   const m=M(); ST=S.res.stock;
@@ -375,6 +376,9 @@ function buildHeightField(){
   const st=ST, w=st.x1-st.x0, h=st.y1-st.y0;
   GR=TNC_STOCK.grid(st,S.segs); const g=GR; NX=g.NX; NY=g.NY; DX=g.DX; DY=g.DY;
   HM=TNC_STOCK.field(st,g);
+  if(window.TNC_STOCKVIEW){                          // drawn by stockview.js: a finer display copy cut by the same engine stamp
+    SV=TNC_STOCKVIEW.create(THREE,{st,grid:g,hm:HM,root:partRoot,stock:TNC_STOCK,quality:SET?SET.get('quality'):'high',replay:()=>rewind(S.stampT)});
+    gStock=SV.top; gSkirt=SV.skirt; gFloor=SV.floor; return; }
   const pos=new Float32Array(NX*NY*3), col=new Float32Array(NX*NY*3), idx=[];
   for(let j=0;j<NY;j++)for(let i=0;i<NX;i++){ const k=(j*NX+i)*3; pos[k]=st.x0+i*DX; pos[k+1]=st.y0+j*DY; pos[k+2]=st.z1; }
   for(let j=0;j<NY-1;j++)for(let i=0;i<NX-1;i++){ const a=j*NX+i,b=a+1,c=a+NX,d=c+1; idx.push(a,b,d,a,d,c); }
@@ -397,10 +401,12 @@ function cutSeg(s,u0,u1){
   const len=s.len*(u1-u0); if(len<=0) return;
   const step=Math.max(0.3,Math.min(s.toolR*0.45,2)), n=Math.max(1,Math.ceil(len/step));
   for(let i=0;i<=n;i++){ const u=u0+(u1-u0)*(i/n);          // eps 0: the view removes every sliver; a tilted tool cuts along its axis
-    if(TNC_STOCK.stamp(HM,ST,GR,s,{x:s.a.x+(s.b.x-s.a.x)*u, y:s.a.y+(s.b.y-s.a.y)*u, z:s.a.z+(s.b.z-s.a.z)*u},TNC_STOCK.axis(s,u),0)) hmDirty=true; }
+    const p={x:s.a.x+(s.b.x-s.a.x)*u, y:s.a.y+(s.b.y-s.a.y)*u, z:s.a.z+(s.b.z-s.a.z)*u}, ax=TNC_STOCK.axis(s,u);
+    const hit=TNC_STOCK.stamp(HM,ST,GR,s,p,ax,0); if(SV&&SV.stamp(s,p,ax,hit)) hmDirty=true; if(hit) hmDirty=true; }
 }
 function paintHM(){
   if(!gStock) return;
+  if(SV){ SV.paint(); hmDirty=false; return; }
   const p=gStock.geometry.attributes.position, c=gStock.geometry.attributes.color, st=ST, span=Math.max(1e-6,st.z1-st.z0);
   for(let k=0;k<NX*NY;k++){ const z=HM[k]; p.array[k*3+2]=z; const cut=(st.z1-z)/span;
     if(cut<1e-4){ c.array[k*3]=.42; c.array[k*3+1]=.46; c.array[k*3+2]=.52; }
@@ -589,7 +595,7 @@ function applyCuts(toT){
 }
 function rewind(toT){
   if(stockH){ try{ stockH.reset(); }catch(e){} S.stampT=0; applyCuts(toT); return; }
-  HM.fill(ST.z1); S.stampT=0; hmDirty=true; applyCuts(toT);
+  HM.fill(ST.z1); if(SV) SV.reset(); S.stampT=0; hmDirty=true; applyCuts(toT);
 }
 /* fire=true: a playing machine — crash events stop it where they happen */
 function seek(t, fire){

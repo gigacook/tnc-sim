@@ -51,9 +51,8 @@ var TNC_MATERIALS = (function () {
     // of look.js's scene.environmentIntensity/exposure knobs) so the stock
     // doesn't blow out to flat white and cut faces keep visible shading.
     if ('envMapIntensity' in m) m.envMapIntensity = 0.4;
-    // vertexColors stays on for gStock: the material color above multiplies
-    // with the per-vertex cut-depth tint already painted by ui.js, rather
-    // than replacing it.
+    // only for the fallback drawing (no stockview.js): there the material color
+    // multiplies with the per-vertex cut-depth tint painted by ui.js.
   }
 
   function notifyFX(preset) {
@@ -72,9 +71,13 @@ var TNC_MATERIALS = (function () {
       var latestScene = null;
       function applyAll() {
         if (!latestScene) return;
-        applyTo(latestScene.gStock, preset);
-        applyTo(latestScene.gSkirt, preset);
-        applyTo(latestScene.gFloor, preset);
+        var sv = latestScene.gStock && latestScene.gStock.userData && latestScene.gStock.userData.stockView;
+        if (sv) sv.setMaterial(preset);            // stockview.js: raw / machined finish derived from the preset
+        else {
+          applyTo(latestScene.gStock, preset);
+          applyTo(latestScene.gSkirt, preset);
+          applyTo(latestScene.gFloor, preset);
+        }
         notifyFX(preset);
       }
 

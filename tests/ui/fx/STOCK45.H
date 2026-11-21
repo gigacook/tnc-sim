@@ -1,0 +1,49 @@
+0 BEGIN PGM STOCK45 MM
+1 BLK FORM 0.1 Z X+0 Y+0 Z-20
+2 BLK FORM 0.2 X+300 Y+200 Z+0
+3 ; render fixture for tests/ui/stock.mjs: a 45 deg engraved N, a pocket, a ball groove
+4 TOOL CALL 9 Z S6000
+5 L Z+50 R0 FMAX M3
+6 ; ---------- N, 1 mm deep, 45 deg diagonal ----------
+7 L X+100 Y+80 R0 FMAX M8
+8 L Z+2 R0 FMAX
+9 L Z-1 R0 F150
+10 L X+100 Y+130 R0 F400
+11 L X+150 Y+80 R0
+12 L X+150 Y+130 R0
+13 L Z+2 R0 FMAX
+14 ; ---------- circle ----------
+15 L X+215 Y+105 R0 FMAX
+16 L Z-1 R0 F150
+17 CC X+195 Y+105
+18 C X+215 Y+105 DR+ F400
+19 L Z+2 R0 FMAX
+20 TOOL CALL 5 Z S4000
+21 L Z+50 R0 FMAX M3
+22 ; ---------- pocket 60 x 40, 6 mm deep in two steps ----------
+23 L X+40 Y+20 R0 FMAX
+24 L Z+2 R0 FMAX
+25 L Z-3 R0 F200
+26 L X+80 Y+20 R0 F800
+27 L X+80 Y+30 R0
+28 L X+40 Y+30 R0
+29 L X+40 Y+40 R0
+30 L X+80 Y+40 R0
+31 L X+80 Y+20 R0
+32 L Z-6 R0 F200
+33 L X+40 Y+20 R0 F800
+34 L X+40 Y+40 R0
+35 L X+80 Y+40 R0
+36 L X+80 Y+30 R0
+37 L X+40 Y+30 R0
+38 L Z+2 R0 FMAX
+39 TOOL CALL 22 Z S5000
+40 L Z+50 R0 FMAX M3
+41 ; ---------- ball groove, 30 deg ----------
+42 L X+180 Y+20 R0 FMAX
+43 L Z+2 R0 FMAX
+44 L Z-2 R0 F200
+45 L X+270 Y+60 R0 F600
+46 L Z+50 R0 FMAX M9
+47 M30
+48 END PGM STOCK45 MM
