@@ -145,20 +145,22 @@ var TNC_SETPANEL = (function () {
     if (BTN[k]) { var b = $(BTN[k]); return !!b && !b.hidden; }
     return true;
   }
+  /* the panel's names -> UIAPI.view's names (ui.js) */
+  var VALIAS = { chips: 'fx', smoke: 'fire', vectors: 'axes' };
   function read(k) {
-    var vg = viewGet(); if (vg && k in vg) return vg[k];
+    var vg = viewGet(), ak = VALIAS[k] || k; if (vg && ak in vg && vg[ak] !== null) return vg[ak];
     if (k === 'pick' || k === 'vectors') { var b = $(BTN[k]); return !!b && b.getAttribute('aria-pressed') === 'true'; }
     if (k === 'material') return window.TNC_MATERIALS && TNC_MATERIALS.current ? TNC_MATERIALS.current.id : null;
     if (k === 'dir') return S().view || '3D';
     if (k === 'cam') return S().cam || null;
-    if (k === 'cine') { var C = window.TNC_CINE; try { return !!(C && (typeof C.active === 'function' ? C.active() : C.on)); } catch (e) { return false; } }
+    if (k === 'cine') { var C = window.TNC_CINE; return !!(C && C.playing); }
     if (SKEY[k]) return S()[SKEY[k]];
     return undefined;
   }
   function pressG() { synth = true; try { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'g', bubbles: true })); } finally { synth = false; } }
   function drive(k, v) {
-    var vg = viewGet();
-    if (vg && k in vg && UI.view.set) { UI.view.set(k, v); return; }
+    var vg = viewGet(), ak = VALIAS[k] || k;
+    if (vg && ak in vg && vg[ak] !== null && UI.view.set) { UI.view.set(ak, v); return; }
     if (k === 'speed') { if (UI && typeof UI.setSpeed === 'function') UI.setSpeed(v); else { var sb = document.querySelector('#spd [data-s="' + v + '"]'); if (sb) sb.click(); } return; }
     if (k === 'material') { var sel = $('mat-sel'); if (sel) { sel.value = v; sel.dispatchEvent(new Event('change', { bubbles: true })); } else if (window.TNC_MATERIALS && TNC_MATERIALS.select) TNC_MATERIALS.select(v); return; }
     if (k === 'dir') {      // 3D / TOP through the camera presets, FRONT / SIDE (and a refit) by the view key
@@ -169,7 +171,7 @@ var TNC_SETPANEL = (function () {
     }
     if (k === 'fit') { if (S().view === '3D' && !S().cam && UI.cameraPreset) { UI.cameraPreset('orbit'); return; } for (var j = 0; j < 4; j++) pressG(); return; }
     if (k === 'cam') { if (UI.cameraPreset) UI.cameraPreset(v); return; }
-    if (k === 'cine') { var C = window.TNC_CINE; if (!C) return; if (typeof C.set === 'function') C.set(!!v); else if (v && C.start) C.start(); else if (!v && C.stop) C.stop(); else if (C.toggle) C.toggle(); return; }
+    if (k === 'cine') { var C = window.TNC_CINE; if (!C) return; if (v && !C.playing) C.open(); else if (!v && C.playing) C.close(); return; }
     if (k === 'theme') {
       if (UI && typeof UI.setTheme === 'function') UI.setTheme(v);
       else { store.set('theme', v); document.documentElement.dataset.theme = v; }
