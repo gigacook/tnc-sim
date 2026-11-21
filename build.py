@@ -86,6 +86,8 @@ MODULES = [
     ('dialogs.js',   'Programming dialogs: path functions, CYCL DEF, TOOL CALL'),
     ('i18n.js',      'i18n: language strings (en/sv)'),
     ('autosave.js',  'Autosave drafts for text boxes (data-autosave)'),
+    ('sheet.js',     'Profile sheet: flat profile lines and the program cards (TNC_SHEET)'),
+    ('editor.js',    'Text editor for .H programs and text files (TNC_EDITOR)'),
     ('ui.js',        'Simulator UI'),
 ]
 
