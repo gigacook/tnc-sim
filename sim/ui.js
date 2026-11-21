@@ -1122,7 +1122,7 @@ async function importFiles(files){
     let res;
     try{ res=window.TNC_PROFILE?await TNC_PROFILE.readFile(f):{kind:'programs',files:[{name:f.name,text:await f.text(),machine:null}]}; }
     catch(e){ say('CANNOT READ '+f.name+': '+(e.message||e)); continue; }
-    if(res.kind==='profile'){ openProfile(); profImportAsk(res.profile,f.name); return; }
+    if(res.kind==='profile'){ if(window.TNC_SHEET&&TNC_SHEET.askProfile){ TNC_SHEET.askProfile(res.profile,f.name); return; } openProfile(); profImportAsk(res.profile,f.name); return; }
     if(res.kind==='tools'){ mergeTools(res.tools); say('TOOL TABLE '+f.name+' — '+res.tools.length+' TOOLS LOADED'); continue; }
     if(res.kind!=='programs'){ say('UNKNOWN FILE '+f.name); continue; }
     for(const pf of res.files){
@@ -2232,7 +2232,7 @@ settingsApply();
 compile(); machSync(); setMode(S.mode); syncToggles(); resize(); profChip(); setSideTab(S.sideTab); recentRender(); langSync(); shellReady();
 if(S.flowView&&window.TNC_FLOW){ S.flowView=false; toggleFlow(); }
 const flash=sess.get('tnc.flash'); if(flash){ sess.del('tnc.flash'); setTimeout(()=>say(flash),400); }
-if(sess.get('tnc.askname')){ sess.del('tnc.askname'); if(!PROF.name) openProfile(); }
+if(sess.get('tnc.askname')){ sess.del('tnc.askname'); if(!PROF.name){ if(window.TNC_SHEET) TNC_SHEET.open(); else openProfile(); } }
 /* first visit: the optional setup card over the open workspace. Not inside the plain web-app embed, and not in Play
    (its shell teaches the first steps); the Business edition shows it embedded too. */
 const BR=window.TNC_BRIDGE||{}, edition=(SET&&SET.edition)||'core';

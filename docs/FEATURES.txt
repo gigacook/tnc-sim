@@ -1,5 +1,21 @@
 TNC 426 / 430 SIMULATOR - DEVELOPER FEATURE LOG
-Updated 2026-11-18
+Updated 2026-11-21
+
+2026-11-21: UI rebuilt on the operator's approved mockups (branch
+claude/pensive-pascal-p69gtp). Dark by default, six themes (night, graphite,
+mocha, acid, oled, cream = the one light theme; the program screen follows).
+Top bar = Run / Pause / Stop, a Program menu (New, open in the text editor,
+open file, save, recent, all programs), a TNC 426 / 430 dropdown, Profile.
+Bottom bar = gear, modes 1-4, state, checks, F inspector, V view, H help,
+full screen, a faint "?" (help as its own page) and a Play link. Inspector =
+a 40 px rail, collapsed by default (hover / F / tap). One speed chip. Settings
+= one side panel behind the gear (groups collapsed, a mode per group).
+Profile = a bottom sheet with program cards. A text editor for .H and text
+files. Machining replay (cinematic film of any program). The stock is drawn
+as machined metal with straight sub-cell walls. LP POLAR soft key. The 430
+head follows the operator's machine: cycles 303 / 304 turn A / B, cycle 19
+only tilts the plane; "continue after errors". Details under WORKSPACE 2,
+STOCK DRAWING, REPLAY, 430 HEAD below.
 
 2026-11-18: workspace redesign (branch feat/dual-frontend). Machine view first,
 the inspector (right pane) closed by default, one New dialog (Manual / AI), one
@@ -247,6 +263,83 @@ WORKSPACE (sim-shell.html, ui.js, settings.js, i18n.js):
     Status is never colour alone (symbols on alarms, checks, rows, toggles).
   - TAB opens the raw editor only while no control has the focus; from a
     focused control it moves the focus (was a keyboard trap).
+
+WORKSPACE 2 (2026-11-21; sim-shell.html, ui.js, i18n.js, setpanel.js, sheet.js,
+editor.js; tests/ui/shell.mjs, setpanel.mjs, sheet.mjs, editor.mjs). Replaces
+the parts of WORKSPACE above that it names:
+  - Themes on html[data-theme], set before first paint: night (default),
+    graphite, mocha, acid, oled, cream. Every dark theme has a dark program
+    screen with light text; WCAG AA contrast checked per theme. The env
+    setting now only changes the 3-D scene. window.TNC_THEMES lists them.
+  - Top bar: brand, Run / Pause / Stop, Program menu (ARIA menu button:
+    New program N, Open in text editor Ctrl E, Open file Ctrl O, Save .H
+    Ctrl S, the three last programs, All programs M), TNC 426 / TNC 430
+    dropdown, Profile. No inspector, help or separate New button.
+  - Bottom bar: gear, modes 1-4, state, checks, F inspector, V view (the
+    settings panel at View; V no longer toggles the flow view), H help, full
+    screen (button + settings fskey, default F11; Fullscreen API with the
+    webkit prefix; a refusal gives a toast), a faint "?" that opens help as
+    its own window, a Play link (http(s), core edition, not on github.io).
+  - Inspector: a 40 px rail with a status dot, collapsed by default; opens
+    as an overlay on hover (160 ms), F, tap or the arrow keys; tabs Running
+    (run, checks, compare) and Manual. Programs and projects left it: the
+    project UI and its text are gone (stored projects stay readable).
+  - Speed: one chip; wheel or arrows on hover / focus, click or tap steps.
+  - Touch: one finger orbits, two fingers pinch and pan (laptop touch
+    screens; checked with CDP touch emulation, not on a real device).
+  - Settings panel (setpanel.js, TNC_SETPANEL.open(group)): slides in from
+    the left; groups collapsed by default with their current mode shown:
+    Appearance (theme swatches, language, decimal, skin, environment),
+    Camera (Still / Follow / Film), View (Clean / Standard / Custom),
+    Effects (Off / Calm / Full / Custom), Machine and stock, Running
+    (speed, replay after run, continue after errors), Mouse and keyboard
+    (full-screen key capture), Help, About. No key letters in the panel.
+    Replaces the settings modal and the Effects and view menu.
+  - Profile sheet (sheet.js, TNC_SHEET): slides up from the bottom; flat
+    mono lines name / programs / tools / machines / folder (green ok,
+    yellow uncertain, red broken) / language / theme / saved; actions
+    choose folder, import, export, new profile, close. Right: program
+    cards sorted by last used (or created, name, size, owner), size S/M/L,
+    with an XY path drawing, check result, blocks, run time; New program
+    card; open in editor, download, rename, delete (asks).
+  - Text editor (editor.js, TNC_EDITOR): any .H or text file; state badge
+    changed-not-saved / draft restored / saved hh:mm / from disk; Open file,
+    Revert, Save (Ctrl S; a .H becomes the active program, a file from disk
+    is written back or downloaded with its CRLF / Windows-1252), Close (Esc
+    asks when unsaved); live engine check with the first error clickable;
+    unsaved text kept as a draft across reloads.
+  - PRG EDIT soft keys: LP POLAR next to L (= L + P, manual 6.5: the
+    426/430 has no LP key of its own); TOOL LIST left the edit row (T and
+    the Tools button).
+
+STOCK DRAWING (stockview.js; tests/ui/stock.mjs, fixture tests/ui/fx/STOCK45.H):
+  - Drawing only; the engine material model (TNC_STOCK) is unchanged and the
+    checks still use the engine grid. A finer display field (high 3x,
+    medium 2x, low = engine grid) cut with the same TNC_STOCK.stamp; walls
+    snapped onto the exact tool edge, so slanted walls are straight
+    (45-degree wall edge 0.86 px RMS against 4.00 before); machined-metal
+    shading per material (mill finish, face-mill arcs on floors, step lines
+    on walls, saw marks on raw sides, cavity darkening); 32 x 32 tiles,
+    flat tiles as two triangles, only touched rows re-uploaded.
+
+REPLAY (cine.js, TNC_CINE.open(); tests/ui/cine.mjs):
+  - Any program as a short deterministic film (seeded by the program text):
+    establishing crane, tool follow, macro with depth of field, top-down
+    map, dolly zoom at plunges and drilling, tool change, fly-by, hero orbit
+    with end card; time remap (rapids fast, plunges slow), whip pans, one
+    post pass (motion blur, depth of field, grade, vignette), synthesised
+    WebAudio sound only when sound is on; letterboxed player (Space, arrows,
+    M, Esc); close() restores camera, speed and run state exactly. Offered
+    as Replay next to the speed chip and for 8 s after a full run.
+
+430 HEAD (exec.rs, parse.rs, machines.js; tests/head430.js):
+  - The operator's answers 11-21: CYCL DEF 303 Q1 turns the A head, CYCL DEF
+    304 Q2 the B head (machine-builder cycles, placeholder H1); cycle 19 only
+    tilts the working plane on the 430 (c19pos false). The line after
+    "CYCL DEF ... ~" belongs to the cycle whatever its Q number. A head turn
+    alone is kept in programs with radius compensation. "Continue after
+    errors" (settings keepgoing, default off): the run goes past TOOL AXIS
+    n NOT SIMULATED (taken as Z) and crashes, every error still listed.
 
 BRIDGE v2 (bridge.js; contract in docs/BUILD_STATE.md; tests/bridge.js):
   - Active in a same-origin iframe with or without a server; the server part

@@ -547,8 +547,12 @@ var TNC_SHEET = (function () {
   /* last opened = "last used": stamped whenever the simulator opens a program */
   (window.TNC_UI_PLUGINS = window.TNC_UI_PLUGINS || []).push(function (ui) {
     ui.on('program', function (p) { if (p && ui.library) ui.library.stamp(p.machine, p.name); });
+    try { var p0 = ui.program; if (p0 && p0.name && ui.library) ui.library.stamp(p0.machine, p0.name); } catch (e) {}   // the program open at start-up
   });
 
-  return { open: open, close: close, get isOpen() { return openNow; } };
+  /* a profile file that came in elsewhere (Ctrl O, drag-drop on the page): the sheet asks merge / replace */
+  function askProfile(inc, file) { open(); askInc = { inc: inc, file: file }; renderAsk(); }
+
+  return { open: open, close: close, askProfile: askProfile, get isOpen() { return openNow; } };
 })();
 if (typeof module !== 'undefined') module.exports = TNC_SHEET;

@@ -103,7 +103,9 @@ if (want(1)) {
 
 /* ---------- 2. top bar, Program menu, machine, modes ---------- */
 if (want(2)) {
-  const { ctx, page, errors } = await open(browser, { init: 'window.TNC_EDITOR={open:function(n){window.__ed=(window.__ed||0)+1;}};' });
+  const { ctx, page, errors } = await open(browser, {});
+  /* the menu entry is checked against a stand-in: the real editor (editor.js) would open over the page */
+  await page.evaluate(() => { window.TNC_EDITOR = window.TNC_EDITOR || {}; window.TNC_EDITOR.open = function () { window.__ed = (window.__ed || 0) + 1; }; });
   const bar = await page.evaluate(() => {
     const vis = (e) => !!e && e.getBoundingClientRect().width > 0 && getComputedStyle(e).visibility !== 'hidden';
     const inBar = (sel) => [...document.querySelectorAll('.bar ' + sel)].filter(vis).length;
