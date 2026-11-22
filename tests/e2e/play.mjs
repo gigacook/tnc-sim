@@ -362,12 +362,13 @@ try {
   c.ok((await page.evaluate(() => localStorage.getItem('tnc.edition.business.v1'))) === null, 'nothing of the game is written to the Business edition key');
 
   /* ---- the measuring tool: into the control, then tnc:inspect compare opens the simulator's comparison ---- */
-  const inspector = () => sim.evaluate(() => ({ open: !document.body.classList.contains('focus'), pressed: document.getElementById('b-insp').getAttribute('aria-pressed'), tab: document.querySelector('#stabs [aria-selected="true"]')?.dataset.tab }));
+  // the inspector is a rail with a flyout now: open = TNC_UI.inspector.open, the bottom bar's F control says aria-expanded
+  const inspector = () => sim.evaluate(() => ({ open: !!window.TNC_UI.inspector.open, pressed: document.getElementById('b-insp-k').getAttribute('aria-expanded'), tab: document.querySelector('#stabs [aria-selected="true"]')?.dataset.tab }));
   const closedBefore = await inspector();
   await list('Skjutmåttet', 'Ta upp');
   await list('fil15', 'Mät detaljen');
   c.ok(await page.waitForSelector('.shop[data-mode="machine"]', { timeout: WAIT }).then(() => true, () => false), 'the measuring tool ("Mät detaljen") enters the control of fil15');
-  await sim.waitForFunction(() => !document.body.classList.contains('focus'), null, { timeout: WAIT }).catch(() => {});
+  await sim.waitForFunction(() => !!window.TNC_UI.inspector.open, null, { timeout: WAIT }).catch(() => {});
   const openAfter = await inspector();
   c.ok(closedBefore.open === false && openAfter.open === true && openAfter.pressed === 'true', 'the inspector was closed and is open after the measuring tool', JSON.stringify([closedBefore, openAfter]));
   c.ok(openAfter.tab === 'diag' && (await sim.locator('#st-diag').isVisible()) && (await sim.locator('#sp-diag .card-compare').isVisible()) && (await sim.locator('#cmp').isVisible()), 'the inspector shows the compare tab: Diagnostics selected, the comparison card visible', JSON.stringify(openAfter));
