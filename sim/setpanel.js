@@ -557,7 +557,7 @@ var TNC_SETPANEL = (function () {
     else if (act === 'keys') { var h2 = $('b-help'); if (h2) h2.click(); var kt = document.querySelector('#help-tabs [data-tab="keys"]'); if (kt) kt.click(); }
     else if (act === 'intro') { var su = $('help-setup'); if (su) su.click(); }
     else if (act === 'profile') { var p = $('b-prof'); if (p) p.click(); else legacy('general', 'set-prof'); }
-    else if (act === 'dev') legacy('adv', 'set-dev');
+    else if (act === 'dev') { if (UI && typeof UI.openDev === 'function') UI.openDev(); else legacy('adv', 'set-dev'); }
   }
   function listen(el) {
     capture = true; el.classList.add('listen'); el.querySelector('.sp-capv').textContent = T('fskey.press');

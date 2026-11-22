@@ -37,19 +37,23 @@ async function launch() {
 async function page(browser, { width = 1440, height = 900, lang = 'en' } = {}) {
   const mobile = width <= 900;
   const ctx = await browser.newContext({ viewport: { width, height }, isMobile: mobile, hasTouch: mobile, reducedMotion: 'reduce' });
-  await ctx.addInitScript(([lang]) => { try { if (localStorage.getItem('tnc.settings.v1') == null) localStorage.setItem('tnc.settings.v1', JSON.stringify({ v: 1, lang, setup: 1 })); } catch {} }, [lang]);
   const errors = [];
-  const p = await fresh(ctx, errors);
+  const p = await fresh(ctx, errors, null, lang);
   return { ctx, p, errors };
 }
-/* a new page in the same context (same storage): a reload without keeping a software-WebGL page's memory around */
-async function fresh(ctx, errors, old) {
-  if (old) await old.close();
+/* a new page in the same context (same storage): a reload without keeping a software-WebGL page's memory around.
+   The old page is closed only after the new one has loaded: Chromium can drop a page's last localStorage writes when the
+   page is closed first (seen on the merged build: the new page read the store as it was before the old page's changes).
+   The first-run seed goes on the first page only: in a new page's init script Chromium can read the store as empty and the
+   seed would then overwrite what the earlier page saved. */
+async function fresh(ctx, errors, old, seedLang) {
   const p = await ctx.newPage();
+  if (seedLang) await p.addInitScript(([lang]) => { try { if (localStorage.getItem('tnc.settings.v1') == null) localStorage.setItem('tnc.settings.v1', JSON.stringify({ v: 1, lang, setup: 1 })); } catch {} }, [seedLang]);
   p.on('pageerror', (e) => errors.push('pageerror: ' + e.message)); p.on('crash', () => { console.log('  !! page crashed'); errors.push('page crashed'); });
   p.on('console', (m) => { if (m.type() === 'error' && !/fonts\.|ERR_FAILED|net::|GL Driver/.test(m.text())) errors.push('console: ' + m.text()); });
   await p.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
   await load(p);
+  if (old) await old.close();
   return p;
 }
 async function load(p, reload) {
@@ -207,11 +211,11 @@ try {
   await p.keyboard.press('Escape'); await p.waitForTimeout(200);
   await openPanel(p); await openGroup(p, 'help');
   await p.click('#setpanel [data-act="dev"]'); await p.waitForTimeout(250);
-  ok(await p.evaluate(() => !document.getElementById('m-dev').hidden && document.getElementById('m-set').hidden), 'Developer log opens the log (not the old settings)');
+  ok(await p.evaluate(() => !document.getElementById('m-dev').hidden && document.getElementById('m-set').hidden && !TNC_SETPANEL.isOpen), 'Developer log opens the log (not the old settings, the panel closed)');
   await p.keyboard.press('Escape'); await p.waitForTimeout(200);
   await openPanel(p); await openGroup(p, 'help');
   await p.click('#setpanel [data-act="profile"]'); await p.waitForTimeout(250);
-  ok(await p.evaluate(() => !document.getElementById('m-prof').hidden), 'Profile opens the profile');
+  ok(await p.evaluate(() => window.TNC_SHEET && TNC_SHEET.isOpen && !document.getElementById('tsh').hidden && document.getElementById('m-prof').hidden), 'Profile opens the profile sheet (not the old profile modal)');
   await p.keyboard.press('Escape'); await p.waitForTimeout(200);
   await openPanel(p); await openGroup(p, 'help');
   await p.click('#setpanel [data-act="intro"]'); await p.waitForTimeout(250);

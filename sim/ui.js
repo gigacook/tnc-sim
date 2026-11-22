@@ -302,7 +302,7 @@ const UIAPI={ THREE, scene, camera, renderer, controls, lights:{key:keyL,fill:fi
       [[UNDO,m+':'],[REDO,m+':']].forEach(([o,k])=>{ if(o[k+n]){ o[k+to]=o[k+n]; delete o[k+n]; } });
       if(S.cur[m]===n) S.cur[m]=to; S.projects.forEach(pj=>{ (pj.pgms||[]).forEach(r=>{ if(r.m===m&&r.name===n) r.name=to; }); });
       if(m===S.machine&&S.pgm===n){ S.pgm=to; $('pgm-path').textContent='TNC:\\'+to; hdrStat(); }
-      persist(); renderUserPrograms(); if(S.mgt) renderMgt(); return to; },
+      persist(); if(S.mgt) renderMgt(); return to; },
     /* delete (asked first by the caller): yours are removed, a changed built-in goes back to its original, an unchanged built-in stays */
     remove:(m,n)=>{ const p=S.pgms[m]; if(!p||p[n]==null) return false; const o=(S.orig[m]||{})[n];
       if(o!=null){ if(p[n]===o) return false; if(m===S.machine&&S.pgm===n) edit(o,0); else p[n]=o; persist(); return 'restored'; }
@@ -310,7 +310,7 @@ const UIAPI={ THREE, scene, camera, renderer, controls, lights:{key:keyL,fill:fi
       S.projects.forEach(pj=>{ pj.pgms=(pj.pgms||[]).filter(r=>!(r.m===m&&r.name===n)); }); if(S.cur[m]===n) S.cur[m]=null;
       if(m===S.machine&&S.pgm===n){ S.pgm=Object.keys(pg()).filter(x=>x!==TEMP)[0]||null;
         if(!S.pgm){ S.pgm='NEW.H'; pg()[S.pgm]='BEGIN PGM NEW MM\nEND PGM NEW MM'; } S.text=pg()[S.pgm]; raw.value=S.text; S.cursor=0; compile(); }
-      persist(); renderUserPrograms(); if(S.mgt) renderMgt(); return true; },
+      persist(); if(S.mgt) renderMgt(); return true; },
     /* Save .H for any program: the numbered TNC listing into the downloads folder */
     download:(m,n)=>{ const t=(S.pgms[m]||{})[n]; if(t==null) return false; const keep=S.machine; S.machine=MACHINES[m]?m:keep; const lst=listing(t); S.machine=keep;
       download(n,new Blob([lst],{type:'text/plain'})); return true; },
@@ -347,7 +347,7 @@ const UIAPI={ THREE, scene, camera, renderer, controls, lights:{key:keyL,fill:fi
       catch(e){ return {state:'bad',path,why:(e&&e.name)||'error'}; } }
   },
   download:(name,blob,kind)=>download(name,blob,kind),
-  openSettings:tab=>openSettings(tab), toolTable:()=>act('tt'),
+  openSettings:tab=>openSettings(tab), openDev:()=>openDev(), toolTable:()=>act('tt'),
   runState:()=>runState(), get lang(){ return LANG(); } };
 window.TNC_UI=UIAPI;
 
