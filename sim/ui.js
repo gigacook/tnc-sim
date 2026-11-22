@@ -2184,6 +2184,15 @@ new ResizeObserver(resize).observe(gfxEl);
 addEventListener('resize',resize);
 
 let last=performance.now(), kvT=0, paintAcc=0, ovlPainted=false;
+/* is the 3-D view on screen at all? Not when its pane is hidden (phones), the tab is in the background, or the page sits in a
+   frame its parent has hidden (Play keeps the simulator's iframe with visibility:hidden while the workshop is shown).
+   Read every 250 ms, not every frame */
+let shownT=-1e9, shownV=true;
+function viewShown(now){
+  if(now-shownT<250) return shownV; shownT=now;
+  let v=!document.hidden&&gfxEl.offsetWidth>1&&gfxEl.offsetHeight>1;
+  if(v) try{ const f=window.frameElement; if(f&&getComputedStyle(f).visibility==='hidden') v=false; }catch(e){}
+  return shownV=v; }
 function tick(now){
   const dt=Math.min(.1,(now-last)/1000); last=now;
   if(S.running&&S.speed>0){ const nt=S.t+dt*S.speed*(S.ovr/100);
@@ -2212,7 +2221,7 @@ function tick(now){
   const draw=()=>{ if(UIAPI.render) try{ UIAPI.render(scene,camera); return; }catch(e){ UIAPI.render=null; } renderer.render(scene,camera); };
   /* the 3-D view hidden (a phone's Program / Status workspace): the run goes on, nothing is drawn. WebKit stalled its timers
      for tens of seconds drawing the machined-metal stock into a hidden canvas (CI: the phone swipe, page loads) */
-  if(!(gfxEl.offsetWidth>1&&gfxEl.offsetHeight>1)){ requestAnimationFrame(tick); return; }
+  if(!viewShown(now)){ requestAnimationFrame(tick); return; }
   if(S.shake>0){ const o=camera.position.clone(), k=S.shake*4; camera.position.x+=(Math.random()-.5)*k; camera.position.y+=(Math.random()-.5)*k; camera.position.z+=(Math.random()-.5)*k;
     draw(); camera.position.copy(o); S.shake=Math.max(0,S.shake-dt*2.2); }
   else draw();
