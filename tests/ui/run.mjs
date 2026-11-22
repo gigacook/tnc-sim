@@ -1234,14 +1234,19 @@ async function businessChecks(browser, tag) {
   }
 }
 
-/* ---------- controls that plugins add to the Effects and view menu: stock material, click to pick, axis vectors ---------- */
+/* ---------- controls that plugins add (stock material, click to pick, axis vectors): wired in the hidden Effects menu, reached in the settings panel ---------- */
 async function reachChecks(browser, tag) {
   const L = `[${tag}] reach`;
   const { ctx, page, errors } = await simPage(browser, { width: 1440, height: 900, mobile: false, insp: false });
   const open = async () => {};
-  const there = await page.evaluate(() => ['mat-sel', 'b-pick', 'b-vec'].filter((id) => { const e = document.getElementById(id); return !(e && e.closest('#fxmenu')); }));
+  /* the plugins' controls (mat-sel, b-pick, b-vec) stay wired in the hidden Effects menu; the operator reaches them in the settings panel:
+     Machine and stock › Material (radios), View › Pick a point / Axis vectors (switches) */
+  const there = await page.evaluate(() => ['mat-sel', 'b-pick', 'b-vec'].filter((id) => !document.getElementById(id)));
   const av = await page.evaluate(() => TNC_UI.view.get().available);
-  ok(there.length === 0 && av.material && av.pick && av.axes, `${L}: the material picker and the pick / axis-vector toggles are wired in and reachable through UIAPI.view (the settings panel)`, there.join(',') + ' ' + JSON.stringify(av));
+  await gear(page, 'machine'); await gear(page, 'view');
+  const inPanel = await page.evaluate(() => ({ mats: document.querySelectorAll('#setpanel [data-k="material"] [role=radio]').length,
+    pick: !!document.querySelector('#setpanel [data-t="pick"]'), vec: !!document.querySelector('#setpanel [data-t="vectors"]') }));
+  ok(there.length === 0 && av.material && av.pick && av.axes && inPanel.mats === 10 && inPanel.pick && inPanel.vec, `${L}: the material picker and the pick / axis-vector toggles are wired in and reachable in the settings panel`, there.join(',') + ' ' + JSON.stringify([av, inPanel]));
   // material: changes the stock's material and is kept
   /* the stock is drawn by stockview.js (tiles named stock-tile): the preset's colour and roughness go into its shader
      uniforms (raw face = colour × 0.54, cut-face roughness = roughness × 0.6), the metalness onto the material */
@@ -1251,8 +1256,10 @@ async function reachChecks(browser, tag) {
     return { id: P.id, sel: document.getElementById('mat-sel').value, color: new T.Color(P.color).getHexString(), raw: U ? U.uRaw.value.getHexString() : null,
       want: new T.Color(P.color).multiplyScalar(0.54).getHexString(), metal: m ? m.metalness : null, cutR: U ? +U.uCutR.value.toFixed(3) : null, n: document.getElementById('mat-sel').options.length }; });
   const m0 = await mat();
-  await page.evaluate(() => TNC_UI.view.set('material', 'brass')); await page.waitForTimeout(200);
+  await page.click('#setpanel [data-k="material"] [data-v="brass"]'); await page.waitForTimeout(200);
   const m1 = await mat();
+  ok(await page.getAttribute('#setpanel [data-k="material"] [data-v="brass"]', 'aria-checked') === 'true', `${L}: the panel marks Brass as the chosen material`);
+  await closePanel(page);
   ok(m0.n === 10 && m1.id === 'brass' && m1.sel === 'brass' && m1.color === 'cfa257' && m1.raw === m1.want && m1.raw !== m0.raw && m1.metal === 0.85 && m1.cutR === 0.18, `${L}: choosing Brass changes the stock material (colour, metalness, roughness)`, JSON.stringify([m0, m1]));
   // toggles: state changes, is stored, and does what it says
   const viz = () => page.evaluate(() => ({ pick: document.getElementById('b-pick').dataset.on, vec: document.getElementById('b-vec').dataset.on, ap: document.getElementById('b-pick').getAttribute('aria-pressed'), av: document.getElementById('b-vec').getAttribute('aria-pressed'),
@@ -1260,13 +1267,16 @@ async function reachChecks(browser, tag) {
   await page.keyboard.press('2'); await page.evaluate(() => { document.getElementById('scrub').value = 300; document.getElementById('scrub').dispatchEvent(new Event('input')); }); await page.waitForTimeout(400);
   const v0 = await viz();
   ok(v0.pick === '1' && v0.vec === '1' && v0.ap === 'true' && v0.av === 'true' && v0.labels > 0, `${L}: both toggles start on; the axis vectors are drawn`, JSON.stringify(v0));
-  await page.evaluate(() => TNC_UI.view.set('axes', false)); await page.waitForTimeout(300);
+  await gear(page, 'view'); await page.click('#setpanel [data-t="vectors"]'); await page.waitForTimeout(300);
+  ok(await page.getAttribute('#setpanel [data-t="vectors"]', 'aria-checked') === 'false', `${L}: the panel's Axis vectors switch reads off`);
+  await closePanel(page);
   const v1 = await viz();
   ok(v1.vec === '0' && v1.av === 'false' && v1.ls && v1.ls.vectors === false && v1.ls.pick === true && v1.labels === 0, `${L}: Axis vectors off: state, stored key tnc.viz and the vectors themselves`, JSON.stringify(v1));
   const g = await box(page, '#gl');
   await page.mouse.click(g.x + g.width * 0.55, g.y + g.height * 0.6); await page.waitForTimeout(250);
   ok(await page.evaluate(() => [...document.querySelectorAll('#gfx .vlab.pick')].some((e) => !e.hidden && /X .*Y .*Z /.test(e.textContent))), `${L}: with Click to pick on, a click in the 3-D view shows the point's coordinates`);
-  await page.evaluate(() => TNC_UI.view.set('pick', false)); await page.waitForTimeout(200);
+  await gear(page, 'view'); await page.click('#setpanel [data-t="pick"]'); await page.waitForTimeout(200);
+  await closePanel(page);
   const v2 = await viz();
   ok(v2.pick === '0' && v2.ap === 'false' && v2.ls.pick === false && await page.evaluate(() => [...document.querySelectorAll('#gfx .vlab.pick')].every((e) => e.hidden)), `${L}: Click to pick off: state, stored key, and the marker is gone`, JSON.stringify(v2));
   await page.mouse.click(g.x + g.width * 0.5, g.y + g.height * 0.55); await page.waitForTimeout(200);

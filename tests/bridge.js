@@ -50,6 +50,8 @@ function serve(pages) {
 const PROGRAM = ['BEGIN PGM BRIDGE MM', 'BLK FORM 0.1 Z X+0 Y+0 Z-20', 'BLK FORM 0.2 X+100 Y+80 Z+0', 'TOOL CALL 4 Z S3000', 'L Z+50 R0 FMAX M3', 'L X+10 Y+10 R0 FMAX',
   'L Z-1 R0 F150 M8', 'L X+90 R0 F300', 'L Y+70 R0', 'L X+10 R0', 'L Y+10 R0', 'L Z+50 R0 FMAX M5 M9', 'M30', 'END PGM BRIDGE MM'].join('\n');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+/* the run speed is one chip (#spd-chip, data-s = the speed); a click steps 1× → 4× → 16× → 64× → MAX (0) and wraps */
+const SPEED = (v) => { const c = document.getElementById('spd-chip'); for (let i = 0; i < 6 && c.dataset.s !== String(v); i++) c.click(); };
 
 (async () => {
   const exe = [process.env.PW_CHROMIUM, undefined].find((x) => x === undefined || (x && fs.existsSync(x)));
@@ -129,7 +131,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     ok(st && st.mode === 'edit' && st.machine === '426' && st.running === false && st.errors === 0 && st.tool.t === 4, 'tnc:state reports the mode, the machine and the tool of the program', JSON.stringify(st));
 
     /* tnc:exec with the simulator's own run controls; the state follows; at most 10 a second */
-    await frame.evaluate(() => { document.querySelector('.mode[data-m="test"]').click(); document.querySelector('#spd [data-s="1"]').click(); });
+    await frame.evaluate(() => { document.querySelector('.mode[data-m="test"]').click(); }); await frame.evaluate(SPEED, 1);
     n = await mark(page);
     const tStart = Date.now();
     await send(page, { type: 'tnc:exec', cmd: 'start' });
@@ -157,12 +159,12 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await sleep(200);
     ok(stp && (await frame.evaluate(() => TNC_UI.state.k)) === 1 && (await sim(frame)).running === false && (await sim(frame)).t >= t0, 'tnc:exec step runs one block (the single-block control)', JSON.stringify(await frame.evaluate(() => ({ k: TNC_UI.state.k, cursor: TNC_UI.state.cursor }))));
     /* done */
-    await frame.evaluate(() => document.querySelector('#spd [data-s="0"]').click());
+    await frame.evaluate(SPEED, 0);
     n = await mark(page);
     await send(page, { type: 'tnc:exec', cmd: 'reset' }); await send(page, { type: 'tnc:exec', cmd: 'start' });
     const done = await waitMsg(page, n, 'tnc:state', (d) => d.done === true, 5000);
     ok(done && done.done === true && done.progress === 1 && done.running === false, 'at the end of the program tnc:state says done, progress 1', JSON.stringify(done && { done: done.done, progress: done.progress, running: done.running }));
-    await send(page, { type: 'tnc:exec', cmd: 'reset' }); await frame.evaluate(() => document.querySelector('#spd [data-s="1"]').click());
+    await send(page, { type: 'tnc:exec', cmd: 'reset' }); await frame.evaluate(SPEED, 1);
 
     /* tnc:lock: NC start refused, with the reason on screen */
     n = await mark(page);
@@ -212,12 +214,12 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await send(page, { type: 'tnc:present', lang: 'en', skin: '430', env: 'workshop-night', quality: 'low', motion: 'reduced', sound: false }); await sleep(400);
     s = await sim(frame);
     ok(s.htmlLang === 'en' && s.lang === 'en' && s.html.skin === '430' && s.html.env === 'workshop-night' && s.html.quality === 'low' && s.html.motion === 'reduced', 'tnc:present sets language, skin, environment, quality and motion', JSON.stringify(s.html) + ' ' + s.htmlLang);
-    ok(await frame.evaluate(() => TNC_UI.state.sound === false && document.getElementById('b-new').textContent.trim() === 'New program' && TNC_UI.state.machine === '426'), 'sound off, the bar in English, the machine untouched by the skin');
+    ok(await frame.evaluate(() => TNC_UI.state.sound === false && document.querySelector('#b-new span').textContent.trim() === 'New program…' && TNC_UI.state.machine === '426'), 'sound off, the bar in English, the machine untouched by the skin');
     ok(await engine() === e0, 'tnc:present does not change the engine result');
     ok((await since(page, n, 'tnc:settings')).length === 0, 'a tnc:present from the app is not echoed back as tnc:settings');
     await send(page, { type: 'tnc:present', lang: 'sr' }); await sleep(300);
     s = await sim(frame);
-    ok(s.lang === 'sr' && s.htmlLang === 'sr-Latn' && await frame.evaluate(() => document.getElementById('b-new').textContent.trim() === 'Novi program' && JSON.parse(localStorage.getItem('tnc.settings.v1')).lang === 'sr'),
+    ok(s.lang === 'sr' && s.htmlLang === 'sr-Latn' && await frame.evaluate(() => document.querySelector('#b-new span').textContent.trim() === 'Novi program…' && JSON.parse(localStorage.getItem('tnc.settings.v1')).lang === 'sr'),
       'tnc:present lang "sr" switches to Serbian (html lang sr-Latn) and stores it', JSON.stringify({ lang: s.lang, html: s.htmlLang }));
     n = await mark(page);
     await send(page, { type: 'tnc:hello', v: 2 });
@@ -244,7 +246,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     n = await mark(page);
     await send(page, { type: 'tnc:machine', machine: '430' });
     const m430 = await waitMsg(page, n, 'tnc:state', (d) => d.machine === '430', 4000);
-    ok(m430 && (await sim(frame)).machine === '430' && await frame.evaluate(() => document.querySelector('#mach-seg [data-m="430"]').getAttribute('aria-pressed') === 'true'), 'tnc:machine selects the 430 profile (and the switch in the bar follows)', JSON.stringify(m430 && m430.machine));
+    ok(m430 && (await sim(frame)).machine === '430' && await frame.evaluate(() => document.getElementById('mach-sel').value === '430'), 'tnc:machine selects the 430 profile (and the dropdown in the bar follows)', JSON.stringify(m430 && m430.machine));
     await send(page, { type: 'tnc:machine', machine: '426' }); await sleep(400);
     ok((await sim(frame)).machine === '426' && (await sim(frame)).pgm === 'BRIDGE.H', 'tnc:machine back to 426 brings its program back');
 
@@ -267,15 +269,22 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await frame.press('body', 'Escape');
 
     /* tnc:inspect: the inspector on the named tab */
-    const insp = () => frame.evaluate(() => ({ open: !document.body.classList.contains('focus') && getComputedStyle(document.getElementById('ws-side')).display !== 'none',
-      tab: document.querySelector('#stabs [aria-selected="true"]').dataset.tab, pressed: document.getElementById('b-insp').getAttribute('aria-pressed'),
+    /* the inspector is a flyout (#insp-fly, opened from the rail or the bottom bar's F control) with two tabs, Run (diag) and Manual (ref);
+       the programs moved to the profile sheet, so tnc:inspect progs opens that sheet */
+    const insp = () => frame.evaluate(() => ({ open: (() => { const f = document.getElementById('insp-fly'); return f.classList.contains('open') && getComputedStyle(f).visibility === 'visible'; })(),
+      tab: document.querySelector('#stabs [aria-selected="true"]').dataset.tab, pressed: document.getElementById('b-insp-k').getAttribute('aria-expanded'),
+      sheet: !!(window.TNC_SHEET && TNC_SHEET.isOpen),
       cmp: (() => { const r = document.querySelector('.card-compare').getBoundingClientRect(); return r.height > 0 && r.top >= 0 && r.bottom <= innerHeight + 1; })() }));
     ok((await insp()).open === false, 'the inspector is closed before tnc:inspect (default layout)', JSON.stringify(await insp()));
     const seenTabs = [];
-    for (const panel of ['ref', 'progs', 'diag', 'compare']) { await send(page, { type: 'tnc:inspect', panel }); await sleep(250); seenTabs.push({ panel, ...(await insp()) }); }
-    ok(seenTabs.every((x) => x.open && x.pressed === 'true') && seenTabs.map((x) => x.tab).join() === 'ref,progs,diag,diag', 'tnc:inspect opens the inspector on ref, progs, diag; compare = the Diagnostics tab', JSON.stringify(seenTabs));
-    ok(seenTabs[3].cmp === true, 'tnc:inspect compare has the comparison card on screen', JSON.stringify(seenTabs[3]));
+    for (const panel of ['ref', 'diag', 'compare']) { await send(page, { type: 'tnc:inspect', panel }); await sleep(250); seenTabs.push({ panel, ...(await insp()) }); }
+    ok(seenTabs.every((x) => x.open && x.pressed === 'true') && seenTabs.map((x) => x.tab).join() === 'ref,diag,diag', 'tnc:inspect opens the inspector on ref (Manual), diag (Run); compare = the Run tab', JSON.stringify(seenTabs));
+    ok(seenTabs[2].cmp === true, 'tnc:inspect compare has the comparison card on screen', JSON.stringify(seenTabs[2]));
     await frame.evaluate(() => document.getElementById('insp-x').click()); await sleep(150);
+    await send(page, { type: 'tnc:inspect', panel: 'progs' });
+    await frame.waitForFunction(() => window.TNC_SHEET && TNC_SHEET.isOpen, null, { timeout: 5000 }).catch(() => {});
+    ok((await insp()).sheet === true, 'tnc:inspect progs opens the programs, which live in the profile sheet now', JSON.stringify(await insp()));
+    await frame.press('body', 'Escape'); await frame.waitForFunction(() => !TNC_SHEET.isOpen, null, { timeout: 5000 }).catch(() => {});
     for (const m of [{ type: 'tnc:inspect', panel: 'dev' }, { type: 'tnc:inspect' }, { type: 'tnc:inspect', panel: ['ref'] }]) await send(page, m);
     await sleep(250);
     ok((await insp()).open === false, 'tnc:inspect with an unknown or missing panel is dropped (the inspector stays closed)', JSON.stringify(await insp()));
