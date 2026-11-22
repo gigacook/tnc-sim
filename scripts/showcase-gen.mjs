@@ -387,11 +387,11 @@ P.push({ name: '14_MULTI_TOOL', stock: { x: [0, 120], y: [0, 80], z: [-25, 0] },
 /* ---------- 15 ---------- */
 P.push({ name: '15_430_SWIVEL', stock: { x: [0, 100], y: [0, 80], z: [-40, 0] }, tools: [15, 2], machines: ['430'], view: [0.72, -0.5, 0.62],
   title: { sv: '430 svänghuvud', en: '430 swivel head' },
-  description: { sv: 'Endast TNC 430: cykel 19 lutar svänghuvudet 30 grader, en sned yta fräses och två hål borras vinkelrätt mot den.',
-    en: 'TNC 430 only: cycle 19 tilts the swivel head 30 degrees, a sloped face is milled and two holes are drilled square to it.' },
-  cycles: [7, 19, 200], techniques: ['CYCL DEF 19 WORKING PLANE', 'CYCL DEF 7 DATUM SHIFT', 'CYCL DEF 200 DRILLING in the tilted plane', 'M99'],
+  description: { sv: 'Endast TNC 430: cykel 304 vrider B-huvudet 30 grader och cykel 19 lutar bearbetningsplanet lika mycket, en sned yta fräses och två hål borras vinkelrätt mot den.',
+    en: 'TNC 430 only: cycle 304 turns the B head 30 degrees and cycle 19 tilts the working plane to match, a sloped face is milled and two holes are drilled square to it.' },
+  cycles: [7, 19, 200, 304], techniques: ['CYCL DEF 304 B head (machine builder, placeholder H1)', 'CYCL DEF 19 WORKING PLANE', 'CYCL DEF 7 DATUM SHIFT', 'CYCL DEF 200 DRILLING in the tilted plane', 'M99'],
   substitutions: ['Radius compensation in the tilted plane is approximate in the engine (docs/FEATURES.txt), so the sloped face is milled with R0 centre-line passes.'],
-  placeholders: ['V2'],
+  placeholders: ['V2', 'H1'],
   expected: { cutMinZ: -21, cutEnvelope: { x: [70, 109], y: [-12, 92] }, minRemovedCm3: 24,
     features: ['face sloped 30 degrees about Y along the X+100 edge, from X+65.4 on the top to Z-20 on the side', '2 holes Ø8.5 x 12 square to the sloped face, 40 mm apart'] },
   body() { return SWIVEL(); } });
@@ -427,10 +427,12 @@ P.push({ name: '16_5511_SHOWCASE', stock: { x: [0, 160], y: [0, 110], z: [-15, 0
   } });
 
 function SWIVEL() {
-  const tilt = ['CYCL DEF 7.0 DATUM SHIFT', 'CYCL DEF 7.1 X+100', 'CYCL DEF 7.2 Y+40', 'CYCL DEF 7.3 Z-20', 'CYCL DEF 19.0 WORKING PLANE', 'CYCL DEF 19.1 A+0 B-30 C+0'];
-  const level = ['CYCL DEF 19.0 WORKING PLANE', 'CYCL DEF 19.1 A+0 B+0 C+0', 'CYCL DEF 7.0 DATUM SHIFT', 'CYCL DEF 7.1 X+0', 'CYCL DEF 7.2 Y+0', 'CYCL DEF 7.3 Z+0'];
+  /* the operator's 430 (11-21): the head is turned by the machine builder's cycle 304 (Q2 = B head); cycle 19 only tilts the plane */
+  const tilt = ['CYCL DEF 7.0 DATUM SHIFT', 'CYCL DEF 7.1 X+100', 'CYCL DEF 7.2 Y+40', 'CYCL DEF 7.3 Z-20', 'CYCL DEF 304 ~', '  Q2=-30 ;', 'CYCL DEF 19.0 WORKING PLANE', 'CYCL DEF 19.1 A+0 B-30 C+0'];
+  const level = ['CYCL DEF 19.0 WORKING PLANE', 'CYCL DEF 19.1 A+0 B+0 C+0', 'CYCL DEF 304 ~', '  Q2=+0 ;', 'CYCL DEF 7.0 DATUM SHIFT', 'CYCL DEF 7.1 X+0', 'CYCL DEF 7.2 Y+0', 'CYCL DEF 7.3 Z+0'];
   return [
     '; DATUM ON THE X+100 EDGE AT Z-20, PLANE TILTED 30 DEGREES ABOUT Y:', '; IN THE TILTED PLANE THE SLOPED FACE IS Z+0, X-40 (TOP EDGE) TO X+0',
+    '; THE HEAD IS TURNED BY CYCLE 304 (B HEAD), CYCLE 19 ONLY TILTS THE PLANE',
     'TOOL CALL 15 Z S2500', 'L Z+100 R0 FMAX M3', ...tilt,
     '; ---------- SLOPED FACE, 4 LEVELS, 4 PASSES ALONG Y ----------', 'L X-34 Y-52 Z+40 R0 FMAX M8', 'FN 0: Q1 = +18               ; HEIGHT ABOVE THE FACE',
     'LBL 1', 'FN 2: Q1 = +Q1 - +4.5', 'L X-34 Y-52 R0 FMAX', 'L Z+Q1 R0 FMAX',

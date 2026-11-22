@@ -2210,6 +2210,9 @@ function tick(now){
   controls.update();
   if(CO) try{ CO.update(); }catch(e){}
   const draw=()=>{ if(UIAPI.render) try{ UIAPI.render(scene,camera); return; }catch(e){ UIAPI.render=null; } renderer.render(scene,camera); };
+  /* the 3-D view hidden (a phone's Program / Status workspace): the run goes on, nothing is drawn. WebKit stalled its timers
+     for tens of seconds drawing the machined-metal stock into a hidden canvas (CI: the phone swipe, page loads) */
+  if(!(gfxEl.offsetWidth>1&&gfxEl.offsetHeight>1)){ requestAnimationFrame(tick); return; }
   if(S.shake>0){ const o=camera.position.clone(), k=S.shake*4; camera.position.x+=(Math.random()-.5)*k; camera.position.y+=(Math.random()-.5)*k; camera.position.z+=(Math.random()-.5)*k;
     draw(); camera.position.copy(o); S.shake=Math.max(0,S.shake-dt*2.2); }
   else draw();

@@ -88,14 +88,12 @@
       "sha256": "063fa321353b8a808c3be638969115865f7bb1c92adf6a9bc1aee658ccf445ad",
       "validation": {
         "ok": true,
-        "verifiedOn": "2026-11-18",
-        "engineWasmSha256": "dd23cb13e4de38b0423d61d8bc7d1c856249111045b0494b292ecb5a2f112aa7",
+        "verifiedOn": "2026-11-22",
+        "engineWasmSha256": "b7e8878338b7de7c3fff0876566649a7b8856508c4b8dfef539b69d1221eed57",
         "report": "artifacts/showcase/report.json",
         "failures": [],
         "native": {
-          "compared": true,
-          "date": "2026-11-18",
-          "agree": true
+          "compared": false
         },
         "machines": {
           "426": {
@@ -251,14 +249,12 @@
       "sha256": "cc1d8e5ac28c432c3b6cacd73e5bff25c79067acb5ca7e8dd4fe70a9829ffe8d",
       "validation": {
         "ok": true,
-        "verifiedOn": "2026-11-18",
-        "engineWasmSha256": "dd23cb13e4de38b0423d61d8bc7d1c856249111045b0494b292ecb5a2f112aa7",
+        "verifiedOn": "2026-11-22",
+        "engineWasmSha256": "b7e8878338b7de7c3fff0876566649a7b8856508c4b8dfef539b69d1221eed57",
         "report": "artifacts/showcase/report.json",
         "failures": [],
         "native": {
-          "compared": true,
-          "date": "2026-11-18",
-          "agree": true
+          "compared": false
         },
         "machines": {
           "426": {
@@ -413,14 +409,12 @@
       "sha256": "b2b27210addec4f0a1647ac304f0d7f5b96f1cc8a2cbf3424a753c5784069c0f",
       "validation": {
         "ok": true,
-        "verifiedOn": "2026-11-18",
-        "engineWasmSha256": "dd23cb13e4de38b0423d61d8bc7d1c856249111045b0494b292ecb5a2f112aa7",
+        "verifiedOn": "2026-11-22",
+        "engineWasmSha256": "b7e8878338b7de7c3fff0876566649a7b8856508c4b8dfef539b69d1221eed57",
         "report": "artifacts/showcase/report.json",
         "failures": [],
         "native": {
-          "compared": true,
-          "date": "2026-11-18",
-          "agree": true
+          "compared": false
         },
         "machines": {
           "426": {
@@ -588,14 +582,12 @@
       "sha256": "bcade12d905796f279531d162989a2eb86a55cf512d15a8d400eb7318093e418",
       "validation": {
         "ok": true,
-        "verifiedOn": "2026-11-18",
-        "engineWasmSha256": "dd23cb13e4de38b0423d61d8bc7d1c856249111045b0494b292ecb5a2f112aa7",
+        "verifiedOn": "2026-11-22",
+        "engineWasmSha256": "b7e8878338b7de7c3fff0876566649a7b8856508c4b8dfef539b69d1221eed57",
         "report": "artifacts/showcase/report.json",
         "failures": [],
         "native": {
-          "compared": true,
-          "date": "2026-11-18",
-          "agree": true
+          "compared": false
         },
         "machines": {
           "426": {
@@ -754,14 +746,12 @@
       "sha256": "564e725ddb3955ac7da6ddbc46836347148651983b49fe7688e94e7f5c7b5748",
       "validation": {
         "ok": true,
-        "verifiedOn": "2026-11-18",
-        "engineWasmSha256": "dd23cb13e4de38b0423d61d8bc7d1c856249111045b0494b292ecb5a2f112aa7",
+        "verifiedOn": "2026-11-22",
+        "engineWasmSha256": "b7e8878338b7de7c3fff0876566649a7b8856508c4b8dfef539b69d1221eed57",
         "report": "artifacts/showcase/report.json",
         "failures": [],
         "native": {
-          "compared": true,
-          "date": "2026-11-18",
-          "agree": true
+          "compared": false
         },
         "machines": {
           "426": {
@@ -930,14 +920,12 @@
       "sha256": "8066bf43f272445ebc07d3f979d57baf8c2e18a3243b02223b037fc4a084b1ff",
       "validation": {
         "ok": true,
-        "verifiedOn": "2026-11-18",
-        "engineWasmSha256": "dd23cb13e4de38b0423d61d8bc7d1c856249111045b0494b292ecb5a2f112aa7",
+        "verifiedOn": "2026-11-22",
+        "engineWasmSha256": "b7e8878338b7de7c3fff0876566649a7b8856508c4b8dfef539b69d1221eed57",
         "report": "artifacts/showcase/report.json",
         "failures": [],
         "native": {
-          "compared": true,
-          "date": "2026-11-18",
-          "agree": true
+          "compared": false
         },
         "machines": {
           "426": {
@@ -1095,14 +1083,12 @@
       "sha256": "0c0eb97b28bec57624969d53d68f5b10cfe367d49cbf2aec2e3c98ce38979c41",
       "validation": {
         "ok": true,
-        "verifiedOn": "2026-11-18",
-        "engineWasmSha256": "dd23cb13e4de38b0423d61d8bc7d1c856249111045b0494b292ecb5a2f112aa7",
+        "verifiedOn": "2026-11-22",
+        "engineWasmSha256": "b7e8878338b7de7c3fff0876566649a7b8856508c4b8dfef539b69d1221eed57",
         "report": "artifacts/showcase/report.json",
         "failures": [],
         "native": {
-          "compared": true,
-          "date": "2026-11-18",
-          "agree": true
+          "compared": false
         },
         "machines": {
           "426": {
@@ -1278,14 +1264,12 @@
       "sha256": "27c7db1b379f6a9db3aa9859bc95bc2a9d9da54ac7985afce33350f9783ec01a",
       "validation": {
         "ok": true,
-        "verifiedOn": "2026-11-18",
-        "engineWasmSha256": "dd23cb13e4de38b0423d61d8bc7d1c856249111045b0494b292ecb5a2f112aa7",
+        "verifiedOn": "2026-11-22",
+        "engineWasmSha256": "b7e8878338b7de7c3fff0876566649a7b8856508c4b8dfef539b69d1221eed57",
         "report": "artifacts/showcase/report.json",
         "failures": [],
         "native": {
-          "compared": true,
-          "date": "2026-11-18",
-          "agree": true
+          "compared": false
         },
         "machines": {
           "426": {
@@ -1453,14 +1437,12 @@
       "sha256": "7921d9df3f7b9f959caeb424d2760310a76a540f9ff004612cb6fa980f35a5f5",
       "validation": {
         "ok": true,
-        "verifiedOn": "2026-11-18",
-        "engineWasmSha256": "dd23cb13e4de38b0423d61d8bc7d1c856249111045b0494b292ecb5a2f112aa7",
+        "verifiedOn": "2026-11-22",
+        "engineWasmSha256": "b7e8878338b7de7c3fff0876566649a7b8856508c4b8dfef539b69d1221eed57",
         "report": "artifacts/showcase/report.json",
         "failures": [],
         "native": {
-          "compared": true,
-          "date": "2026-11-18",
-          "agree": true
+          "compared": false
         },
         "machines": {
           "426": {
@@ -1622,14 +1604,12 @@
       "sha256": "ca3d79ecca786a2fdf6422d3aaf65de723a371d9abe904a245ae4c455bc81ea1",
       "validation": {
         "ok": true,
-        "verifiedOn": "2026-11-18",
-        "engineWasmSha256": "dd23cb13e4de38b0423d61d8bc7d1c856249111045b0494b292ecb5a2f112aa7",
+        "verifiedOn": "2026-11-22",
+        "engineWasmSha256": "b7e8878338b7de7c3fff0876566649a7b8856508c4b8dfef539b69d1221eed57",
         "report": "artifacts/showcase/report.json",
         "failures": [],
         "native": {
-          "compared": true,
-          "date": "2026-11-18",
-          "agree": true
+          "compared": false
         },
         "machines": {
           "426": {
@@ -1789,14 +1769,12 @@
       "sha256": "2cadc73485aaf2c0730c9d41b30a1a87816d47365a2e3254a00c1b1355170a3e",
       "validation": {
         "ok": true,
-        "verifiedOn": "2026-11-18",
-        "engineWasmSha256": "dd23cb13e4de38b0423d61d8bc7d1c856249111045b0494b292ecb5a2f112aa7",
+        "verifiedOn": "2026-11-22",
+        "engineWasmSha256": "b7e8878338b7de7c3fff0876566649a7b8856508c4b8dfef539b69d1221eed57",
         "report": "artifacts/showcase/report.json",
         "failures": [],
         "native": {
-          "compared": true,
-          "date": "2026-11-18",
-          "agree": true
+          "compared": false
         },
         "machines": {
           "426": {
@@ -1952,14 +1930,12 @@
       "sha256": "bc1c505c8fe2725250d221f406d179bcf9c281b59f46df23528faf583d7cf2ab",
       "validation": {
         "ok": true,
-        "verifiedOn": "2026-11-18",
-        "engineWasmSha256": "dd23cb13e4de38b0423d61d8bc7d1c856249111045b0494b292ecb5a2f112aa7",
+        "verifiedOn": "2026-11-22",
+        "engineWasmSha256": "b7e8878338b7de7c3fff0876566649a7b8856508c4b8dfef539b69d1221eed57",
         "report": "artifacts/showcase/report.json",
         "failures": [],
         "native": {
-          "compared": true,
-          "date": "2026-11-18",
-          "agree": true
+          "compared": false
         },
         "machines": {
           "426": {
@@ -2115,14 +2091,12 @@
       "sha256": "38af17362eafbf244ebde70df6271ebe2a4262d85e9d4ee15e0edb884a0ea5f2",
       "validation": {
         "ok": true,
-        "verifiedOn": "2026-11-18",
-        "engineWasmSha256": "dd23cb13e4de38b0423d61d8bc7d1c856249111045b0494b292ecb5a2f112aa7",
+        "verifiedOn": "2026-11-22",
+        "engineWasmSha256": "b7e8878338b7de7c3fff0876566649a7b8856508c4b8dfef539b69d1221eed57",
         "report": "artifacts/showcase/report.json",
         "failures": [],
         "native": {
-          "compared": true,
-          "date": "2026-11-18",
-          "agree": true
+          "compared": false
         },
         "machines": {
           "426": {
@@ -2319,14 +2293,12 @@
       "sha256": "a5f1a62752c7c91768de3a5e141bfdfc1ca122c45044414a78e75c00896dae8a",
       "validation": {
         "ok": true,
-        "verifiedOn": "2026-11-18",
-        "engineWasmSha256": "dd23cb13e4de38b0423d61d8bc7d1c856249111045b0494b292ecb5a2f112aa7",
+        "verifiedOn": "2026-11-22",
+        "engineWasmSha256": "b7e8878338b7de7c3fff0876566649a7b8856508c4b8dfef539b69d1221eed57",
         "report": "artifacts/showcase/report.json",
         "failures": [],
         "native": {
-          "compared": true,
-          "date": "2026-11-18",
-          "agree": true
+          "compared": false
         },
         "machines": {
           "426": {
@@ -2426,8 +2398,8 @@
         "en": "430 swivel head"
       },
       "description": {
-        "sv": "Endast TNC 430: cykel 19 lutar svänghuvudet 30 grader, en sned yta fräses och två hål borras vinkelrätt mot den.",
-        "en": "TNC 430 only: cycle 19 tilts the swivel head 30 degrees, a sloped face is milled and two holes are drilled square to it."
+        "sv": "Endast TNC 430: cykel 304 vrider B-huvudet 30 grader och cykel 19 lutar bearbetningsplanet lika mycket, en sned yta fräses och två hål borras vinkelrätt mot den.",
+        "en": "TNC 430 only: cycle 304 turns the B head 30 degrees and cycle 19 tilts the working plane to match, a sloped face is milled and two holes are drilled square to it."
       },
       "machines": [
         "430"
@@ -2466,9 +2438,11 @@
       "cycles": [
         7,
         19,
-        200
+        200,
+        304
       ],
       "techniques": [
+        "CYCL DEF 304 B head (machine builder, placeholder H1)",
         "CYCL DEF 19 WORKING PLANE",
         "CYCL DEF 7 DATUM SHIFT",
         "CYCL DEF 200 DRILLING in the tilted plane",
@@ -2478,7 +2452,8 @@
         "Radius compensation in the tilted plane is approximate in the engine (docs/FEATURES.txt), so the sloped face is milled with R0 centre-line passes."
       ],
       "placeholders": [
-        "V2"
+        "V2",
+        "H1"
       ],
       "expected": {
         "cutMinZ": -21,
@@ -2504,17 +2479,15 @@
         -0.5,
         0.62
       ],
-      "sha256": "4a9561e9cd82be578de365a99e5b856644398297caf990c06a76750058ed16a9",
+      "sha256": "d612929c40aef6931fb827124b301a9a0892ff9375f233070e0b836c849bcd2b",
       "validation": {
         "ok": true,
-        "verifiedOn": "2026-11-18",
-        "engineWasmSha256": "dd23cb13e4de38b0423d61d8bc7d1c856249111045b0494b292ecb5a2f112aa7",
+        "verifiedOn": "2026-11-22",
+        "engineWasmSha256": "b7e8878338b7de7c3fff0876566649a7b8856508c4b8dfef539b69d1221eed57",
         "report": "artifacts/showcase/report.json",
         "failures": [],
         "native": {
-          "compared": true,
-          "date": "2026-11-18",
-          "agree": true
+          "compared": false
         },
         "machines": {
           "430": {
@@ -2661,14 +2634,12 @@
       "sha256": "8127126e27510398284fbf9bdcc4ed46aee416833a383432d230a9bf2346e877",
       "validation": {
         "ok": true,
-        "verifiedOn": "2026-11-18",
-        "engineWasmSha256": "dd23cb13e4de38b0423d61d8bc7d1c856249111045b0494b292ecb5a2f112aa7",
+        "verifiedOn": "2026-11-22",
+        "engineWasmSha256": "b7e8878338b7de7c3fff0876566649a7b8856508c4b8dfef539b69d1221eed57",
         "report": "artifacts/showcase/report.json",
         "failures": [],
         "native": {
-          "compared": true,
-          "date": "2026-11-18",
-          "agree": true
+          "compared": false
         },
         "machines": {
           "426": {
