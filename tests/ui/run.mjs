@@ -69,8 +69,12 @@ async function launch(type) {
 async function simPage(browser, { width, height, mobile = width <= 900, lang = 'en', url = SIM_URL, storage = {}, setup = true, insp = true, motion = 'reduce' } = {}) {
   const ctx = await browser.newContext({ viewport: { width, height }, isMobile: mobile && browser.browserType() === chromium ? true : undefined,
     hasTouch: mobile, deviceScaleFactor: 1, reducedMotion: motion });
+  /* the seed goes in once per tab (window.name marks it): right after a reload Chromium's init script can read localStorage as
+     empty, and a second seed then overwrote what the page had saved (seen: Serbian chosen, the reload came back Swedish) */
   await ctx.addInitScript(([lang, storage, setup]) => {
     try {
+      if (window.name === 'tnc-qa-seeded' || location.protocol === 'about:') return;
+      window.name = 'tnc-qa-seeded';
       if (setup && localStorage.getItem('tnc.settings.v1') == null) localStorage.setItem('tnc.settings.v1', JSON.stringify({ v: 1, lang, setup: 1 }));
       for (const [k, v] of Object.entries(storage)) if (localStorage.getItem(k) == null) localStorage.setItem(k, v);
     } catch {}
@@ -424,7 +428,7 @@ async function axeScan(browser, tag) {
     { name: 'desktop', vp: { width: 1440, height: 900, mobile: false }, run: async () => {} },
     { name: 'desktop default layout (Swedish)', vp: { width: 1920, height: 1080, mobile: false, insp: false, lang: 'sv' }, run: async () => {} },
     { name: 'desktop first run', vp: { width: 1440, height: 900, mobile: false, insp: false, setup: false }, run: async () => {} },
-    { name: 'desktop settings', vp: { width: 1440, height: 900, mobile: false }, run: async (p) => { await p.click('#b-gear'); await p.click('#set-t-look'); } },
+    { name: 'desktop settings', vp: { width: 1440, height: 900, mobile: false }, run: async (p) => { await p.click('#b-gear'); await p.click('#setpanel [data-g="look"] .sp-hb'); } },
     { name: 'desktop new dialog', vp: { width: 1440, height: 900, mobile: false }, run: async (p) => { await p.click('#b-pgm'); await p.click('#b-new'); } },
     { name: 'desktop Program menu', vp: { width: 1440, height: 900, mobile: false }, run: async (p) => p.click('#b-pgm') },
     { name: 'desktop help drawer', vp: { width: 1440, height: 900, mobile: false }, run: async (p) => p.click('#b-help') },
@@ -437,7 +441,7 @@ async function axeScan(browser, tag) {
     await page.waitForTimeout(250);
     const r = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
     const bad = r.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
-    const mine = bad.filter((v) => v.nodes.some((n) => n.target.join(' ').match(/#(b-menu|hmore|hmore-x|mtabs|mt-|hdr-|dock|sk-|skpager|sr-live|scrim|ws-|b-gear|sbar|sb-|m-set|set-|setup|mach-sel|b-pgm|pgm-menu|pm-|insp-|b-insp-k|b-viewk|b-fs|b-helppage|a-play|spd-chip|b-replay|runbox|b-start|b-stop|b-reset|b-new|m-new|new-|m-help|help-|dlg-prev)/)));
+    const mine = bad.filter((v) => v.nodes.some((n) => n.target.join(' ').match(/#(b-menu|hmore|hmore-x|mtabs|mt-|hdr-|dock|sk-|skpager|sr-live|scrim|ws-|b-gear|sbar|sb-|m-set|set-|setpanel|sp-|tsh|setup|mach-sel|b-pgm|pgm-menu|pm-|insp-|b-insp-k|b-viewk|b-fs|b-helppage|a-play|spd-chip|b-replay|runbox|b-start|b-stop|b-reset|b-new|m-new|new-|m-help|help-|dlg-prev)/)));
     console.log(`  axe   [${tag}] ${s.name}: ${r.violations.length} violation types (${bad.length} serious/critical): ` +
       r.violations.map((v) => `${v.id}×${v.nodes.length}`).join(', '));
     ok(mine.length === 0, `[${tag}] axe ${s.name}: no serious/critical violation in the new shell controls`, mine.map((v) => v.id + ' ' + v.nodes[0].target).join('; '));
@@ -602,27 +606,31 @@ async function ioFlows(browser, tag) {
   await p.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
   try {
     await p.goto(SIM_URL); await ready(p); await p.waitForTimeout(800);
-    const prof = () => p.locator('#m-prof');
+    /* the profile is the bottom sheet (sim/sheet.js, #tsh); its name line is #tsh-name */
+    const prof = () => p.locator('#tsh');
+    const sheetOpen = () => p.evaluate(() => !!(window.TNC_SHEET && TNC_SHEET.isOpen) && !document.getElementById('tsh').hidden);
+    const sheetClosed = () => p.waitForFunction(() => !(window.TNC_SHEET && TNC_SHEET.isOpen) && (!document.getElementById('tsh') || document.getElementById('tsh').hidden), null, { timeout: 10000 }).then(() => true, () => false);
 
     /* 1 profile: the first visit opens the workspace with the optional setup card (no splash, no forced name prompt);
-       the Profile control asks for the name; it is stored in IndexedDB and survives a reload */
+       the Profile control opens the profile sheet with an empty name line; the name is stored in IndexedDB and survives a reload */
     await step(p, `${L} 1 profile`, async () => {
       ok(await p.locator('#setup').isVisible() && !(await prof().isVisible()), `${L} 1: first visit shows the setup card over the open workspace, no name prompt`);
       ok(await p.evaluate(() => TNC_I18N.lang === 'en' && localStorage.getItem('tnc.lang') === 'en' && JSON.parse(localStorage.getItem('tnc.settings.v1')).lang === 'en'), `${L} 1: the older language key is migrated and kept`);
       await p.keyboard.press('Escape'); await p.waitForTimeout(300);
       ok(!(await p.locator('#setup').isVisible()), `${L} 1: Esc skips the setup`);
-      await p.click('#b-prof'); await p.waitForTimeout(300);
-      ok(await prof().isVisible() && (await prof().textContent()).includes("What's your name"), `${L} 1: the Profile control opens the profile dialog, which asks for a name`);
-      await p.focus('#prof-name');
-      ok(await p.evaluate(() => document.activeElement && document.activeElement.id) === 'prof-name', `${L} 1: name field focused`);
+      await p.click('#b-prof'); await p.waitForFunction(() => window.TNC_SHEET && TNC_SHEET.isOpen, null, { timeout: 10000 }).catch(() => {});
+      ok(await sheetOpen() && await p.locator('#tsh-name').isVisible() && (await p.inputValue('#tsh-name')) === '' && await p.evaluate(() => document.getElementById('m-prof').hidden),
+        `${L} 1: the Profile control opens the profile sheet, whose name line is empty (it asks for a name; not the old profile modal)`);
+      await p.focus('#tsh-name');
+      ok(await p.evaluate(() => document.activeElement && document.activeElement.id) === 'tsh-name', `${L} 1: name field focused`);
       await p.keyboard.type(NAME); await p.keyboard.press('Enter');
       ok((await p.textContent('#b-prof')) === NAME, `${L} 1: header button shows the name`, await p.textContent('#b-prof'));
-      await p.keyboard.press('Escape'); await p.waitForTimeout(500);
-      ok(!(await prof().isVisible()), `${L} 1: Esc closes the profile dialog`);
+      await p.keyboard.press('Escape');
+      ok(await sheetClosed(), `${L} 1: Esc closes the profile sheet`);
       ok(/autosaved/.test(await p.getAttribute('#b-prof', 'data-tip') || ''), `${L} 1: header chip says autosaved (its tooltip)`, await p.getAttribute('#b-prof', 'data-tip'));
       await reload(p);
       ok((await p.textContent('#b-prof')) === NAME, `${L} 1: name persists after reload`);
-      ok(!(await prof().isVisible()) && !(await p.locator('#setup').isVisible()), `${L} 1: no setup card or name prompt after reload`);
+      ok(!(await sheetOpen()) && !(await p.locator('#setup').isVisible()), `${L} 1: no setup card or name prompt after reload`);
       await openInspector(p);
       ok(await p.evaluate((n) => new Promise((r) => { const q = indexedDB.open('keyval-store'); q.onsuccess = () => { const t = q.result.transaction('keyval').objectStore('keyval').get('tnc.profile.v2');
         t.onsuccess = () => r(!!(t.result && t.result.name === n)); t.onerror = () => r(false); }; q.onerror = () => r(false); }), NAME), `${L} 1: profile stored in IndexedDB (keyval-store / tnc.profile.v2)`);
@@ -669,12 +677,12 @@ async function ioFlows(browser, tag) {
       ok(/^0 BEGIN PGM QA_PART MM\r\n1 L X\+15/.test(t) && /\r\n\d+ END PGM QA_PART MM\r\n$/.test(t) && !/[^\r]\n/.test(t), `${L} 3: numbered TNC listing with CRLF`, JSON.stringify(t.slice(0, 60)));
       const f2 = await dl(p, out, () => p.click('#b-save'));
       ok(fileName(f2) === DL + 'USER-GEN_QA_PART.H', `${L} 3: the Save .H button downloads too`, fileName(f2));
-      await p.click('#b-prof'); await p.waitForTimeout(200);
-      profileZip = await dl(p, out, () => p.click('#prof-export'));
+      await p.click('#b-prof'); await p.waitForFunction(() => window.TNC_SHEET && TNC_SHEET.isOpen, null, { timeout: 10000 }).catch(() => {});
+      profileZip = await dl(p, out, () => p.click('#tsh-act [data-act=export]'));
       const ls = await zipNames(p, profileZip);
       ok(fileName(profileZip).startsWith(DL + 'SETTINGS_TNC_PROFILE_') && ls.includes('profile.json') && ls.some((n) => /^programs\/TNC426\/QA_PART\.H$/.test(n)),
         `${L} 3: profile export holds profile.json + programs/TNC426/QA_PART.H`, fileName(profileZip) + ': ' + ls.join(','));
-      await p.keyboard.press('Escape'); await p.waitForTimeout(200);
+      await p.keyboard.press('Escape'); await sheetClosed();
       ok(await p.evaluate(() => !document.querySelector('#proj, #pj-box, #proj-name, #b-proj-add, #sp-progs')), `${L} 3: no project UI (projects stay stored in the profile, without controls)`);
     });
 
@@ -801,14 +809,14 @@ END PGM ${n} MM
       if (!profileZip) throw new Error('no profile export from section 3');
       let nav = p.waitForEvent('load', { timeout: 8000 }).catch(() => null);
       await upload(p, profileZip);
-      await p.locator('#imp-merge').first().waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
-      ok(await prof().isVisible() && await p.locator('#imp-merge').count() === 1 && await p.locator('#imp-replace').count() === 1, `${L} 8: a profile zip offers Merge / Replace`);
-      await p.click('#imp-merge'); await nav; await ready(p); await p.waitForTimeout(600);
+      await p.locator('#tsh-ask [data-a=imp-merge]').first().waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
+      ok(await sheetOpen() && await p.locator('#tsh-ask [data-a=imp-merge]').count() === 1 && await p.locator('#tsh-ask [data-a=imp-replace]').count() === 1, `${L} 8: a profile zip opens the profile sheet, which offers Merge / Replace`);
+      await p.click('#tsh-ask [data-a=imp-merge]'); await nav; await ready(p); await p.waitForTimeout(600);
       let s = await S(p);
       ok(s.names.includes('HOLES.H') && s.names.includes('T27.H') && s.names.includes('QA_PART.H') && (await p.textContent('#b-prof')) === NAME, `${L} 8: Merge reloads, keeps mine (HOLES, T27) + the imported`, s.names.join(','));
       nav = p.waitForEvent('load', { timeout: 8000 }).catch(() => null);
       await upload(p, profileZip);
-      await p.click('#imp-replace'); await nav; await ready(p); await p.waitForTimeout(600);
+      await p.click('#tsh-ask [data-a=imp-replace]'); await nav; await ready(p); await p.waitForTimeout(600);
       s = await S(p);
       ok(!s.names.includes('HOLES.H') && s.names.includes('QA_PART.H') && !s.names.includes('ZIPA.H') && !s.tools.some((t) => t.t === 42) && dialogs.some((d) => /Replace your whole profile/.test(d)),
         `${L} 8: Replace asks, reloads, profile = the export (no HOLES / ZIPA / T42)`, s.names.join(','));
@@ -816,13 +824,14 @@ END PGM ${n} MM
 
     /* 9 new profile */
     await step(p, `${L} 9 new profile`, async () => {
-      await p.click('#b-prof'); await p.waitForTimeout(200);
+      await p.click('#b-prof'); await p.waitForFunction(() => window.TNC_SHEET && TNC_SHEET.isOpen, null, { timeout: 10000 }).catch(() => {});
       const nav = p.waitForEvent('load', { timeout: 60000 }).catch(() => null);
-      await p.click('#prof-new'); await nav; await ready(p); await p.waitForTimeout(600);
+      await p.click('#tsh-act [data-act=new]'); await nav; await ready(p); await p.waitForTimeout(600);
       const s = await S(p);
       ok(dialogs.some((d) => /Start a new, empty profile/.test(d)), `${L} 9: asks before wiping`);
       ok(!s.names.includes('QA_PART.H') && !s.tools.length && (await p.textContent('#b-prof')) !== NAME, `${L} 9: programs, tools and name are gone`);
-      ok(await prof().isVisible(), `${L} 9: the profile dialog asks for a name again`);
+      await p.waitForFunction(() => window.TNC_SHEET && TNC_SHEET.isOpen, null, { timeout: 10000 }).catch(() => {});
+      ok(await sheetOpen() && (await p.inputValue('#tsh-name')) === '', `${L} 9: the profile sheet opens again with an empty name line (asks for a name)`);
     });
 
     /* 10 */
@@ -935,7 +944,21 @@ const HTML = (p) => p.evaluate(() => { const h = document.documentElement; retur
 /* what the engine made of the program on screen: must not move when only the presentation changes */
 const ENGINE = (p) => p.evaluate(() => { const s = TNC_UI.state; return JSON.stringify([s.machine, s.pgm, s.text.length, s.res.blocks.length, s.res.moves.length, s.res.errors.length, s.segs.length, +s.total.toFixed(6)]); });
 const shown = (p, sel) => p.evaluate((q) => { const e = document.querySelector(q); if (!e || getComputedStyle(e).visibility === 'hidden') return false; const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; }, sel);   // fixed boxes have no offsetParent
-const pick = async (p, key, v) => { await p.click(`#set-body [data-set="${key}"] [data-v="${v}"]`); await p.waitForTimeout(120); };
+/* the settings side panel (sim/setpanel.js, #setpanel): the gear opens it, a group expands on its row (all start collapsed) */
+const PANEL_GROUPS = ['look', 'camera', 'view', 'effects', 'machine', 'run', 'input', 'help', 'about'];
+const GROUP_OF = { lang: 'look', decimal: 'look', skin: 'look', env: 'look', theme: 'look', quality: 'machine', motion: 'effects', sound: 'effects', tips: 'input' };
+const panelOpen = (p) => p.evaluate(() => !!(window.TNC_SETPANEL && TNC_SETPANEL.isOpen) && !document.getElementById('setpanel').hidden);
+async function gear(p, group) {
+  if (!(await panelOpen(p))) { await p.click('#b-gear'); await p.waitForFunction(() => window.TNC_SETPANEL && TNC_SETPANEL.isOpen, null, { timeout: 10000 }); }
+  if (group) { const hb = `#setpanel [data-g="${group}"] .sp-hb`; if ((await p.getAttribute(hb, 'aria-expanded')) !== 'true') await p.click(hb); await p.waitForTimeout(150); }
+}
+async function closePanel(p) { await p.keyboard.press('Escape'); await p.waitForFunction(() => !(window.TNC_SETPANEL && TNC_SETPANEL.isOpen), null, { timeout: 10000 }).catch(() => {}); }
+/* one choice in the panel: a radio (data-k / data-v) or, for sound and hints, a switch tile (data-t) set to v */
+const pick = async (p, key, v) => {
+  await gear(p, GROUP_OF[key]);
+  if (key === 'sound' || key === 'tips') { const t = `#setpanel [data-t="${key}"]`; if ((await p.getAttribute(t, 'aria-checked')) !== String(v)) await p.click(t); }
+  else await p.click(`#setpanel [data-k="${key}"] [data-v="${v}"]`);
+  await p.waitForTimeout(120); };
 
 async function businessChecks(browser, tag) {
   const L = `[${tag}] workspace`;
@@ -1001,23 +1024,27 @@ async function businessChecks(browser, tag) {
       `${L}: F opens it again with the same tab and page (state kept while closed)`);
     await page.reload(); await ready(page); await page.waitForTimeout(300);
     ok(!(await flyOpen(page)), `${L}: after a reload the inspector is collapsed again (collapsed by default)`);
-    // DEV: only gear → Settings → Advanced
-    await page.click('#b-gear');
-    ok(await shown(page, '#m-set') && (await page.textContent('#m-set-t')) === 'Inställningar', `${L}: the gear opens Settings`);
-    const tabs = await page.$$eval('#set-tabs [role=tab]', (b) => b.map((x) => x.textContent));
-    ok(tabs.join('|') === 'Allmänt|Utseende|Hjälp|Avancerat|Om', `${L}: Settings sections`, tabs.join('|'));
-    await page.click('#set-t-adv');
-    ok(await shown(page, '#set-dev') && /edition\s+core/.test(await page.textContent('#set-diag')) && /engine\s+tnc-core WebAssembly · loaded/.test(await page.textContent('#set-diag')), `${L}: Advanced holds the developer log and the diagnostics`, await page.textContent('#set-diag'));
-    await page.click('#set-dev'); await page.waitForTimeout(150);
-    ok(await shown(page, '#m-dev') && (await page.textContent('#dev-pre')).length > 200, `${L}: Settings › Advanced opens the developer log (the DEV content)`);
+    // DEV: only gear → the settings panel → Help (developer log) / About (diagnostics)
+    await gear(page);
+    ok(await shown(page, '#setpanel') && (await page.textContent('#setpanel .sp-title')) === 'Inställningar' && await page.evaluate(() => document.getElementById('m-set').hidden), `${L}: the gear opens Settings (the side panel, not the old modal)`);
+    const groups = await page.$$eval('#setpanel [data-g]', (b) => b.map((x) => x.dataset.g));
+    ok(groups.join('|') === PANEL_GROUPS.join('|'), `${L}: Settings groups`, groups.join('|'));
+    await page.evaluate(() => { window.__qaClip = null; Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: (t) => { window.__qaClip = t; return Promise.resolve(); } } }); });
+    await gear(page, 'about'); await page.click('#setpanel [data-act="diag"]');
+    await page.waitForFunction(() => window.__qaClip, null, { timeout: 5000 }).catch(() => {});
+    const diag = await page.evaluate(() => window.__qaClip || '');
+    await gear(page, 'help');
+    ok(await shown(page, '#setpanel [data-act="dev"]') && /edition\s+core/.test(diag) && /engine\s+tnc-core WebAssembly · loaded/.test(diag), `${L}: Help holds the developer log, About copies the diagnostics`, diag.split('\n').slice(0, 3).join(' / '));
+    await page.click('#setpanel [data-act="dev"]'); await page.waitForTimeout(150);
+    ok(await shown(page, '#m-dev') && (await page.textContent('#dev-pre')).length > 200 && !(await panelOpen(page)), `${L}: Settings › Help opens the developer log (the DEV content)`);
     await page.keyboard.press('Escape');
     // About
-    await page.click('#b-gear'); await page.click('#set-t-about');
-    const about = await page.evaluate(() => { const a = document.getElementById('about-gh'); return { text: a.textContent, href: a.getAttribute('href'), rel: a.rel, notice: document.getElementById('about-notice').textContent }; });
-    ok(about.text === 'gigacook on GitHub' && about.href === 'https://github.com/gigacook' && /noopener/.test(about.rel), `${L}: About links "gigacook on GitHub"`, JSON.stringify(about));
+    await gear(page, 'about');
+    const about = await page.evaluate(() => { const a = document.getElementById('sp-gh'); return { text: a.textContent, href: a.getAttribute('href'), rel: a.rel, notice: document.querySelector('#setpanel [data-g="about"]').textContent }; });
+    ok(/^gigacook (på|on) GitHub$/.test(about.text) && about.href === 'https://github.com/gigacook' && /noopener/.test(about.rel), `${L}: About links "gigacook på GitHub"`, JSON.stringify(about));
     ok(/HEIDENHAIN/.test(about.notice) && /Inte knuten/.test(about.notice), `${L}: About carries the non-affiliation notice`, about.notice);
     // help section: in-app help, shortcuts
-    await page.click('#set-t-help'); await page.click('#set-keys'); await page.waitForTimeout(150);
+    await gear(page, 'help'); await page.click('#setpanel [data-act="keys"]'); await page.waitForTimeout(150);
     ok(await shown(page, '#m-help') && await page.evaluate(() => document.querySelector('#help-tabs [aria-selected="true"]').dataset.tab === 'keys' && document.querySelectorAll('#help-body .klist div').length > 15), `${L}: Settings › Help shows the shortcut list`);
     await page.keyboard.press('Escape');
 
@@ -1026,9 +1053,9 @@ async function businessChecks(browser, tag) {
     const svKeys = await page.$$eval('#sks .sk', (b) => b.map((x) => x.textContent));
     ok((await page.textContent('#b-new span')) === 'Nytt program…' && /Testgrafik/.test(svText) && !/New program|Test graphics|Inspector/.test(svText), `${L}: Swedish screen has no English labels beside the Swedish ones`);
     const before = await ENGINE(page);
-    await page.click('#b-gear'); await page.click('#set-t-general'); await pick(page, 'lang', 'en');
-    ok((await page.textContent('#m-set-t')) === 'Settings' && await page.evaluate(() => document.activeElement && document.activeElement.dataset.v === 'en'), `${L}: the language switch redraws Settings in English and keeps the focus on the choice`, await page.textContent('#m-set-t'));
-    await page.keyboard.press('Escape');
+    await pick(page, 'lang', 'en');
+    ok((await page.textContent('#setpanel .sp-title')) === 'Settings' && await page.evaluate(() => document.activeElement && document.activeElement.dataset.v === 'en'), `${L}: the language switch redraws Settings in English and keeps the focus on the choice`, await page.textContent('#setpanel .sp-title'));
+    await closePanel(page);
     const enText = await page.evaluate(() => document.body.innerText);
     ok((await page.textContent('#b-new span')) === 'New program…' && /Test graphics/.test(enText) && !/Nytt program|Testgrafik|Inställningar|Inspektör/.test(enText), `${L}: English screen has no Swedish labels left`);
     ok((await HTML(page)).lang === 'en' && (await SETTINGS(page)).lang === 'en', `${L}: language stored in tnc.settings.v1 and on <html lang>`);
@@ -1046,12 +1073,12 @@ async function businessChecks(browser, tag) {
     const geo = () => page.evaluate(() => { const r = (q) => document.querySelector(q).getBoundingClientRect(), k = getComputedStyle(document.querySelector('#sks .sk'));
       return { skin: document.documentElement.dataset.skin, pgmX: Math.round(r('.col-pgm').left), gfxX: Math.round(r('.col-gfx').left), dlgAbove: r('.col-pgm .dlg').top < r('#crt').top,
         keyFont: k.fontFamily.split(',')[0], keyRadius: k.borderTopLeftRadius, keyBg: k.backgroundColor, bezel: Math.round(r('#crt').left - r('.col-pgm').left), gap5: Math.round(parseFloat(getComputedStyle(document.querySelectorAll('#sks .sk')[4]).marginLeft)) }; });
-    await page.click('#b-gear'); await page.click('#set-t-look');
-    const names = await page.$$eval('#set-body [data-set="skin"] .nm', (n) => n.map((x) => x.textContent));
+    await gear(page, 'look');
+    const names = await page.$$eval('#setpanel [data-k="skin"] [role=radio]', (n) => n.map((x) => x.textContent));
     ok(names.includes('426 Classic') && names.includes('430 Steel'), `${L}: two controller skins, 426 Classic and 430 Steel`, names.join('|'));
-    await pick(page, 'skin', '426'); await page.keyboard.press('Escape'); await page.waitForTimeout(250);
+    await pick(page, 'skin', '426'); await closePanel(page); await page.waitForTimeout(250);
     const g426 = await geo(); await page.screenshot({ path: join(SHOTS, `${tag}-business-skin-426.png`) });
-    await page.click('#b-gear'); await pick(page, 'skin', '430'); await page.keyboard.press('Escape'); await page.waitForTimeout(250);
+    await pick(page, 'skin', '430'); await closePanel(page); await page.waitForTimeout(250);
     const g430 = await geo(); await page.screenshot({ path: join(SHOTS, `${tag}-business-skin-430.png`) });
     ok(g426.skin === '426' && g430.skin === '430', `${L}: the skin is on <html data-skin>`, g426.skin + ' ' + g430.skin);
     ok(g426.pgmX < g426.gfxX && g430.gfxX < g430.pgmX, `${L}: skins differ in layout: 426 has the program left, 430 the 3-D view left`, JSON.stringify([g426, g430]));
@@ -1067,19 +1094,19 @@ async function businessChecks(browser, tag) {
 
     // ---- environments: scene and frame, independent of the skin
     const scene = () => page.evaluate(() => ({ env: document.documentElement.dataset.env, bg: TNC_UI.scene.background.getHexString(), frame: getComputedStyle(document.querySelector('.bar')).backgroundColor, skin: document.documentElement.dataset.skin }));
-    await page.click('#b-gear'); await page.click('#set-t-look');
-    const envs = await page.$$eval('#set-body [data-set="env"] .nm', (n) => n.map((x) => x.textContent));
+    await gear(page, 'look');
+    const envs = await page.$$eval('#setpanel [data-k="env"] [role=radio]', (n) => n.map((x) => x.textContent));
     ok(envs.join('|') === 'Cold Steel|Workshop Night', `${L}: two environments, Cold Steel and Workshop Night`, envs.join('|'));
     await pick(page, 'env', 'cold-steel'); const cold = await scene();
     await pick(page, 'env', 'workshop-night'); const night = await scene();
-    await page.keyboard.press('Escape'); await page.waitForTimeout(300); await page.screenshot({ path: join(SHOTS, `${tag}-business-env-night.png`) });
+    await closePanel(page); await page.waitForTimeout(300); await page.screenshot({ path: join(SHOTS, `${tag}-business-env-night.png`) });
     ok(cold.env === 'cold-steel' && night.env === 'workshop-night' && cold.bg !== night.bg && cold.frame === night.frame, `${L}: the environment changes the 3-D scene; the frame belongs to the theme`, JSON.stringify([cold, night]));
     ok(cold.skin === night.skin && await ENGINE(page) === before, `${L}: the environment changes neither the skin nor the engine result`, JSON.stringify([cold.skin, night.skin]));
 
     // ---- quality, motion, sound; everything persists
-    await page.click('#b-gear'); await page.click('#set-t-look'); await pick(page, 'quality', 'low'); await pick(page, 'skin', '430');
-    await page.click('#set-t-general'); await pick(page, 'motion', 'full'); await pick(page, 'sound', 'false'); await pick(page, 'tips', 'false');
-    await page.keyboard.press('Escape');
+    await pick(page, 'quality', 'low'); await pick(page, 'skin', '430');
+    await pick(page, 'motion', 'full'); await pick(page, 'sound', 'false'); await pick(page, 'tips', 'false');
+    await closePanel(page);
     const want = { v: 1, lang: 'en', skin: '430', env: 'workshop-night', quality: 'low', motion: 'full', sound: false, setup: 1, tips: false };
     const got = await SETTINGS(page);
     ok(Object.keys(want).every((k) => got[k] === want[k]), `${L}: every setting is stored in localStorage tnc.settings.v1`, JSON.stringify(got));
@@ -1096,9 +1123,9 @@ async function businessChecks(browser, tag) {
     ok(h3.lang === 'sv' && h3.skin === '426' && h3.env === 'cold-steel' && h3.quality === 'high', `${L}: malformed stored settings fall back to the defaults`, JSON.stringify(h3));
     // help reset
     await page.evaluate(() => localStorage.setItem('tnc.lessons.v1', '{"learn:0":1}'));
-    await page.click('#b-gear'); await page.click('#set-t-help'); await page.click('#set-reset'); await page.waitForTimeout(150);
+    await gear(page, 'help'); await page.click('#setpanel [data-act="reset"]'); await page.waitForTimeout(150);
     ok((await SETTINGS(page)).setup === 0 && await page.evaluate(() => localStorage.getItem('tnc.lessons.v1')) === null, `${L}: help reset brings the introduction back and clears finished lessons`);
-    await page.keyboard.press('Escape');
+    await closePanel(page);
     ok(errors.length === 0, `${L}: no page errors (settings)`, errors.slice(0, 3).join(' | '));
     await ctx.close();
   }
@@ -1115,7 +1142,7 @@ async function businessChecks(browser, tag) {
     await a.ctx.close();
     const b = await simPage(browser, { width: 1440, height: 900, mobile: false, motion: 'no-preference' });
     ok((await HTML(b.page)).motion === 'full' && await dur(b.page) !== '0s', `${L}: without the system setting motion is full`, await dur(b.page));
-    await b.page.click('#b-gear'); await pick(b.page, 'motion', 'reduced'); await b.page.keyboard.press('Escape');
+    await pick(b.page, 'motion', 'reduced'); await closePanel(b.page);
     ok((await HTML(b.page)).motion === 'reduced' && await dur(b.page) === '0s' && await b.page.evaluate(() => getComputedStyle(document.querySelector('.rb')).animationName === 'none'), `${L}: Motion = Reduced stops transitions and animations`);
     // a crash does not shake the camera in reduced motion
     await b.page.evaluate(() => TNC_UI.open('CRASHQA', 'BEGIN PGM CRASHQA MM\nBLK FORM 0.1 Z X+0 Y+0 Z-20\nBLK FORM 0.2 X+100 Y+100 Z+0\nTOOL CALL 4 Z S2000\nL X+50 Y+50 Z-5 R0 FMAX M3\nEND PGM CRASHQA MM', {}));
@@ -1194,13 +1221,14 @@ async function businessChecks(browser, tag) {
     await page.click('#b-menu'); await page.waitForTimeout(250);
     const small = await page.evaluate(() => [...document.querySelectorAll('#hmore button')].filter((e) => e.offsetParent !== null).map((e) => { const r = e.getBoundingClientRect(); return { id: e.id || e.textContent.trim(), w: Math.round(r.width), h: Math.round(r.height) }; }).filter((r) => r.w < 44 || r.h < 44));
     ok(small.length === 0, `${L}: every control in the drawer is at least 44 × 44 px`, JSON.stringify(small));
-    await page.click('#b-gear'); await page.waitForTimeout(250);
-    ok(await shown(page, '#m-set') && await page.evaluate(() => !document.getElementById('hmore').classList.contains('open')), `${L}: the gear in the drawer opens Settings`);
+    await page.click('#b-gear'); await page.waitForFunction(() => window.TNC_SETPANEL && TNC_SETPANEL.isOpen, null, { timeout: 10000 }).catch(() => {}); await page.waitForTimeout(250);
+    ok(await shown(page, '#setpanel') && await page.evaluate(() => !document.getElementById('hmore').classList.contains('open')), `${L}: the gear in the drawer opens Settings`);
+    for (const g of PANEL_GROUPS) await gear(page, g);
     const o2 = await overflow(page);
-    const small2 = await page.evaluate(() => [...document.querySelectorAll('#m-set button')].filter((e) => e.offsetParent !== null).map((e) => { const r = e.getBoundingClientRect(); return { id: e.id || e.textContent.trim(), w: Math.round(r.width), h: Math.round(r.height) }; }).filter((r) => r.w < 44 || r.h < 44));
-    ok(o2.sw <= o2.cw && small2.length === 0, `${L}: Settings reflows at 390 px with 44 px targets`, JSON.stringify(small2));
+    const small2 = await page.evaluate(() => [...document.querySelectorAll('#setpanel button')].filter((e) => e.offsetParent !== null && !e.closest('[inert]')).map((e) => { const r = e.getBoundingClientRect(); return { id: e.id || e.textContent.trim().slice(0, 18), w: Math.round(r.width), h: Math.round(r.height) }; }).filter((r) => r.w < 44 || r.h < 44));
+    ok(o2.sw <= o2.cw && small2.length === 0, `${L}: Settings reflows at 390 px with 44 px targets (every group open)`, JSON.stringify(small2));
     await page.screenshot({ path: join(SHOTS, `${tag}-business-phone-settings.png`) });
-    await page.keyboard.press('Escape');
+    await closePanel(page);
     ok(errors.length === 0, `${L}: no page errors (phone)`, errors.slice(0, 3).join(' | '));
     await ctx.close();
   }
@@ -1215,12 +1243,17 @@ async function reachChecks(browser, tag) {
   const av = await page.evaluate(() => TNC_UI.view.get().available);
   ok(there.length === 0 && av.material && av.pick && av.axes, `${L}: the material picker and the pick / axis-vector toggles are wired in and reachable through UIAPI.view (the settings panel)`, there.join(',') + ' ' + JSON.stringify(av));
   // material: changes the stock's material and is kept
-  const mat = () => page.evaluate(() => { const s = TNC_UI.scene; let m = null; s.traverse((o) => { if (!m && o.isMesh && o.material && o.material.vertexColors && o.geometry.index) m = o.material; });
-    return { id: TNC_MATERIALS.current.id, sel: document.getElementById('mat-sel').value, color: m ? m.color.getHexString() : null, metal: m ? m.metalness : null, rough: m ? m.roughness : null, n: document.getElementById('mat-sel').options.length }; });
+  /* the stock is drawn by stockview.js (tiles named stock-tile): the preset's colour and roughness go into its shader
+     uniforms (raw face = colour × 0.54, cut-face roughness = roughness × 0.6), the metalness onto the material */
+  const mat = () => page.evaluate(() => { const s = TNC_UI.scene, T = TNC_UI.THREE, P = TNC_MATERIALS.current; let m = null;
+    s.traverse((o) => { if (!m && o.isMesh && o.name === 'stock-tile' && o.material && o.material.userData && o.material.userData.sv) m = o.material; });
+    const U = m && m.userData.sv;
+    return { id: P.id, sel: document.getElementById('mat-sel').value, color: new T.Color(P.color).getHexString(), raw: U ? U.uRaw.value.getHexString() : null,
+      want: new T.Color(P.color).multiplyScalar(0.54).getHexString(), metal: m ? m.metalness : null, cutR: U ? +U.uCutR.value.toFixed(3) : null, n: document.getElementById('mat-sel').options.length }; });
   const m0 = await mat();
   await page.evaluate(() => TNC_UI.view.set('material', 'brass')); await page.waitForTimeout(200);
   const m1 = await mat();
-  ok(m0.n === 10 && m1.id === 'brass' && m1.sel === 'brass' && m1.color === 'cfa257' && m1.color !== m0.color && m1.metal === 0.85 && m1.rough === 0.3, `${L}: choosing Brass changes the stock material (colour, metalness, roughness)`, JSON.stringify([m0, m1]));
+  ok(m0.n === 10 && m1.id === 'brass' && m1.sel === 'brass' && m1.color === 'cfa257' && m1.raw === m1.want && m1.raw !== m0.raw && m1.metal === 0.85 && m1.cutR === 0.18, `${L}: choosing Brass changes the stock material (colour, metalness, roughness)`, JSON.stringify([m0, m1]));
   // toggles: state changes, is stored, and does what it says
   const viz = () => page.evaluate(() => ({ pick: document.getElementById('b-pick').dataset.on, vec: document.getElementById('b-vec').dataset.on, ap: document.getElementById('b-pick').getAttribute('aria-pressed'), av: document.getElementById('b-vec').getAttribute('aria-pressed'),
     ls: JSON.parse(localStorage.getItem('tnc.viz') || 'null'), labels: [...document.querySelectorAll('#gfx .vlab')].filter((e) => !e.hidden && !e.classList.contains('pick')).length }));
@@ -1241,20 +1274,20 @@ async function reachChecks(browser, tag) {
   await page.reload(); await ready(page); await page.waitForTimeout(400); await open();
   const v3 = await viz(), m3 = await mat();
   ok(v3.pick === '0' && v3.vec === '0' && v3.ap === 'false' && v3.av === 'false', `${L}: both toggles keep their state after a reload`, JSON.stringify(v3));
-  ok(m3.id === 'brass' && m3.sel === 'brass' && m3.color === 'cfa257', `${L}: the material is kept after a reload`, JSON.stringify(m3));
+  ok(m3.id === 'brass' && m3.sel === 'brass' && m3.color === 'cfa257' && m3.raw === m3.want, `${L}: the material is kept after a reload`, JSON.stringify(m3));
   await page.evaluate(() => { TNC_UI.view.set('axes', true); TNC_UI.view.set('pick', true); TNC_UI.view.set('material', 'aluminium'); });
   // every element a script looks up by id exists (no control anchored on a missing element)
   const orphans = await page.evaluate(() => { const src = [...document.querySelectorAll('script')].map((s) => s.textContent).filter((t) => /TNC_UI_PLUGINS|TNC_UI\b/.test(t) && t.length < 400000).join('\n');
     const ids = new Set([...src.matchAll(/getElementById\('([\w-]+)'\)/g)].map((m) => m[1]));
-    const made = /^(mat-sel|b-pick|b-vec|ailive|ai-|mp-|prof-|imp-|set-|about-|tt-ht|dlg-sys|dlg-blk|tnc-|gc-)/;
+    const made = /^(mat-sel|b-pick|b-vec|ailive|ai-|mp-|prof-|imp-|set-|about-|tt-ht|dlg-sys|dlg-blk|tnc-|gc-|tsh-)/;   // tsh-: the profile sheet builds its own nodes (tsh-css when opened)
     return [...ids].filter((id) => !document.getElementById(id) && !made.test(id)); });
   ok(orphans.length === 0, `${L}: no script looks up an element id the page does not have`, orphans.join(','));
   // the decimal character (MP 7280): its own setting, persists, changes the listing
   const row = () => page.evaluate(() => { const e = [...document.querySelectorAll('#plist .bt')].find((x) => /^L X\+84/.test(x.textContent)); return e ? e.textContent : null; });
   ok(await row() === 'L X+84.5 Y+91.5 R0 F MAX', `${L}: English follows with a decimal point`, await row());
-  await page.click('#b-gear'); await page.click('#set-t-general');
-  ok((await page.textContent('#set-body')).includes('Decimal character (MP 7280)'), `${L}: Settings has "Decimal character (MP 7280)"`);
-  await pick(page, 'decimal', 'comma'); await page.keyboard.press('Escape');
+  await gear(page, 'look');
+  ok((await page.textContent('#setpanel [data-g="look"]')).includes('Decimal character (MP 7280)'), `${L}: Settings has "Decimal character (MP 7280)"`);
+  await pick(page, 'decimal', 'comma'); await closePanel(page);
   ok(await row() === 'L X+84,5 Y+91,5 R0 F MAX' && (await SETTINGS(page)).decimal === 'comma' && await page.evaluate(() => /\nL X\+84\.5 Y\+91\.5 R0 FMAX\n/.test(TNC_UI.state.text)), `${L}: Comma changes the listing, not the stored program`, await row());
   await page.reload(); await ready(page); await page.waitForTimeout(300);
   ok(await row() === 'L X+84,5 Y+91,5 R0 F MAX' && await page.evaluate(() => TNC_I18N.lang === 'en'), `${L}: the decimal character survives a reload, the language is still English`, await row());
@@ -1271,14 +1304,14 @@ async function serbianChecks(browser, tag) {
   const L = `[${tag}] srpski`;
   {
     const { ctx, page, errors } = await simPage(browser, { width: 1920, height: 1080, mobile: false, lang: 'sv', insp: false });
-    await page.click('#b-gear'); await page.click('#set-t-general');
-    const langs = await page.$$eval('#set-body [data-set="lang"] [role=radio]', (b) => b.map((x) => x.textContent + ':' + x.getAttribute('aria-checked')));
+    await gear(page, 'look');
+    const langs = await page.$$eval('#setpanel [data-k="lang"] [role=radio]', (b) => b.map((x) => x.textContent + ':' + x.getAttribute('aria-checked')));
     ok(langs.join('|') === 'Svenska:true|English:false|Srpski:false', `${L}: the switch offers Svenska / English / Srpski, Swedish chosen`, langs.join('|'));
     const lbls = () => page.evaluate(() => ['#b-new span', '#b-help span', '#b-tools', '#b-save'].map((q) => document.querySelector(q).textContent.trim()).concat(document.querySelector('.rb.go .lb').textContent));
     const sv = await lbls();
     await pick(page, 'lang', 'sr');
-    ok((await page.textContent('#m-set-t')) === 'Podešavanja' && await page.evaluate(() => document.activeElement.dataset.v === 'sr'), `${L}: choosing Srpski redraws Settings ("Podešavanja") with the focus kept`, await page.textContent('#m-set-t'));
-    await page.keyboard.press('Escape'); await page.waitForTimeout(200);
+    ok((await page.textContent('#setpanel .sp-title')) === 'Podešavanja' && await page.evaluate(() => document.activeElement.dataset.v === 'sr'), `${L}: choosing Srpski redraws Settings ("Podešavanja") with the focus kept`, await page.textContent('#setpanel .sp-title'));
+    await closePanel(page); await page.waitForTimeout(200);
     const sr = await lbls();
     ok(sr.join('|') === 'Novi program…|pomoć|Alat|Sačuvaj .H|Pokreni' && sr.every((t, i) => t !== sv[i]), `${L}: the visible labels change (Novi program…, pomoć, Alat, Sačuvaj .H, Pokreni)`, sr.join('|'));
     const h = await HTML(page);
@@ -1295,20 +1328,22 @@ async function serbianChecks(browser, tag) {
     await page.locator('#gl').click({ position: { x: 300, y: 300 } }); await page.keyboard.press('h'); await page.waitForTimeout(150); await page.click('#help-tabs [data-tab="keys"]');
     ok(/Kursor bloka/.test(await page.textContent('#help-body')) && /Prečice/.test(await page.textContent('#help-tabs')), `${L}: the shortcut list is in Serbian`);
     await page.keyboard.press('Escape');
-    await page.click('#b-prof'); await page.waitForTimeout(200);
-    ok(/Kako se zovete/.test(await page.textContent('#prof-body')) && /Izvezi profil/.test(await page.textContent('#prof-body')), `${L}: the profile dialog is in Serbian`);
-    await page.keyboard.press('Escape');
+    await page.click('#b-prof'); await page.waitForFunction(() => window.TNC_SHEET && TNC_SHEET.isOpen, null, { timeout: 10000 }).catch(() => {});
+    const sh = await page.evaluate(() => ({ lines: [...document.querySelectorAll('#tsh-lines .tsh-ln > .a')].map((e) => e.textContent).join('|'), act: document.getElementById('tsh-act').textContent }));
+    ok(/^ime\|programi\|alati\|mašine/.test(sh.lines) && /izvezi/.test(sh.act) && /novi profil/.test(sh.act), `${L}: the profile sheet is in Serbian`, JSON.stringify(sh));
+    await page.keyboard.press('Escape'); await page.waitForFunction(() => !TNC_SHEET.isOpen, null, { timeout: 10000 }).catch(() => {});
     await page.screenshot({ path: join(SHOTS, `${tag}-business-sr-1920.png`) });
     const o = await overflow(page);
     ok(o.sw <= o.cw && await page.evaluate(() => { const b = document.querySelector('.bar').getBoundingClientRect(); return b.height < 60 && [...document.querySelectorAll('.bar button')].filter((e) => e.offsetParent).every((e) => e.scrollWidth <= e.clientWidth + 1); }), `${L}: the bar stays one row at 1920, no clipped label`);
-    await page.reload(); await ready(page); await page.waitForTimeout(300);
-    ok((await HTML(page)).lang === 'sr-Latn' && (await page.textContent('#b-new span')).trim() === 'Novi program…' && await page.evaluate(() => TNC_I18N.lang === 'sr'), `${L}: Serbian survives a reload`);
+    await page.reload(); await ready(page); await until(page, () => window.TNC_I18N && TNC_I18N.lang === 'sr' && document.documentElement.lang === 'sr-Latn' && /Novi program/.test(document.querySelector('#b-new span').textContent));
+    ok((await HTML(page)).lang === 'sr-Latn' && (await page.textContent('#b-new span')).trim() === 'Novi program…' && await page.evaluate(() => TNC_I18N.lang === 'sr'), `${L}: Serbian survives a reload`,
+      JSON.stringify([await HTML(page), await page.textContent('#b-new span'), await page.evaluate(() => TNC_I18N.lang)]));
     ok(errors.length === 0, `${L}: no page errors`, errors.slice(0, 3).join(' | '));
     await ctx.close();
   }
   {
     const { ctx, page, errors } = await simPage(browser, { width: 390, height: 844, lang: 'sr' });
-    const clipped = () => page.evaluate(() => [...document.querySelectorAll('.bar button, .mtabs button, .dock .sk, .hmore button, .col .ch button, .stabs button, #m-set button, .mode')].filter((e) => e.offsetParent !== null && !e.hidden && getComputedStyle(e).visibility !== 'hidden')   // not the closed drawer's controls
+    const clipped = () => page.evaluate(() => [...document.querySelectorAll('.bar button, .mtabs button, .dock .sk, .hmore button, .col .ch button, .stabs button, #setpanel button, .mode')].filter((e) => e.offsetParent !== null && !e.hidden && getComputedStyle(e).visibility !== 'hidden')   // not the closed drawer's controls
       .filter((e) => { const r = e.getBoundingClientRect(); return e.scrollWidth > e.clientWidth + 2 || r.right > innerWidth + 1 || r.left < -1; }).map((e) => (e.id || e.textContent.trim().slice(0, 16))));
     for (const p of ['pgm', 'gfx', 'side']) { await page.click(`#mt-${p}`); const o = await overflow(page), c = await clipped();
       ok(o.sw <= o.cw && c.length === 0, `${L}: 390 × 844 workspace ${p}: no sideways scroll, no clipped or cut-off control`, `${o.sw}/${o.cw} ${c.join(',')}`); }
@@ -1317,11 +1352,11 @@ async function serbianChecks(browser, tag) {
     await page.click('.mode[data-m="test"]');
     await page.click('#b-menu'); await page.waitForTimeout(250);
     let c = await clipped(); ok(c.length === 0 && (await overflow(page)).sw <= 390, `${L}: 390 × 844 the drawer fits`, c.join(','));
-    await page.click('#b-gear'); await page.waitForTimeout(250);
-    for (const t of ['general', 'look', 'help', 'adv', 'about']) { await page.click('#set-t-' + t); await page.waitForTimeout(80); c = await clipped(); const o = await overflow(page);
-      const wide = await page.evaluate(() => { const b = document.getElementById('set-body'); return b.scrollWidth > b.clientWidth + 1; });
-      ok(c.length === 0 && o.sw <= o.cw && !wide, `${L}: 390 × 844 Settings › ${t} fits`, `${c.join(',')} wide=${wide}`); }
-    await page.keyboard.press('Escape');
+    await page.click('#b-gear'); await page.waitForFunction(() => window.TNC_SETPANEL && TNC_SETPANEL.isOpen, null, { timeout: 10000 }).catch(() => {}); await page.waitForTimeout(250);
+    for (const g of PANEL_GROUPS) { await gear(page, g); c = await clipped(); const o = await overflow(page);
+      const wide = await page.evaluate(() => { const b = document.querySelector('#setpanel .sp-body'); return b.scrollWidth > b.clientWidth + 1; });
+      ok(c.length === 0 && o.sw <= o.cw && !wide, `${L}: 390 × 844 Settings › ${g} fits`, `${c.join(',')} wide=${wide}`); }
+    await closePanel(page);
     ok(errors.length === 0, `${L}: no page errors (phone)`, errors.slice(0, 3).join(' | '));
     await ctx.close();
   }
@@ -1333,7 +1368,8 @@ async function polarFlow(browser, tag) {
   const L = `[${tag}] polar`;
   const out = mkdtempSync(join(tmpdir(), 'tnc-ui-polar-'));
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, acceptDownloads: true, deviceScaleFactor: 1, reducedMotion: 'reduce' });
-  await ctx.addInitScript(() => { try { if (localStorage.getItem('tnc.settings.v1') == null) localStorage.setItem('tnc.settings.v1', JSON.stringify({ v: 1, lang: 'sv', setup: 1 })); } catch {} });
+  await ctx.addInitScript(() => { try { if (window.name === 'tnc-qa-seeded') return; window.name = 'tnc-qa-seeded';   // once per tab, as in simPage
+    if (localStorage.getItem('tnc.settings.v1') == null) localStorage.setItem('tnc.settings.v1', JSON.stringify({ v: 1, lang: 'sv', setup: 1 })); } catch {} });
   const p = await ctx.newPage();
   const errs = [];
   p.on('pageerror', (e) => errs.push('pageerror: ' + e.message));

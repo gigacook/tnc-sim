@@ -232,7 +232,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await send(page, { type: 'tnc:present', lang: 'sv' }); await sleep(250);
     ok((await sim(frame)).lang === 'sv' && (await sim(frame)).html.skin === '430', 'a partial tnc:present changes only what it names');
     n = await mark(page);
-    await frame.evaluate(() => document.getElementById('b-gear').click()); await frame.click('#set-t-look'); await frame.click('#set-body [data-set="env"] [data-v="cold-steel"]'); await frame.press('body', 'Escape');
+    // the gear opens the settings panel (sim/setpanel.js); Appearance holds the environment
+    await frame.evaluate(() => document.getElementById('b-gear').click()); await frame.waitForFunction(() => window.TNC_SETPANEL && TNC_SETPANEL.isOpen, null, { timeout: 10000 });
+    if ((await frame.getAttribute('#setpanel [data-g="look"] .sp-hb', 'aria-expanded')) !== 'true') await frame.click('#setpanel [data-g="look"] .sp-hb');
+    await frame.click('#setpanel [data-k="env"] [data-v="cold-steel"]'); await frame.press('body', 'Escape');
     const set = await waitMsg(page, n, 'tnc:settings');
     ok(set && set.lang === 'sv' && set.skin === '430' && set.env === 'cold-steel' && set.quality === 'low' && set.motion === 'reduced' && set.sound === false && Object.keys(set).sort().join() === 'env,lang,motion,quality,skin,sound,type',
       'a setting changed inside the simulator is reported: tnc:settings {lang, skin, env, quality, motion, sound}', JSON.stringify(set));

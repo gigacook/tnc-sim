@@ -121,7 +121,7 @@ var TNC_SHEET = (function () {
     '.tsh-new .tsh-menu{position:static;background:transparent}',
     '.tsh-act{flex:none;display:flex;flex-wrap:wrap;gap:8px 20px;align-items:baseline;padding:10px 28px 12px;border-top:1px solid var(--scr-line)}',
     '.tsh-act button{color:var(--scr-accent)}',
-    '.tsh-act .sp{flex:1}',
+    '.tsh-act .tsh-sp{flex:1}',
     '.tsh-act button.dim{color:var(--scr-muted)}',
     '.tsh-act button:hover{text-decoration:underline}',
     '.tsh kbd{font:12px var(--gc-font-mono);color:var(--scr-muted);margin-left:5px}',
@@ -271,7 +271,7 @@ var TNC_SHEET = (function () {
     return '<button type="button" data-act="folder">' + esc(L('pickFolder')) + '</button>' +
       '<button type="button" data-act="import">' + esc(L('import')) + '<kbd>Ctrl I</kbd></button>' +
       '<button type="button" data-act="export">' + esc(L('export')) + '<kbd>Ctrl E</kbd></button>' +
-      '<span class="sp"></span>' +
+      '<span class="tsh-sp"></span>' +
       '<button type="button" class="dim" data-act="new">' + esc(L('newProfile')) + '</button>' +
       '<button type="button" class="dim" data-act="close">' + esc(L('close')) + '<kbd>Esc</kbd></button>';
   }
@@ -427,7 +427,7 @@ var TNC_SHEET = (function () {
     if (b.dataset.size) { setPref('size', b.dataset.size); $('tsh-bar').innerHTML = barHTML(); renderCards(); var q2 = root.querySelector('[data-size="' + b.dataset.size + '"]'); if (q2) q2.focus(); return; }
     if (b.dataset.mach) { ui.setMachine(b.dataset.mach); render(); var mb = root.querySelector('[data-mach="' + b.dataset.mach + '"]'); if (mb) mb.focus(); return; }
     if (b.dataset.tt) { close(); ui.toolTable(); return; }
-    if (b.dataset.set) { close(); ui.openSettings(); return; }
+    if (b.dataset.set) { close(); if (window.TNC_SETPANEL) TNC_SETPANEL.open('look'); else ui.openSettings(); return; }
     if (b.dataset.folder) { (b.dataset.folder === 'warn' ? ui.profile.regrant() : Promise.resolve(ui.profile.pickFolder())).then(updateFolder); return; }
     if (b.dataset.newpgm) { newProgramAsk(); return; }
     if (a === 'nn-ok') { newProgramGo(); return; }
