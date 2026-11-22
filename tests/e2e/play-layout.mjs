@@ -226,7 +226,7 @@ try {
     await page.waitForTimeout(1200);
     const fr = await box(page, '.work > iframe');
     c.ok(fr.w === w && fr.h === h && (await noSideScroll(page)), `${size} Business: the machine fills the screen, no sideways scroll`, JSON.stringify(fr));
-    const bad = await lost(sim, ['#modes', '#modes [data-m]', '#b-start', '#b-new', '#b-insp', '#spd button', '#dlg-in']);
+    const bad = await lost(sim, ['#modes', '#modes [data-m]', '#b-start', '#b-pgm', '#b-insp-k', '#spd-chip', '#dlg-in']);
     const inSim = await sim.evaluate(() => ({ scroll: document.documentElement.scrollWidth <= innerWidth, canvases: [...document.querySelectorAll('canvas')].filter((cv) => cv.getBoundingClientRect().width > 300).map((cv) => { const r = cv.getBoundingClientRect(); return { buffer: cv.width / cv.height, box: r.width / r.height, w: Math.round(r.width), h: Math.round(r.height) }; }) }));
     c.ok(bad.length === 0 && inSim.scroll, `${size} Business: modes, run, new program, inspector, speed and the block line are all on screen`, bad.join(' | '));
     c.ok(inSim.canvases.length >= 1 && inSim.canvases.every((k) => Math.abs(k.buffer / k.box - 1) < 0.02), `${size} Business: the 3-D view keeps its aspect (${inSim.canvases.map((k) => `${k.w}x${k.h}`).join(', ')})`, JSON.stringify(inSim.canvases));

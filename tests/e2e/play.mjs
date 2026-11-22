@@ -112,11 +112,11 @@ try {
     const sim = await (await page.waitForSelector('.shop-sim iframe', { state: 'attached' })).contentFrame();
     await sim.waitForFunction(() => window.TNC_UI?.state?.res, null, { timeout: 45000 });
     await page.waitForTimeout(500);
-    // end to end: the shell sent tnc:present {lang:'sr'}; the simulator's own labels are Serbian (sim/i18n.js: btn.insp, btn.new)
-    const simLabels = () => sim.evaluate(() => ({ lang: window.TNC_UI.lang, insp: document.querySelector('#b-insp [data-i18n="btn.insp"]')?.textContent.trim(), neu: document.querySelector('#b-new [data-i18n="btn.new"]')?.textContent.trim() }));
+    // end to end: the shell sent tnc:present {lang:'sr'}; the simulator's own labels are Serbian (sim/i18n.js: sb.insp, pm.new)
+    const simLabels = () => sim.evaluate(() => ({ lang: window.TNC_UI.lang, insp: document.querySelector('#b-insp-k [data-i18n="sb.insp"]')?.textContent.trim(), neu: document.querySelector('#b-new [data-i18n="pm.new"]')?.textContent.trim() }));
     await sim.waitForFunction(() => window.TNC_UI.lang === 'sr', null, { timeout: WAIT }).catch(() => {});
     let labels = await simLabels();
-    c.ok(labels.lang === 'sr' && labels.insp === 'Inspektor' && labels.neu === 'Novi program', 'Srpski end to end: the simulator shows "sr", its own controls read "Inspektor" and "Novi program"', JSON.stringify(labels));
+    c.ok(labels.lang === 'sr' && labels.insp === 'inspektor' && labels.neu === 'Novi program…', 'Srpski end to end: the simulator shows "sr", its own controls read "inspektor" and "Novi program…"', JSON.stringify(labels));
     // a save of the shared key by the simulator itself (the user flips a switch in its settings panel, twice)
     await sim.evaluate(() => { window.TNC_SETTINGS.set('sound', false); window.TNC_SETTINGS.set('sound', true); });
     await page.waitForTimeout(600);
@@ -159,9 +159,9 @@ try {
     await page.locator('.hud-lang .hud-btn[lang="sv"]').click();
     c.ok((await rail()).startsWith('Stationer') && (await htmlLang(page)) === 'sv' && (await stored(page)) === 'sv', 'and back to Svenska from the workshop rail', await rail());
     const sim2 = await (await page.waitForSelector('.shop-sim iframe', { state: 'attached' })).contentFrame();
-    await sim2.waitForFunction(() => window.TNC_UI?.lang === 'sv' && document.querySelector('#b-insp [data-i18n="btn.insp"]')?.textContent.trim() === 'Inspektör', null, { timeout: 45000 }).catch(() => {});
-    labels = await sim2.evaluate(() => ({ lang: window.TNC_UI?.lang, insp: document.querySelector('#b-insp [data-i18n="btn.insp"]')?.textContent.trim() }));
-    c.ok(labels.lang === 'sv' && labels.insp === 'Inspektör', 'and the simulator follows back to Swedish ("Inspektör")', JSON.stringify(labels));
+    await sim2.waitForFunction(() => window.TNC_UI?.lang === 'sv' && document.querySelector('#b-insp-k [data-i18n="sb.insp"]')?.textContent.trim() === 'inspektör', null, { timeout: 45000 }).catch(() => {});
+    labels = await sim2.evaluate(() => ({ lang: window.TNC_UI?.lang, insp: document.querySelector('#b-insp-k [data-i18n="sb.insp"]')?.textContent.trim() }));
+    c.ok(labels.lang === 'sv' && labels.insp === 'inspektör', 'and the simulator follows back to Swedish ("inspektör")', JSON.stringify(labels));
     c.ok(errors.length === 0, 'Srpski: no page error in the shell', errors.join(' | '));
     await ctx.close();
   }

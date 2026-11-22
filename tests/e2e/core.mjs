@@ -60,8 +60,7 @@ try {
   /** select a run mode, start, wait for the end; returns the final state and the depth milled at the middle of the slot */
   async function run(sim) {
     await sim.click('#modes [data-m="full"]');
-    const fast = sim.locator('#spd [data-s="16"]');
-    if (await fast.count()) await fast.first().click().catch(() => {});
+    await sim.evaluate(() => window.TNC_UI.setSpeed && window.TNC_UI.setSpeed(16));   // the speed chip's 16×
     await sim.evaluate(() => window.TNC_UI.exec('reset'));
     const before = await sim.evaluate(() => window.TNC_UI.surfaceAt(50, 20));
     await sim.click('#b-start');
@@ -78,7 +77,7 @@ try {
   c.ok(true, 'Business opens in the machine workspace');
 
   /* ---- create ---- */
-  await sim.click('#b-new');
+  await sim.click('#b-pgm'); await sim.click('#b-new');      // New program… lives in the Program menu
   await sim.fill('#ns-name', NAME);
   await sim.click('#ns-go');
   await sim.waitForFunction((n) => window.TNC_UI.state.pgm === n, NAME + '.H', { timeout: 5000 }).catch(() => {});
@@ -131,13 +130,13 @@ try {
   if (s.pgm === NAME + '.H') {
     // it came back as the open program; open another first so that reopening is a real step
     const other = s.names.find((n) => n !== NAME + '.H');
-    await sim.click('#b-mgt');
+    await sim.click('#b-pgm'); await sim.click('#pm-all');   // Program menu › All programs… (the program manager)
     await sim.locator('#mgt .mrow', { hasText: other }).first().click();
     await sim.locator('#mgt .mrow.sel', { hasText: other }).first().click();
     await sim.waitForFunction((n) => window.TNC_UI.state.pgm === n, other, { timeout: 5000 }).catch(() => {});
     c.ok((await state(sim)).pgm === other, `reopen: another program (${other}) is opened first`);
   }
-  await sim.click('#b-mgt');
+  await sim.click('#b-pgm'); await sim.click('#pm-all');   // Program menu › All programs… (the program manager)
   const row = sim.locator('#mgt .mrow', { hasText: NAME + '.H' }).first();
   await row.click();
   if (!(await sim.evaluate((n) => window.TNC_UI.state.pgm === n, NAME + '.H'))) await sim.locator('#mgt .mrow.sel', { hasText: NAME + '.H' }).first().click();

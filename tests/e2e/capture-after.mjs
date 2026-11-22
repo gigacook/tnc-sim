@@ -47,7 +47,7 @@ try {
   if (s0.lang !== 'en') throw new Error(`expected English, found ${s0.lang}`);
   await shot('main');
 
-  await page.click('#b-new');
+  await page.click('#b-pgm'); await page.click('#b-new');
   await page.waitForSelector('#m-new:not([hidden])', { timeout: 5000 });
   await shot('new-menu');
   await page.click('#new-t-ai');
@@ -57,7 +57,7 @@ try {
   await page.waitForSelector('#m-new', { state: 'hidden', timeout: 5000 });
 
   // last, so the run's messages are in no other picture
-  await page.click('#spd [data-s="0"]');
+  await page.evaluate(() => window.TNC_UI.setSpeed(0));
   await page.click('#b-start');
   await page.waitForFunction(() => window.TNC_UI.runState().done === true, null, { timeout: 180000 });
   await shot('run');
