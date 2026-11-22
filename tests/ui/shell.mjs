@@ -241,6 +241,8 @@ if (want(4)) {
   ok(stored === 1, 'speed: stored with the profile prefs as before', String(stored));
   /* replay */
   ok(await page.evaluate(() => !document.getElementById('b-replay').hidden), 'Replay button shown when TNC_CINE is there');
+  /* the built page has the real cine.js, whose `var TNC_CINE` replaces the init-script stub: stub its open() after load (as the editor is) */
+  await page.evaluate(() => { TNC_CINE.open = function () { window.__cine = (window.__cine || 0) + 1; }; });
   await page.click('#b-replay');
   ok(await page.evaluate(() => window.__cine === 1), 'Replay button calls TNC_CINE.open()');
   await page.evaluate(() => { TNC_UI.setSpeed(0); TNC_UI.exec('start'); });
